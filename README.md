@@ -25,11 +25,11 @@ You should first check these existing packages to see if they meet your needs:
 
 - [ome-zarr-models-py](https://github.com/ome-zarr-models/ome-zarr-models-py).  
   This project has garnered strong community attention and aligns well with many use cases.  
-  For my particular goals, I found a few differences:
+  For my particular goals, I found a few things diverged from what I need.
 
   1. It offers convenient I/O helpers (based on and requiring `zarr-python`)
      that are great in many contexts, but I wanted to explore a version with no
-     I/O assumptions – just classes mirroring the schema.
+     I/O assumptions – just classes mirroring the schema – without the zarr dep.
 
      There are issues & PRs to this effect:
 
