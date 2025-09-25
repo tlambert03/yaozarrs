@@ -1,26 +1,11 @@
-from typing import Annotated, ClassVar, Literal, TypeAlias
+from typing import Annotated, Literal, TypeAlias
 
 from annotated_types import Len, MinLen
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    ConfigDict,
-    Field,
-    WrapValidator,
-    model_validator,
-)
+from pydantic import AfterValidator, Field, WrapValidator, model_validator
 from typing_extensions import Self
 
 from yaomem._utils import UniqueList
-
-
-class _BaseModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(
-        extra="forbid",
-        validate_assignment=True,
-        validate_default=True,
-    )
-
+from yaomem.v05._base import _BaseModel
 
 # ------------------------------------------------------------------------------
 # Axis model

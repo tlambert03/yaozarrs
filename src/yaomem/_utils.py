@@ -18,7 +18,9 @@ def _is_json_equivalent(a: Any, b: Any) -> bool:
         return all(_is_json_equivalent(a[k], b[k]) for k in a)
     if isinstance(a, Sequence) and isinstance(b, Sequence):
         return all(_is_json_equivalent(x, y) for x, y in zip(a, b, strict=True))
-    return False
+    raise TypeError(  # pragma: no cover
+        f"Unsupported type for JSON equivalence: {type(a)}"
+    )
 
 
 def _validate_unique_list(v: list[T]) -> list[T]:
