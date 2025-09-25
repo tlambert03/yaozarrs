@@ -109,8 +109,14 @@ obj = {
             'name': 'scale0',
             'axes': [{'name': 'x', 'type': 'space'}, {'name': 'y', 'type': 'space'}],
             'datasets': [
-                {'path': '0', 'coordinateTransformations': [{'type': 'scale', 'scale': [0.0, 1.0]}]},
-                {'path': '1', 'coordinateTransformations': [{'type': 'scale', 'scale': [0.0, 1.0]}]}
+                {
+                  'path': '0', 
+                  'coordinateTransformations': [{'type': 'scale', 'scale': [0.0, 1.0]}],
+                },
+                {
+                  'path': '1', 
+                  'coordinateTransformations': [{'type': 'scale', 'scale': [0.0, 1.0]}],
+                },
             ],
         }
     ],
