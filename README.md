@@ -9,6 +9,11 @@ Version](https://img.shields.io/pypi/pyversions/yaomem.svg?color=green)](https:/
 
 Yet another ome-zarr model.
 
+> [!IMPORTANT]
+> **Don't use this "in production".**
+>
+> Feel free to copy, vendor, whatever. Read below for details.
+
 ## Oh no, not another one 🤦
 
 First, let me apologize. The last thing the world needs is yet another ome-zarr
