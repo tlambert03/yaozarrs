@@ -18,19 +18,15 @@ dependencies.
 
 You should first check these existing packages to see if they meet your needs:
 
-- [ome-zarr-models-py](https://github.com/ome-zarr-models/ome-zarr-models-py).
-  This is the one to check first. It has the most community attention, having
-  resulted from the [2024 OME-NGFF workflows
-  hackathon](https://osf.io/preprints/biohackrxiv/5uhwz_v2). It was specifically
-  designed to reduce fragmentation.
-  
-  Unfortunately, for my use case:
-  
-  1. it makes assumptions about I/O (such as
-    requiring `zarr`), in the interest of providing convenience methods such as
-    `from_zarr()`.  I *simply* want classes that mirror the schema & specification
-    without any additional dependencies or assumptions about how the data is
-    stored or accessed.  There are issues & PRs to this effect:
+- [ome-zarr-models-py](https://github.com/ome-zarr-models/ome-zarr-models-py).  
+  This project has garnered strong community attention and aligns well with many use cases.  
+  For my particular goals, I found a few differences:
+
+  1. It offers convenient I/O helpers (based on and requiring `zarr-python`)
+     that are great in many contexts, but I wanted to explore a version with no
+     I/O assumptions – just classes mirroring the schema.
+
+     There are issues & PRs to this effect:
 
       - <https://github.com/ome-zarr-models/ome-zarr-models-py/issues/161>
       - <https://github.com/ome-zarr-models/ome-zarr-models-py/pull/280>
@@ -41,13 +37,16 @@ You should first check these existing packages to see if they meet your needs:
 
       - <https://github.com/zarr-developers/pydantic-zarr/pull/112>
 
-  1. It has pinned itself to python 3.11, and I prefer to support the
-    [official python EOL schedule](https://devguide.python.org/versions/), as
-    opposed to the [numpy schedule](https://numpy.org/neps/nep-0029-deprecation_policy.html).
+  1. It currently pins to Python 3.11+ (presumably following NEP-29/SPEC-0),
+     whereas I prefer to match the [official python EOL
+     schedule](https://devguide.python.org/versions/) (supporting 3.10 until mid
+     2026).
 
-  1. The model inheritance chains are quite deep, cross-library (e.g.
-    `pydantic-zarr`), and use complex parametrized generics, obscuring a bit
-    the simplicity of the model itself.
+  1. Its inheritance and generics provide powerful abstractions, though for my
+     experiments I wanted something simpler that just mirrors the spec.
+
+  Ideally, this kind of minimal approach could help inform future directions for
+  `ome-zarr-models-py`, and I’d be glad to see ideas converge over time.
 
 - [pydantic-ome-ngff](https://github.com/janeliascicomp/pydantic-ome-ngff).
   *Deprecated.*
@@ -61,6 +60,8 @@ You should first check these existing packages to see if they meet your needs:
 This is an experimental package, where I can develop minimal models for my
 applications.  The hope would be some future unification, provided the community
 can agree on a common denominator of features.
+
+Ultimately, I want a schema-first, I/O-second library.
 
 ## Installation
 
