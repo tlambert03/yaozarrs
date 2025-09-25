@@ -7,7 +7,7 @@ Version](https://img.shields.io/pypi/pyversions/yaomem.svg?color=green)](https:/
 [![CI](https://github.com/tlambert03/yaomem/actions/workflows/ci.yml/badge.svg)](https://github.com/tlambert03/yaomem/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/tlambert03/yaomem/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/yaomem)
 
-Yet another ome-zarr model.
+Yet another ome-zarr (ngff) model.
 
 > [!IMPORTANT]
 > **Don't use this "in production".**
