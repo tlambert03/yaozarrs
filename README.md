@@ -39,6 +39,10 @@ You should first check these existing packages to see if they meet your needs:
 
   - <https://github.com/zarr-developers/pydantic-zarr/pull/112>
 
+  It has also pinned itself to python 3.11, and I prefer to support the
+  [official python EOL schedule](https://devguide.python.org/versions/), as
+  opposed to the [numpy schedule](https://numpy.org/neps/nep-0029-deprecation_policy.html).
+  
 - [pydantic-ome-ngff](https://github.com/janeliascicomp/pydantic-ome-ngff).
   *Deprecated.*
 - [ngff-zarr](https://github.com/fideus-labs/ngff-zarr).  This also contains

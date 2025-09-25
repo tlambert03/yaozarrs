@@ -1,9 +1,10 @@
 from typing import Annotated, ClassVar, Literal, TypeAlias
 
 from annotated_types import Len, MinLen
-from ome_writers.models._utils import UniqueList
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
+
+from yaomem._utils import UniqueList
 
 
 class _BaseModel(BaseModel):
