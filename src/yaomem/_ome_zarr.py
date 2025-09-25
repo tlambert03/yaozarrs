@@ -5,4 +5,4 @@ from ._base import _BaseModel
 class OMEZarr(_BaseModel):
     """Model with *any* valid OME-Zarr structure."""
 
-    ome: v05.OMENode
+    ome: v05.OMENode  # TODO: add unions for other versions when available
