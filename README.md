@@ -61,3 +61,62 @@ can agree on a common denominator of features.
 ```bash
 pip install git+https://github.com/tlambert03/yaomem
 ```
+
+## Usage
+
+Validate any object against the OME-NGFF schema,
+where "object" here refers to any dict or JSON object that could
+live at the "ome" key of an ome-zarr file.
+
+```python
+from yaomem import validate_ome_node
+
+obj = validate_ome_node(...)
+```
+
+You can also construct objects directly from python, with IDE autocompletion:
+
+```python
+from yaomem import v05
+
+scale = v05.Multiscale(
+    name="scale0",
+    axes=[v05.SpaceAxis(name="x", type="space"), v05.SpaceAxis(name="y", type="space")],
+    datasets=[
+        v05.Dataset(
+            path="0",
+            coordinateTransformations=[v05.ScaleTransformation(scale=[0, 1])],
+        ),
+        v05.Dataset(
+            path="1",
+            coordinateTransformations=[v05.ScaleTransformation(scale=[0, 1])],
+        ),
+    ],
+)
+
+img = v05.Image(multiscales=[scale])
+```
+
+and of course, from dicts:
+
+```python
+from yaomem import validate_ome_node, v05
+
+obj = {
+    'version': '0.5',
+    'multiscales': [
+        {
+            'name': 'scale0',
+            'axes': [{'name': 'x', 'type': 'space'}, {'name': 'y', 'type': 'space'}],
+            'datasets': [
+                {'path': '0', 'coordinateTransformations': [{'type': 'scale', 'scale': [0.0, 1.0]}]},
+                {'path': '1', 'coordinateTransformations': [{'type': 'scale', 'scale': [0.0, 1.0]}]}
+            ],
+        }
+    ],
+}
+
+node = validate_ome_node(obj)
+
+assert isinstance(node, v05.Image)
+```
