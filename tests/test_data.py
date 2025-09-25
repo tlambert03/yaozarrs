@@ -17,5 +17,9 @@ OME_ATTRS: dict[str, dict] = {
 
 @pytest.mark.parametrize("attrs", OME_ATTRS.values(), ids=OME_ATTRS.keys())
 def test_data(attrs: dict) -> None:
-    _ = OMEZarr.model_validate(attrs)
-    print(type(_.ome))
+    obj = OMEZarr.model_validate(attrs)
+
+    js = obj.model_dump_json()
+    obj2 = OMEZarr.model_validate_json(js)
+
+    assert obj == obj2
