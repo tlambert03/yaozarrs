@@ -1,10 +1,9 @@
-from typing import Any, TypeAlias, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 from pydantic import TypeAdapter
 
 from .v05 import OMENode
 
-OMENode: TypeAlias = OMENode  # TODO: union
 T = TypeVar("T", bound=OMENode)
 
 
