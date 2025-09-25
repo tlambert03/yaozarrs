@@ -1,7 +1,14 @@
 from typing import Annotated, ClassVar, Literal, TypeAlias
 
 from annotated_types import Len, MinLen
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    WrapValidator,
+    model_validator,
+)
 from typing_extensions import Self
 
 from yaomem._utils import UniqueList
@@ -139,7 +146,8 @@ def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
 AxesList: TypeAlias = Annotated[
     UniqueList[Axis],
     Len(min_length=2, max_length=5),
-    AfterValidator(_validate_axes_list),
+    # hack to get around ordering of multiple after validators
+    WrapValidator(lambda v, h: _validate_axes_list(h(v))),
 ]
 
 # ------------------------------------------------------------------------------
@@ -268,7 +276,8 @@ DatasetsList: TypeAlias = Annotated[
     # NOTE: the MinLen(1) constraint comes from the image.schema,
     # but is not mentioned in the spec.
     MinLen(1),
-    AfterValidator(_validate_datasets_list),
+    # hack to get around ordering of multiple after validators
+    WrapValidator(lambda v, h: _validate_datasets_list(h(v))),
 ]
 
 # ------------------------------------------------------------------------------

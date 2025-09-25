@@ -6,14 +6,12 @@ from pydantic_core import PydanticCustomError
 
 T = TypeVar("T")
 
-PRIMITIVE_TYPES = (str, int, float, bool, type(None))
+BASIC_TYPES = (str, int, float, bool, type(None), BaseModel)
 
 
 def _is_json_equivalent(a: Any, b: Any) -> bool:
-    if isinstance(a, PRIMITIVE_TYPES) and isinstance(b, PRIMITIVE_TYPES):
+    if isinstance(a, BASIC_TYPES) and isinstance(b, BASIC_TYPES):
         return bool(a == b)
-    if isinstance(a, BaseModel) and isinstance(b, BaseModel):
-        return a == b
     if isinstance(a, Mapping) and isinstance(b, Mapping):
         if a.keys() != b.keys():
             return False

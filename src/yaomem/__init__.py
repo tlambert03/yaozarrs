@@ -4,7 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__ = version("yaomem")
-except PackageNotFoundError:
+except PackageNotFoundError:  # pragma: no cover
     __version__ = "uninstalled"
 
 from . import v05
