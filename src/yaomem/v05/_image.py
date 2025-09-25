@@ -4,8 +4,8 @@ from annotated_types import Len, MinLen
 from pydantic import AfterValidator, Field, WrapValidator, model_validator
 from typing_extensions import Self
 
+from yaomem._base import _BaseModel
 from yaomem._utils import UniqueList
-from yaomem.v05._base import _BaseModel
 
 # ------------------------------------------------------------------------------
 # Axis model
@@ -361,10 +361,13 @@ class OmeroChannel(_BaseModel):
     family: str | None = None
     color: str | None = None
     active: bool | None = None
+    inverted: bool | None = None
+    coefficient: float | None = None
 
 
 class Omero(_BaseModel):
     channels: list[OmeroChannel]
+    id: int | None = None
 
 
 # ------------------------------------------------------------------------------

@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from annotated_types import MinLen
 from pydantic import Field
 
-from ._base import _BaseModel
+from yaomem._base import _BaseModel
 
 
 class OME(_BaseModel):

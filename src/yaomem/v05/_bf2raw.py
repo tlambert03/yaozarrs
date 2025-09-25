@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from ._base import _BaseModel
+from yaomem._base import _BaseModel
 
 
 class Bf2Raw(_BaseModel):

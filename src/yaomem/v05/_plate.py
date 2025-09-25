@@ -4,8 +4,8 @@ from annotated_types import MinLen
 from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
+from yaomem._base import _BaseModel
 from yaomem._utils import UniqueList
-from yaomem.v05._base import _BaseModel
 
 # ------------------------------------------------------------------------------
 # Acquisition model

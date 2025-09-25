@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 from annotated_types import MinLen
 from pydantic import Field
 
+from yaomem._base import _BaseModel
 from yaomem._utils import UniqueList
-from yaomem.v05._base import _BaseModel
 
 
 class FieldOfView(_BaseModel):

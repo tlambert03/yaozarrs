@@ -3,8 +3,8 @@ from typing import Annotated, Any, Literal
 from annotated_types import Interval, Len, MinLen
 from pydantic import Field, field_validator
 
+from yaomem._base import _BaseModel
 from yaomem._utils import UniqueList
-from yaomem.v05._base import _BaseModel
 
 # ------------------------------------------------------------------------------
 # Color model
