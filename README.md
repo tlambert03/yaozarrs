@@ -13,6 +13,8 @@ Yet another ome-zarr (ngff) model.
 > **Don't use this "in production".**
 >
 > Feel free to copy, vendor, whatever. Read below for details.
+> 
+> You should first check out [ome-zarr-models-py](https://github.com/ome-zarr-models/ome-zarr-models-py)
 
 ## Oh no, not another one 🤦
 
