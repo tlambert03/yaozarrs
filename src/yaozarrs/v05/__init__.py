@@ -1,17 +1,15 @@
-"""v04 ome-zarr model.
+"""v05 ome-zarr model.
 
-https://ngff.openmicroscopy.org/0.4/
-https://github.com/ome/ngff/tree/0.4
+https://ngff.openmicroscopy.org/0.5/
+https://github.com/ome/ngff/tree/8cbba216e37407bd2d4bd5c7128ab13bd0a6404e
 """
-
-from __future__ import annotations
 
 from typing import TypeAlias
 
 from pydantic import BaseModel
 
-from yaomem.v04._bf2raw import Bf2Raw
-from yaomem.v04._ome import OME
+from yaozarrs.v05._bf2raw import Bf2Raw
+from yaozarrs.v05._ome import OME
 
 from ._image import (
     ChannelAxis,
@@ -32,6 +30,7 @@ from ._label import (
     Label,
     LabelColor,
     LabelProperty,
+    LabelsGroup,
     LabelSource,
 )
 from ._plate import Acquisition, Column, Plate, PlateDef, PlateWell, Row
@@ -50,6 +49,7 @@ __all__ = [
     "LabelColor",
     "LabelProperty",
     "LabelSource",
+    "LabelsGroup",
     "Multiscale",
     "Omero",
     "OmeroChannel",
@@ -68,7 +68,7 @@ __all__ = [
 
 
 OMENode: TypeAlias = Image | Plate | Label | Well | OME | Bf2Raw
-"""Anything that can live in the "ome" key of a v0.4 ome-zarr file."""
+"""Anything that can live in the "ome" key of a v0.5 ome-zarr file."""
 
 
 class OMEZarr(BaseModel):

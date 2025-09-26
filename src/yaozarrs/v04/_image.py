@@ -4,9 +4,9 @@ from annotated_types import Len, MinLen
 from pydantic import AfterValidator, Field, WrapValidator, model_validator
 from typing_extensions import Self
 
-from yaomem._base import _BaseModel
-from yaomem._units import SpaceUnits, TimeUnits
-from yaomem._utils import UniqueList
+from yaozarrs._base import _BaseModel
+from yaozarrs._units import SpaceUnits, TimeUnits
+from yaozarrs._utils import UniqueList
 
 # ------------------------------------------------------------------------------
 # Axis model

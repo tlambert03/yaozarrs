@@ -1,7 +1,6 @@
 import pytest
 from pydantic import ValidationError
-
-from yaomem import v05, validate_ome_node
+from yaozarrs import v05, validate_ome_node
 
 X_AXIS = {"name": "x", "type": "space", "unit": "millimeter"}
 Y_AXIS = {"name": "y", "type": "space", "unit": None}

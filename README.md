@@ -1,19 +1,19 @@
-# yaomem
+# yaozarrs!
 
-[![License](https://img.shields.io/pypi/l/yaomem.svg?color=green)](https://github.com/tlambert03/yaomem/raw/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/yaomem.svg?color=green)](https://pypi.org/project/yaomem)
+[![License](https://img.shields.io/pypi/l/yaozarrs.svg?color=green)](https://github.com/tlambert03/yaozarrs/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/yaozarrs.svg?color=green)](https://pypi.org/project/yaozarrs)
 [![Python
-Version](https://img.shields.io/pypi/pyversions/yaomem.svg?color=green)](https://python.org)
-[![CI](https://github.com/tlambert03/yaomem/actions/workflows/ci.yml/badge.svg)](https://github.com/tlambert03/yaomem/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/tlambert03/yaomem/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/yaomem)
+Version](https://img.shields.io/pypi/pyversions/yaozarrs.svg?color=green)](https://python.org)
+[![CI](https://github.com/tlambert03/yaozarrs/actions/workflows/ci.yml/badge.svg)](https://github.com/tlambert03/yaozarrs/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/tlambert03/yaozarrs/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/yaozarrs)
 
-Yet another ome-zarr (ngff) model.
+***Yet Another Ome-ZARr Reference Schema!***
 
 > [!IMPORTANT]
 > **Don't use this "in production".**
 >
 > Feel free to copy, vendor, whatever. Read below for details.
-> 
+>
 > You should first check out [ome-zarr-models-py](https://github.com/ome-zarr-models/ome-zarr-models-py)
 
 ## Oh no, not another one 🤦
@@ -73,7 +73,7 @@ Ultimately, I want a schema-first, I/O-second library.
 ## Installation
 
 ```bash
-pip install git+https://github.com/tlambert03/yaomem
+pip install git+https://github.com/tlambert03/yaozarrs
 ```
 
 ## Usage
@@ -83,7 +83,7 @@ where "object" here refers to any dict or JSON object that could
 live at the "ome" key of an ome-zarr file.
 
 ```python
-from yaomem import validate_ome_node
+from yaozarrs import validate_ome_node
 
 obj = validate_ome_node(...)
 ```
@@ -91,7 +91,7 @@ obj = validate_ome_node(...)
 You can also construct objects directly from python, with IDE autocompletion:
 
 ```python
-from yaomem import v05
+from yaozarrs import v05
 
 scale = v05.Multiscale(
     name="scale0",
@@ -114,7 +114,7 @@ img = v05.Image(multiscales=[scale])
 and of course, from dicts:
 
 ```python
-from yaomem import validate_ome_node, v05
+from yaozarrs import validate_ome_node, v05
 
 obj = {
     'version': '0.5',

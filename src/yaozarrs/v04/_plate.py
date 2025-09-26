@@ -4,8 +4,8 @@ from annotated_types import MinLen
 from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
-from yaomem._base import _BaseModel
-from yaomem._utils import UniqueList
+from yaozarrs._base import _BaseModel
+from yaozarrs._utils import UniqueList
 
 # ------------------------------------------------------------------------------
 # Acquisition model
@@ -73,7 +73,6 @@ class Row(_BaseModel):
 # ------------------------------------------------------------------------------
 
 
-# naming this PlateWell to disambiguate from a top level Well (see _well.py)
 class PlateWell(_BaseModel):
     """Individual well in a plate."""
 
@@ -117,6 +116,7 @@ class PlateDef(_BaseModel):
         default=None,
         description="The name of the plate",
     )
+    version: Literal["0.4"] = "0.4"
 
     @model_validator(mode="after")
     def _validate_well_indices(self) -> Self:
@@ -140,5 +140,4 @@ class PlateDef(_BaseModel):
 
 
 class Plate(_BaseModel):
-    version: Literal["0.5"] = "0.5"
     plate: PlateDef

@@ -2,8 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-
-from yaomem import OMEZarr
+from yaozarrs import OMEZarr
 
 DATA = Path(__file__).parent / "data"
 ZARR_JSONS = sorted(DATA.rglob("zarr.json"))

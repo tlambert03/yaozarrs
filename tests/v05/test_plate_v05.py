@@ -1,7 +1,6 @@
 import pytest
 from pydantic import ValidationError
-
-from yaomem import v05, validate_ome_node
+from yaozarrs import v05, validate_ome_node
 
 # Helper data
 COLUMN_A = {"name": "01"}

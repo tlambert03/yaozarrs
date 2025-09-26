@@ -1,7 +1,6 @@
 import pytest
 from pydantic import ValidationError
-
-from yaomem import v04
+from yaozarrs import v04
 
 X_AXIS = {"name": "x", "type": "space", "unit": "millimeter"}
 Y_AXIS = {"name": "y", "type": "space", "unit": None}
@@ -674,7 +673,7 @@ def test_v04_axis_name_uniqueness() -> None:
 def test_v04_axis_name_uniqueness_custom_validation() -> None:
     """Test that axis names must be unique - triggers custom validation logic."""
     # Import the validation function directly to test it
-    from yaomem.v04._image import _validate_axes_list
+    from yaozarrs.v04._image import _validate_axes_list
 
     # Create axes with same names but different types to bypass UniqueList
     axes = [

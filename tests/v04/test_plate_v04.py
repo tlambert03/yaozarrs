@@ -1,7 +1,6 @@
 import pytest
 from pydantic import ValidationError
-
-from yaomem import v04
+from yaozarrs import v04
 
 V04_VALID_PLATES = [
     # Simple plate with minimal required fields
