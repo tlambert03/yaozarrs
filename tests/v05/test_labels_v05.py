@@ -109,7 +109,7 @@ V05_INVALID_LABELS: list[tuple[dict, str]] = [
                 ],
             },
         },
-        "RGBA values must be between 0 and 255",
+        "Input should be less than or equal to 255",
     ),
     (
         {
@@ -120,7 +120,7 @@ V05_INVALID_LABELS: list[tuple[dict, str]] = [
                 ],
             },
         },
-        "RGBA values must be between 0 and 255",
+        "Input should be greater than or equal to 0",
     ),
     # Invalid RGBA array length (not exactly 4)
     (
@@ -231,7 +231,7 @@ V05_INVALID_LABELS: list[tuple[dict, str]] = [
                 ],
             },
         },
-        "RGBA values must be between 0 and 255",
+        "Input should be a valid integer",
     ),
 ]
 

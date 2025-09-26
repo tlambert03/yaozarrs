@@ -22,10 +22,7 @@ class WellDef(_BaseModel):
     images: Annotated[UniqueList[FieldOfView], MinLen(1)] = Field(
         description="The fields of view for this well",
     )
-    version: Literal["0.4"] | None = Field(
-        default=None,
-        description="The version of the specification",
-    )
+    version: Literal["0.4"] = "0.4"
 
 
 # ------------------------------------------------------------------------------

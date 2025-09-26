@@ -770,7 +770,7 @@ def test_v04_version_field_variations() -> None:
         ]
     }
     img_no_version = v04.Image.model_validate(data_no_version)
-    assert img_no_version.multiscales[0].version is None
+    assert img_no_version.multiscales[0].version == "0.4"
 
 
 def test_v04_transformation_minimal_dimensions() -> None:

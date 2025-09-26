@@ -116,10 +116,7 @@ class PlateDef(_BaseModel):
         default=None,
         description="The name of the plate",
     )
-    version: Literal["0.4"] | None = Field(
-        default=None,
-        description="The version of the specification",
-    )
+    version: Literal["0.4"] = "0.4"
 
     @model_validator(mode="after")
     def _validate_well_indices(self) -> Self:

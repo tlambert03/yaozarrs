@@ -178,9 +178,19 @@ class Multiscale(_BaseModel):
             "in the same manner."
         ),
     )
-    version: Literal["0.4"] | None = Field(
+    version: Literal["0.4"] = "0.4"
+
+    # NOTE: "type", and "metadata" mentioned in the spec, but NOT in image.schema
+    type: str | None = Field(  # spec says SHOULD be present, missing in schema
         default=None,
-        description="The version of the specification",
+        description=(
+            "Type of downscaling method used to generate the multiscale image pyramid."
+        ),
+    )
+    metadata: dict | None = Field(  # spec says SHOULD be present, missing in schema
+        default=None,
+        description="Unstructured key-value pair with additional "
+        "information about the downscaling method.",
     )
 
     @model_validator(mode="after")

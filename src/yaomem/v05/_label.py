@@ -1,7 +1,7 @@
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from annotated_types import Interval, Len, MinLen
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from yaomem._base import _BaseModel
 from yaomem._utils import UniqueList
@@ -24,17 +24,6 @@ class LabelColor(_BaseModel):
             "The RGBA color stored as an array of four integers between 0 and 255"
         ),
     )
-
-    @field_validator("rgba", mode="before")
-    @classmethod
-    def _validate_rgba(cls, v: Any) -> Any:
-        if v is not None:
-            for val in v:
-                if not (0 <= val <= 255):
-                    raise ValueError(
-                        f"RGBA values must be between 0 and 255, got {val}"
-                    )
-        return v
 
 
 # ------------------------------------------------------------------------------
