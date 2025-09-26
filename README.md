@@ -3,7 +3,7 @@
 [![CI](https://github.com/tlambert03/yaozarrs/actions/workflows/ci.yml/badge.svg)](https://github.com/tlambert03/yaozarrs/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/tlambert03/yaozarrs/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/yaozarrs)
 
-***Yet Another Ome-ZARr Reference Schema!***
+***Yet Another Ome-ZARR Schema!***
 
 > [!IMPORTANT]
 > **Don't use this "in production".**
