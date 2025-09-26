@@ -1,4 +1,4 @@
-# yaozarrs!
+# yaozarrs❗
 
 [![License](https://img.shields.io/pypi/l/yaozarrs.svg?color=green)](https://github.com/tlambert03/yaozarrs/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/yaozarrs.svg?color=green)](https://pypi.org/project/yaozarrs)
