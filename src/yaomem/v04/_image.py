@@ -21,39 +21,32 @@ class _AxisBase(_BaseModel):
 
 class SpaceAxis(_AxisBase):
     type: Literal["space"] = "space"
-    unit: SpaceUnits | None = None  # SHOULD
+    unit: SpaceUnits | None = None
 
 
 class TimeAxis(_AxisBase):
     type: Literal["time"] = "time"
-    unit: TimeUnits | None = None  # SHOULD
+    unit: TimeUnits | None = None
 
 
 class ChannelAxis(_AxisBase):
     type: Literal["channel"] = "channel"
-    unit: str | None = None  # SHOULD
 
 
 class CustomAxis(_AxisBase):
-    type: str | None = None  # SHOULD
-    unit: str | None = None  # SHOULD
+    type: str | None = None
 
 
-# this union allows us to restrict units based on type.
-# Use CustomAxis for any type/unit.
 Axis: TypeAlias = SpaceAxis | TimeAxis | ChannelAxis | CustomAxis
 
 
 def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
     """Validate a list of Axis for `Multiscale.axes`."""
-    # names MUST be unique within the list.
     names = [ax.name for ax in axes]
     if len(names) != len(set(names)):
         raise ValueError(f"Axis names must be unique. Found duplicates in {names}")
 
-    # The "axes" MUST contain 2 or 3 entries of "type:space"
-    # and MAY contain one additional entry of "type:time"
-    # and MAY contain one additional entry of "type:channel" or a null / custom type.
+    # There must be between 2 and 3 space axes
     n_space_axes = len([ax for ax in axes if ax.type == "space"])
     if n_space_axes < 2 or n_space_axes > 3:
         raise ValueError("There must be 2 or 3 axes of type 'space'.")
@@ -62,23 +55,12 @@ def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
     if len([ax for ax in axes if ax.type == "channel"]) > 1:
         raise ValueError("There can be at most 1 axis of type 'channel'.")
 
-    # The entries MUST be ordered by "type" where the "time" axis must come first (if
-    # present), followed by the "channel" or custom axis (if present) and the axes of
-    # type "space".
-    type_order = {"time": 0, "channel": 1, None: 1, "space": 2}
-    sorted_axes = sorted(axes, key=lambda ax: type_order.get(ax.type, 3))
-    if axes != sorted_axes:
-        raise ValueError(
-            "Axes are not in the required order by type. "
-            "Order must be [time,] [channel,] space."
-        )
     return axes
 
 
 AxesList: TypeAlias = Annotated[
     UniqueList[Axis],
     Len(min_length=2, max_length=5),
-    # hack to get around ordering of multiple after validators
     WrapValidator(lambda v, h: _validate_axes_list(h(v))),
 ]
 
@@ -111,45 +93,19 @@ CoordinateTransformation = ScaleTransformation | TranslationTransformation
 def _validate_transforms_list(
     transforms: list[CoordinateTransformation],
 ) -> list[CoordinateTransformation]:
-    # [the list of transforms] MUST contain exactly one scale transformation that
-    # specifies the pixel size in physical units or time duration
+    # Must contain exactly one scale transformation
     num_scales = len([t for t in transforms if isinstance(t, ScaleTransformation)])
     if num_scales != 1:
         raise ValueError(
-            "There must be exactly one scale transformation in the list of transforms. "
-            f"Found {num_scales}.\n\n"
-            "TIP:\n"
-            "If scaling information is not available or applicable for one of the axes,"
-            " the value MUST express the scaling factor between the current resolution "
-            "and the first resolution for the given axis, defaulting to 1.0 if there is"
-            " no downsampling along the axis"
+            f"There must be exactly one scale transformation. Found {num_scales}."
         )
 
-    # It MAY contain exactly one translation that specifies the offset from the origin
-    # in physical units.
+    # May contain at most one translation
     num_trans = len([t for t in transforms if isinstance(t, TranslationTransformation)])
     if num_trans > 1:
         raise ValueError(
-            "There can be at most one translation transformation in the list of "
-            f"transforms. Found {num_trans}."
+            f"There can be at most one translation transformation. Found {num_trans}."
         )
-
-    # If translation is given it MUST be listed after scale to ensure that it is given
-    # in physical coordinates.
-    if num_trans:
-        translation_idx = next(
-            i
-            for i, t in enumerate(transforms)
-            if isinstance(t, TranslationTransformation)
-        )
-        scale_idx = next(
-            i for i, t in enumerate(transforms) if isinstance(t, ScaleTransformation)
-        )
-        if translation_idx < scale_idx:
-            raise ValueError(
-                "If a translation transformation is given, it must be listed after "
-                "the scale transformation."
-            )
 
     return transforms
 
@@ -174,7 +130,7 @@ class Dataset(_BaseModel):
     )
     coordinateTransformations: CoordinateTransformsList = Field(
         description=(
-            "list of transformations that map the data coordinates to the physical "
+            "List of transformations that map the data coordinates to the physical "
             'coordinates (as specified by "axes") for this resolution level.'
         )
     )
@@ -182,21 +138,14 @@ class Dataset(_BaseModel):
 
 def _validate_datasets_list(datasets: list[Dataset]) -> list[Dataset]:
     """Validate a list of Dataset for `Multiscale.datasets`."""
-    # The "paths" of the datasets MUST be be ordered from the highest resolution to the
-    # lowest resolution (i.e. largest to smallest
-    ...  # (Cannot validate without I/O)
-
-    # Each "datasets" dictionary MUST have the same number of dimensions...
-    # NOTE: this wording from the spec is a bit ambiguous,
-    # since the "number of dimensions" of a dataset is not explicitly defined.
-    # Here we interpret it to mean the dimensionality of the coordinate transformations
+    # Each dataset must have the same number of dimensions
     ndims = {dt.path: dt.coordinateTransformations[0].ndim for dt in datasets}
     if len(set(ndims.values())) != 1:
         raise ValueError(
             "All datasets must have the same number of dimensions. "
             f"Found differing dimensions: {ndims}"
         )
-    # ... and MUST NOT have more than 5 dimensions.
+    # Must not have more than 5 dimensions
     if any(n > 5 for n in ndims.values()):
         raise ValueError("Datasets must not have more than 5 dimensions.")
 
@@ -205,10 +154,7 @@ def _validate_datasets_list(datasets: list[Dataset]) -> list[Dataset]:
 
 DatasetsList: TypeAlias = Annotated[
     UniqueList[Dataset],
-    # NOTE: the MinLen(1) constraint comes from the image.schema,
-    # but is not mentioned in the spec.
     MinLen(1),
-    # hack to get around ordering of multiple after validators
     WrapValidator(lambda v, h: _validate_datasets_list(h(v))),
 ]
 
@@ -218,22 +164,9 @@ DatasetsList: TypeAlias = Annotated[
 
 
 class Multiscale(_BaseModel):
-    """A multiscale representation of an image.
+    """A multiscale representation of an image."""
 
-    Notes
-    -----
-    Additional constraints that are not verifiable without I/O:
-
-    - The length of "axes" MUST be equal to the dimensionality of the zarr arrays
-      storing the image data (see `datasets.path`).
-    - The "dimension_names" attribute MUST be included in the zarr.json of the Zarr
-      array of a multiscale level and MUST match the names in the "axes" metadata.
-    - The order of axes in "axes" MUST match the order of dimensions in the zarr arrays.
-    - The "paths" of the datasets MUST be be ordered from the highest resolution to the
-      lowest resolution (i.e. largest to smallest)
-    """
-
-    name: str | None = None  # SHOULD be present.
+    name: str | None = None
     axes: AxesList = Field(description="The axes of the image.")
     datasets: DatasetsList = Field(
         description="The arrays storing the individual resolution levels"
@@ -245,28 +178,13 @@ class Multiscale(_BaseModel):
             "in the same manner."
         ),
     )
-
-    # NOTE: "type", and "metadata" mentioned in the spec, but NOT in image.schema
-    type: str | None = Field(  # spec says SHOULD be present, missing in schema
+    version: Literal["0.4"] | None = Field(
         default=None,
-        description=(
-            "Type of downscaling method used to generate the multiscale image pyramid."
-        ),
-    )
-    metadata: dict | None = Field(  # spec says SHOULD be present, missing in schema
-        default=None,
-        description="Unstructured key-value pair with additional "
-        "information about the downscaling method.",
+        description="The version of the specification",
     )
 
     @model_validator(mode="after")
     def _check_ndim(self) -> Self:
-        # The number and order of dimensions in each dataset MUST
-        # correspond to number and order of "axes".
-        # TODO ... this is ambiguous.  is it the same as the following check?
-
-        # The length of the scale and translation array MUST be the same as the length
-        # of "axes".
         for _id, ds in enumerate(self.datasets):
             for _it, transform in enumerate(ds.coordinateTransformations):
                 if transform.ndim != self.ndim:
@@ -303,18 +221,15 @@ class OmeroWindow(_BaseModel):
 
 
 class OmeroChannel(_BaseModel):
-    window: OmeroWindow | None = None
+    window: OmeroWindow
     label: str | None = None
     family: str | None = None
-    color: str | None = None
+    color: str
     active: bool | None = None
-    inverted: bool | None = None
-    coefficient: float | None = None
 
 
 class Omero(_BaseModel):
     channels: list[OmeroChannel]
-    id: int | None = None
 
 
 # ------------------------------------------------------------------------------
@@ -323,6 +238,5 @@ class Omero(_BaseModel):
 
 
 class Image(_BaseModel):
-    version: Literal["0.5"] = "0.5"
     multiscales: Annotated[UniqueList[Multiscale], MinLen(1)]
     omero: Omero | None = None

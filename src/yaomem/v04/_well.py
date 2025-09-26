@@ -1,0 +1,39 @@
+from typing import Annotated, Literal
+
+from annotated_types import MinLen
+from pydantic import Field
+
+from yaomem._base import _BaseModel
+from yaomem._utils import UniqueList
+
+
+class FieldOfView(_BaseModel):
+    path: str = Field(
+        description="The path for this field of view subgroup",
+        pattern=r"^[A-Za-z0-9]+$",
+    )
+    acquisition: int | None = Field(
+        default=None,
+        description="A unique identifier within the context of the plate",
+    )
+
+
+class WellDef(_BaseModel):
+    images: Annotated[UniqueList[FieldOfView], MinLen(1)] = Field(
+        description="The fields of view for this well",
+    )
+    version: Literal["0.4"] | None = Field(
+        default=None,
+        description="The version of the specification",
+    )
+
+
+# ------------------------------------------------------------------------------
+# Well model (top-level)
+# ------------------------------------------------------------------------------
+
+
+class Well(_BaseModel):
+    """A well at the top-level of an ome-zarr file."""
+
+    well: WellDef
