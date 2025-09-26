@@ -97,7 +97,13 @@ def _validate_transforms_list(
     num_scales = len([t for t in transforms if isinstance(t, ScaleTransformation)])
     if num_scales != 1:
         raise ValueError(
-            f"There must be exactly one scale transformation. Found {num_scales}."
+            "There must be exactly one scale transformation in the list of transforms. "
+            f"Found {num_scales}.\n\n"
+            "TIP:\n"
+            "If scaling information is not available or applicable for one of the axes,"
+            " the value MUST express the scaling factor between the current resolution "
+            "and the first resolution for the given axis, defaulting to 1.0 if there is"
+            " no downsampling along the axis"
         )
 
     # May contain at most one translation
@@ -106,6 +112,23 @@ def _validate_transforms_list(
         raise ValueError(
             f"There can be at most one translation transformation. Found {num_trans}."
         )
+
+    # If translation is given it MUST be listed after scale to ensure that it is given
+    # in physical coordinates.
+    if num_trans:
+        translation_idx = next(
+            i
+            for i, t in enumerate(transforms)
+            if isinstance(t, TranslationTransformation)
+        )
+        scale_idx = next(
+            i for i, t in enumerate(transforms) if isinstance(t, ScaleTransformation)
+        )
+        if translation_idx < scale_idx:
+            raise ValueError(
+                "If a translation transformation is given, it must be listed after "
+                "the scale transformation."
+            )
 
     return transforms
 
