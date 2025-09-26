@@ -19,7 +19,9 @@ OME_ATTRS: dict[str, dict] = {
 def test_data(attrs: dict) -> None:
     obj = OMEZarr.model_validate(attrs)
 
-    js = obj.model_dump_json()
+    # FIXME:
+    # we shouldn't have to do by_alias=True here...
+    # but it's required for pydantic <2.10.0
+    js = obj.model_dump_json(by_alias=True)
     obj2 = OMEZarr.model_validate_json(js)
-
     assert obj == obj2
