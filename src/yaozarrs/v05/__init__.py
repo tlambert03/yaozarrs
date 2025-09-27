@@ -27,8 +27,8 @@ from ._image import (
 )
 from ._label import (
     ImageLabel,
-    Label,
     LabelColor,
+    LabelImage,
     LabelProperty,
     LabelsGroup,
     LabelSource,
@@ -45,8 +45,8 @@ __all__ = [
     "FieldOfView",
     "Image",
     "ImageLabel",
-    "Label",
     "LabelColor",
+    "LabelImage",
     "LabelProperty",
     "LabelSource",
     "LabelsGroup",
@@ -67,7 +67,7 @@ __all__ = [
 ]
 
 
-OMENode: TypeAlias = Image | Plate | Label | Well | OME | Bf2Raw
+OMENode: TypeAlias = Image | Plate | LabelImage | Well | OME | Bf2Raw
 """Anything that can live in the "ome" key of a v0.5 ome-zarr file."""
 
 

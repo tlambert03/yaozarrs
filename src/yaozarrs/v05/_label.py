@@ -1,10 +1,12 @@
-from typing import Annotated, Literal
+from typing import Annotated
 
 from annotated_types import Interval, Len, MinLen
 from pydantic import Field
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._utils import UniqueList
+
+from ._image import Image
 
 # ------------------------------------------------------------------------------
 # Color model
@@ -86,8 +88,7 @@ class LabelsGroup(_BaseModel):
 # ------------------------------------------------------------------------------
 
 
-class Label(_BaseModel):
+class LabelImage(Image):
     """Model for individual label images with multiscales + image-label metadata."""
 
-    version: Literal["0.5"] = "0.5"
     image_label: ImageLabel = Field(alias="image-label")

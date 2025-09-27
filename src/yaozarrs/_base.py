@@ -10,5 +10,6 @@ class _BaseModel(BaseModel):
         extra="ignore",
         validate_assignment=True,
         validate_default=True,
+        validate_by_name=True,
         serialize_by_alias=True,
     )

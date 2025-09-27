@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from yaozarrs import v05, validate_ome_node
 
 # Helper data
@@ -12,15 +13,31 @@ PROPERTY_2 = {"label-value": 2}
 
 SOURCE_1 = {"image": "../../"}
 
-V05_VALID_LABELS = [
+X_AXIS = {"name": "x", "type": "space", "unit": "millimeter"}
+Y_AXIS = {"name": "y", "type": "space", "unit": None}
+SCALE_TFORM_2D = {"type": "scale", "scale": [1, 1]}
+MULTISCALES_2D = [
+    {
+        "name": "image",
+        "axes": [X_AXIS, Y_AXIS],
+        "datasets": [
+            {"path": "0", "coordinateTransformations": [SCALE_TFORM_2D]},
+            {"path": "1", "coordinateTransformations": [SCALE_TFORM_2D]},
+        ],
+    }
+]
+
+V05_VALID_LABEL_IMAGES = [
     # Minimal label (no colors, properties, or source)
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {},
     },
     # Label with colors only
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "colors": [COLOR_1, COLOR_2],
         },
@@ -28,6 +45,7 @@ V05_VALID_LABELS = [
     # Label with colors (no rgba for some)
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "colors": [COLOR_1, COLOR_3],
         },
@@ -35,6 +53,7 @@ V05_VALID_LABELS = [
     # Label with properties only
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "properties": [PROPERTY_1, PROPERTY_2],
         },
@@ -42,6 +61,7 @@ V05_VALID_LABELS = [
     # Label with source only
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "source": SOURCE_1,
         },
@@ -49,6 +69,7 @@ V05_VALID_LABELS = [
     # Label with all fields
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "colors": [COLOR_1, COLOR_2],
             "properties": [PROPERTY_1, PROPERTY_2],
@@ -58,6 +79,7 @@ V05_VALID_LABELS = [
     # Label with empty source
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "source": {},
         },
@@ -65,6 +87,7 @@ V05_VALID_LABELS = [
     # Edge case: RGBA with 0 and 255 values
     {
         "version": "0.5",
+        "multiscales": MULTISCALES_2D,
         "image-label": {
             "colors": [
                 {"label-value": 0, "rgba": [0, 0, 0, 0]},  # black, transparent
@@ -86,9 +109,9 @@ V05_VALID_LABELS_GROUPS = [
 ]
 
 
-@pytest.mark.parametrize("obj", V05_VALID_LABELS)
+@pytest.mark.parametrize("obj", V05_VALID_LABEL_IMAGES)
 def test_valid_labels(obj: dict) -> None:
-    validate_ome_node(obj, v05.Label)
+    validate_ome_node(obj, v05.LabelImage)
 
 
 @pytest.mark.parametrize("obj", V05_VALID_LABELS_GROUPS)
@@ -253,7 +276,7 @@ V05_INVALID_LABELS_GROUPS: list[tuple[dict, str]] = [
 @pytest.mark.parametrize("obj, msg", V05_INVALID_LABELS)
 def test_invalid_labels(obj: dict, msg: str) -> None:
     with pytest.raises(ValidationError, match=msg):
-        v05.Label.model_validate(obj)
+        v05.LabelImage.model_validate(obj)
 
 
 @pytest.mark.parametrize("obj, msg", V05_INVALID_LABELS_GROUPS)

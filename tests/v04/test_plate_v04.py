@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from yaozarrs import v04
 
 V04_VALID_PLATES = [

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from yaozarrs import OMEZarr
 
 DATA = Path(__file__).parent / "data"
