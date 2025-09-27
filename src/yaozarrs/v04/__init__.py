@@ -1,7 +1,8 @@
 """v04 ome-zarr model.
 
-https://ngff.openmicroscopy.org/0.4/
-https://github.com/ome/ngff/tree/0.4
+<https://ngff.openmicroscopy.org/0.4>
+
+<https://github.com/ome/ngff/tree/7ac3430c74a66e5bcf53e41c429143172d68c0a4>
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
 """v05 ome-zarr model.
 
-https://ngff.openmicroscopy.org/0.5/
-https://github.com/ome/ngff/tree/8cbba216e37407bd2d4bd5c7128ab13bd0a6404e
+<https://ngff.openmicroscopy.org/0.5/>
+
+<https://github.com/ome/ngff/tree/8cbba216e37407bd2d4bd5c7128ab13bd0a6404e>
 """
 
 from yaozarrs.v05._bf2raw import Bf2Raw
