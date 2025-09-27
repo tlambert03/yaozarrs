@@ -204,13 +204,240 @@ def test_valid_v04_plates(data):
     assert len(plate.plate.wells) >= 1
 
 
-@pytest.mark.parametrize("data", V04_INVALID_PLATES)
-def test_invalid_v04_plates(data):
+# Extended invalid cases with specific error messages
+V04_INVALID_PLATES_EXTENDED: list[tuple[dict, str]] = [
+    # Test PlateDef validation - rowIndex out of bounds
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],  # Only 1 row
+                "columns": [{"name": "1"}],
+                "wells": [
+                    {"path": "A/1", "rowIndex": 1, "columnIndex": 0}
+                ],  # rowIndex=1 invalid
+            }
+        },
+        "rowIndex.*but only.*rows exist",
+    ),
+    # Test PlateDef validation - columnIndex out of bounds
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],  # Only 1 column
+                "wells": [
+                    {"path": "A/1", "rowIndex": 0, "columnIndex": 1}
+                ],  # columnIndex=1 invalid
+            }
+        },
+        "columnIndex.*but only.*columns exist",
+    ),
+]
+
+# Convert V04_INVALID_PLATES to same format as v05, with better error patterns
+V04_INVALID_PLATES_WITH_MESSAGES: list[tuple[dict, str]] = [
+    # Missing plate key
+    ({}, "Field required"),
+    # Empty plate
+    ({"plate": {}}, "Field required"),
+    # Missing rows
+    (
+        {
+            "plate": {
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+            }
+        },
+        "Field required",
+    ),
+    # Missing columns
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+            }
+        },
+        "Field required",
+    ),
+    # Missing wells
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+            }
+        },
+        "Field required",
+    ),
+    # Empty rows array
+    (
+        {
+            "plate": {
+                "rows": [],
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+            }
+        },
+        "at least 1 item",
+    ),
+    # Empty columns array
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+            }
+        },
+        "at least 1 item",
+    ),
+    # Empty wells array
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [],
+            }
+        },
+        "at least 1 item",
+    ),
+    # Invalid well path pattern
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [
+                    {"path": "A-1", "rowIndex": 0, "columnIndex": 0}
+                ],  # Should be A/1
+            }
+        },
+        "String should match pattern",
+    ),
+    # Invalid row name pattern (contains special chars)
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A@"}],  # Invalid pattern
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A@/1", "rowIndex": 0, "columnIndex": 0}],
+            }
+        },
+        "String should match pattern",
+    ),
+    # Invalid column name pattern
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1@"}],  # Invalid pattern
+                "wells": [{"path": "A/1@", "rowIndex": 0, "columnIndex": 0}],
+            }
+        },
+        "String should match pattern",
+    ),
+    # Well rowIndex out of bounds
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],  # Only 1 row (index 0)
+                "columns": [{"name": "1"}],
+                "wells": [
+                    {"path": "A/1", "rowIndex": 1, "columnIndex": 0}
+                ],  # Index 1 doesn't exist
+            }
+        },
+        "rowIndex.*but only.*rows exist",
+    ),
+    # Well columnIndex out of bounds
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],  # Only 1 column (index 0)
+                "wells": [
+                    {"path": "A/1", "rowIndex": 0, "columnIndex": 1}
+                ],  # Index 1 doesn't exist
+            }
+        },
+        "columnIndex.*but only.*columns exist",
+    ),
+    # Negative rowIndex
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": -1, "columnIndex": 0}],
+            }
+        },
+        "greater than or equal to 0",
+    ),
+    # Negative columnIndex
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": -1}],
+            }
+        },
+        "greater than or equal to 0",
+    ),
+    # Invalid field_count (must be positive)
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+                "field_count": 0,  # Must be > 0
+            }
+        },
+        "greater than 0",
+    ),
+    # Invalid acquisition id (negative)
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+                "acquisitions": [{"id": -1}],
+            }
+        },
+        "greater than or equal to 0",
+    ),
+    # Invalid maximumfieldcount (must be positive)
+    (
+        {
+            "plate": {
+                "rows": [{"name": "A"}],
+                "columns": [{"name": "1"}],
+                "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+                "acquisitions": [{"id": 0, "maximumfieldcount": 0}],  # Must be > 0
+            }
+        },
+        "greater than 0",
+    ),
+]
+
+# Combine all invalid cases with specific error messages
+V04_ALL_INVALID_PLATES: list[tuple[dict, str]] = (
+    V04_INVALID_PLATES_WITH_MESSAGES + V04_INVALID_PLATES_EXTENDED
+)
+
+
+@pytest.mark.parametrize("obj, msg", V04_ALL_INVALID_PLATES)
+def test_invalid_v04_plates(obj: dict, msg: str) -> None:
     """Test that invalid v04 plate metadata raises validation errors."""
-    with pytest.raises(ValidationError):
-        v04.Plate.model_validate(data)
+    with pytest.raises(ValidationError, match=msg):
+        v04.Plate.model_validate(obj)
 
 
+# Additional tests for positive cases that are not covered by parameterized tests
 def test_v04_plate_acquisition():
     """Test v04 plate acquisition model."""
     acq = v04.Acquisition(
@@ -245,52 +472,3 @@ def test_v04_plate_well():
     assert well.path == "A/01"
     assert well.rowIndex == 0
     assert well.columnIndex == 0
-
-
-def test_v04_plate_def_validation():
-    """Test v04 plate def validation logic."""
-    # Test valid plate def
-    plate_def = v04.PlateDef(
-        rows=[v04.Row(name="A"), v04.Row(name="B")],
-        columns=[v04.Column(name="1"), v04.Column(name="2")],
-        wells=[
-            v04.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
-            v04.PlateWell(path="B/2", rowIndex=1, columnIndex=1),
-        ],
-    )
-    assert len(plate_def.rows) == 2
-    assert len(plate_def.columns) == 2
-
-    # Test that validation catches out-of-bounds indices
-    with pytest.raises(ValidationError, match=r"rowIndex.*but only.*rows exist"):
-        v04.PlateDef(
-            rows=[v04.Row(name="A")],  # Only 1 row
-            columns=[v04.Column(name="1")],
-            wells=[
-                v04.PlateWell(path="A/1", rowIndex=1, columnIndex=0)
-            ],  # rowIndex=1 invalid
-        )
-
-    with pytest.raises(ValidationError, match=r"columnIndex.*but only.*columns exist"):
-        v04.PlateDef(
-            rows=[v04.Row(name="A")],
-            columns=[v04.Column(name="1")],  # Only 1 column
-            wells=[
-                v04.PlateWell(path="A/1", rowIndex=0, columnIndex=1)
-            ],  # columnIndex=1 invalid
-        )
-
-
-def test_v04_validate_plate_as_ome_node():
-    """Test that v04 plates can be validated as OME nodes."""
-    data = {
-        "plate": {
-            "rows": [{"name": "A"}],
-            "columns": [{"name": "1"}],
-            "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
-        }
-    }
-
-    # Should validate as a Plate
-    result = v04.Plate.model_validate(data)
-    assert isinstance(result, v04.Plate)

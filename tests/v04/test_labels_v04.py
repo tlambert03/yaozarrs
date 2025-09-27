@@ -128,69 +128,158 @@ def test_valid_v04_labels(data: dict) -> None:
     assert label.image_label is not None
 
 
-@pytest.mark.parametrize("data", V04_INVALID_LABELS)
-def test_invalid_v04_labels(data: dict) -> None:
+# list of (invalid_obj, error_msg_substring) - combining all invalid cases
+V04_INVALID_LABELS_EXTENDED: list[tuple[dict, str]] = [
+    # RGBA values out of range (256 > 255)
+    (
+        {
+            "version": "0.4",
+            "multiscales": MULTISCALES_2D,
+            "image-label": {
+                "colors": [
+                    {"label-value": 1, "rgba": [256, 0, 0, 255]},
+                ],
+            },
+        },
+        "Input should be less than or equal to 255",
+    ),
+    # RGBA values out of range (-1 < 0)
+    (
+        {
+            "version": "0.4",
+            "multiscales": MULTISCALES_2D,
+            "image-label": {
+                "colors": [
+                    {"label-value": 1, "rgba": [-1, 0, 0, 255]},
+                ],
+            },
+        },
+        "Input should be greater than or equal to 0",
+    ),
+    # Invalid RGBA array length (too short)
+    (
+        {
+            "version": "0.4",
+            "multiscales": MULTISCALES_2D,
+            "image-label": {
+                "colors": [
+                    {"label-value": 1, "rgba": [255, 0, 0]},
+                ],
+            },
+        },
+        "at least 4 items",
+    ),
+    # Invalid RGBA array length (too long)
+    (
+        {
+            "version": "0.4",
+            "multiscales": MULTISCALES_2D,
+            "image-label": {
+                "colors": [
+                    {"label-value": 1, "rgba": [255, 0, 0, 255, 128]},
+                ],
+            },
+        },
+        "at most 4 items",
+    ),
+    # Duplicate colors (UniqueList violation)
+    (
+        {
+            "version": "0.4",
+            "multiscales": MULTISCALES_2D,
+            "image-label": {
+                "colors": [
+                    {"label-value": 1, "rgba": [255, 0, 0, 255]},
+                    {"label-value": 1, "rgba": [255, 0, 0, 255]},
+                ],
+            },
+        },
+        "List items are not unique",
+    ),
+    # Duplicate properties (UniqueList violation)
+    (
+        {
+            "version": "0.4",
+            "multiscales": MULTISCALES_2D,
+            "image-label": {
+                "properties": [
+                    {"label-value": 1},
+                    {"label-value": 1},
+                ],
+            },
+        },
+        "List items are not unique",
+    ),
+]
+
+# Convert V04_INVALID_LABELS to same format as v05, with better error patterns
+V04_INVALID_LABELS_WITH_MESSAGES: list[tuple[dict, str]] = [
+    # Missing image-label
+    ({}, "Field required"),
+    # Invalid RGBA values (out of range)
+    (
+        {
+            "image-label": {
+                "colors": [
+                    {
+                        "label-value": 1,
+                        "rgba": [256, 0, 0, 255],  # 256 is out of range
+                    }
+                ]
+            }
+        },
+        "Input should be less than or equal to 255",
+    ),
+    # Invalid RGBA array length
+    (
+        {
+            "image-label": {
+                "colors": [
+                    {
+                        "label-value": 1,
+                        "rgba": [255, 0, 0],  # Should be 4 elements
+                    }
+                ]
+            }
+        },
+        "at least 4 items",
+    ),
+    # Empty colors array (should have minItems: 1)
+    ({"image-label": {"colors": []}}, "at least 1 item"),
+    # Empty properties array (should have minItems: 1)
+    ({"image-label": {"properties": []}}, "at least 1 item"),
+    # Missing required label-value in colors
+    (
+        {
+            "image-label": {
+                "colors": [
+                    {"rgba": [255, 0, 0, 255]}  # Missing label-value
+                ]
+            }
+        },
+        "Field required",
+    ),
+    # Missing required label-value in properties
+    (
+        {
+            "image-label": {
+                "properties": [
+                    {}  # Missing label-value
+                ]
+            }
+        },
+        "Field required",
+    ),
+]
+
+# Combine all invalid cases with specific error messages
+V04_ALL_INVALID_LABELS: list[tuple[dict, str]] = (
+    V04_INVALID_LABELS_WITH_MESSAGES + V04_INVALID_LABELS_EXTENDED
+)
+
+
+@pytest.mark.parametrize("obj, msg", V04_ALL_INVALID_LABELS)
+def test_invalid_v04_labels(obj: dict, msg: str) -> None:
     """Test that invalid v04 label metadata raises validation errors."""
-    with pytest.raises(ValidationError):
-        v04.LabelImage.model_validate(data)
-
-
-def test_v04_label_color_rgba_validation() -> None:
-    """Test RGBA color validation."""
-    # Valid RGBA values
-    color = v04.LabelColor(**{"label-value": 1, "rgba": [255, 128, 0, 255]})
-    assert color.rgba == [255, 128, 0, 255]
-
-    # Test without RGBA
-    color_no_rgba = v04.LabelColor(**{"label-value": 2})
-    assert color_no_rgba.rgba is None
-
-    # Invalid RGBA values should raise ValidationError
-    with pytest.raises(ValidationError):
-        v04.LabelColor(**{"label-value": 1, "rgba": [256, 0, 0, 255]})  # 256 > 255
-
-    with pytest.raises(ValidationError):
-        v04.LabelColor(**{"label-value": 1, "rgba": [-1, 0, 0, 255]})  # -1 < 0
-
-
-def test_v04_label_properties() -> None:
-    """Test label properties."""
-    prop = v04.LabelProperty(**{"label-value": 42})
-    assert prop.label_value == 42
-
-
-def test_v04_label_source() -> None:
-    """Test label source."""
-    source = v04.LabelSource(image="../parent.zarr")
-    assert source.image == "../parent.zarr"
-
-    # Test without image
-    empty_source = v04.LabelSource()
-    assert empty_source.image is None
-
-
-def test_v04_image_label() -> None:
-    """Test ImageLabel model."""
-    image_label = v04.ImageLabel(
-        version="0.4",
-        colors=[v04.LabelColor(**{"label-value": 1, "rgba": [255, 0, 0, 255]})],
-        properties=[v04.LabelProperty(**{"label-value": 1})],
-        source=v04.LabelSource(image="../source.zarr"),
-    )
-
-    assert image_label.version == "0.4"
-    assert len(image_label.colors) == 1
-    assert len(image_label.properties) == 1
-    assert image_label.source.image == "../source.zarr"
-
-
-def test_v04_validate_label_as_ome_node() -> None:
-    """Test that v04 labels can be validated as OME nodes."""
-    data = {
-        "multiscales": MULTISCALES_2D,
-        "image-label": {"colors": [{"label-value": 1, "rgba": [255, 0, 0, 255]}]},
-    }
-
-    # Should validate as a Label
-    result = v04.LabelImage.model_validate(data)
-    assert isinstance(result, v04.LabelImage)
+    with pytest.raises(ValidationError, match=msg):
+        v04.LabelImage.model_validate(obj)

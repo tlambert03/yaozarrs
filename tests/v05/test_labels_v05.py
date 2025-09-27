@@ -110,12 +110,12 @@ V05_VALID_LABELS_GROUPS = [
 
 
 @pytest.mark.parametrize("obj", V05_VALID_LABEL_IMAGES)
-def test_valid_labels(obj: dict) -> None:
+def test_valid_v05_labels(obj: dict) -> None:
     validate_ome_node(obj, v05.LabelImage)
 
 
 @pytest.mark.parametrize("obj", V05_VALID_LABELS_GROUPS)
-def test_valid_labels_groups(obj: dict) -> None:
+def test_valid_v05_labels_groups(obj: dict) -> None:
     validate_ome_node(obj, v05.LabelsGroup)
 
 
@@ -257,6 +257,13 @@ V05_INVALID_LABELS: list[tuple[dict, str]] = [
     ),
 ]
 
+
+@pytest.mark.parametrize("obj, msg", V05_INVALID_LABELS)
+def test_invalid_v05_labels(obj: dict, msg: str) -> None:
+    with pytest.raises(ValidationError, match=msg):
+        v05.LabelImage.model_validate(obj)
+
+
 V05_INVALID_LABELS_GROUPS: list[tuple[dict, str]] = [
     # Empty labels array
     (
@@ -273,13 +280,7 @@ V05_INVALID_LABELS_GROUPS: list[tuple[dict, str]] = [
 ]
 
 
-@pytest.mark.parametrize("obj, msg", V05_INVALID_LABELS)
-def test_invalid_labels(obj: dict, msg: str) -> None:
-    with pytest.raises(ValidationError, match=msg):
-        v05.LabelImage.model_validate(obj)
-
-
 @pytest.mark.parametrize("obj, msg", V05_INVALID_LABELS_GROUPS)
-def test_invalid_labels_groups(obj: dict, msg: str) -> None:
+def test_invalid_v05_labels_groups(obj: dict, msg: str) -> None:
     with pytest.raises(ValidationError, match=msg):
         v05.LabelsGroup.model_validate(obj)

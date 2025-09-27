@@ -78,7 +78,7 @@ V05_VALID_PLATES = [
 
 
 @pytest.mark.parametrize("obj", V05_VALID_PLATES)
-def test_valid_plates(obj: dict) -> None:
+def test_valid_v05_plates(obj: dict) -> None:
     validate_ome_node(obj, v05.Plate)
 
 
@@ -431,6 +431,6 @@ V05_INVALID_PLATES: list[tuple[dict, str]] = [
 
 
 @pytest.mark.parametrize("obj, msg", V05_INVALID_PLATES)
-def test_invalid_plates(obj: dict, msg: str) -> None:
+def test_invalid_v05_plates(obj: dict, msg: str) -> None:
     with pytest.raises(ValidationError, match=msg):
         v05.Plate.model_validate(obj)

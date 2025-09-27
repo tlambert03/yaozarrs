@@ -115,7 +115,7 @@ V05_VALID_IMAGES = [
 
 
 @pytest.mark.parametrize("obj", V05_VALID_IMAGES)
-def test_valid_images(obj: dict) -> None:
+def test_valid_v05_images(obj: dict) -> None:
     validate_ome_node(obj, v05.Image)
 
 
@@ -466,6 +466,6 @@ V05_INVALID_IMAGES: list[tuple[dict, str]] = [
 
 
 @pytest.mark.parametrize("obj, msg", V05_INVALID_IMAGES)
-def test_invalid_images(obj: dict, msg: str) -> None:
+def test_invalid_v05_images(obj: dict, msg: str) -> None:
     with pytest.raises(ValidationError, match=msg):
         v05.Image.model_validate(obj)
