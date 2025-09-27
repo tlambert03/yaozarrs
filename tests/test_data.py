@@ -1,27 +1,33 @@
-import json
 from pathlib import Path
 
 import pytest
 
-from yaozarrs import OMEZarr
+from yaozarrs import validate_ome_json
 
 DATA = Path(__file__).parent / "data"
-ZARR_JSONS = sorted(DATA.rglob("zarr.json"))
-OME_ATTRS: dict[str, dict] = {
-    str(path.parent.relative_to(DATA)): data["attributes"]
+
+# ALL of the zarr.json files in the test data
+ZARR_JSONS = sorted(x for x in DATA.rglob("zarr.json"))
+# The *contents* of all zarr.json files that contain OME metadata
+OME_ZARR_JSONS: dict[str, str] = {
+    str(path.relative_to(DATA)): content
     for path in ZARR_JSONS
-    if isinstance(data := json.loads(path.read_text()), dict)
-    and "ome" in data.get("attributes", {})
+    if '"ome"' in (content := path.read_text())
 }
 
+ZATTRS = sorted(x for x in DATA.rglob(".zattrs"))
+# in v04.  the .zattrs file ITSELF was the ome document.
+# there's no quick way to filter here based on the presence of an "ome" key
+OME_ZARR_ZATTRS: dict[str, str] = {
+    str(path.relative_to(DATA)): path.read_text() for path in ZATTRS
+}
 
-@pytest.mark.parametrize("attrs", OME_ATTRS.values(), ids=OME_ATTRS.keys())
-def test_data(attrs: dict) -> None:
-    obj = OMEZarr.model_validate(attrs)
+PATHs, TXTs = zip(*{**OME_ZARR_JSONS, **OME_ZARR_ZATTRS}.items())
 
-    # FIXME:
-    # we shouldn't have to do by_alias=True here...
-    # but it's required for pydantic <2.10.0
-    js = obj.model_dump_json(by_alias=True)
-    obj2 = OMEZarr.model_validate_json(js)
+
+@pytest.mark.parametrize("txt", TXTs, ids=PATHs)
+def test_data(txt: str) -> None:
+    obj = validate_ome_json(txt)
+    js = obj.model_dump_json()
+    obj2 = validate_ome_json(js)
     assert obj == obj2
