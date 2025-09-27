@@ -15,8 +15,6 @@ permissions:
 jobs:
   build-docs:
     runs-on: ubuntu-latest
-    env:
-        UV_FROZEN: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
