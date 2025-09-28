@@ -46,6 +46,7 @@ dev = [
     { include-group = "docs" },
     "ipython>=8.37.0",
     "mypy>=1.18.2",
+    "ome-zarr>=0.10.2",
     "pdbpp>=0.11.7; sys_platform != 'win32'",
     "pre-commit-uv>=4.1.5",
     "rich>=14.1.0",
