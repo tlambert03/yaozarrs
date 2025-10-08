@@ -284,7 +284,7 @@ from ._well import Well
 # could also use pydantic.Discriminator, but this is simpler
 
 
-def _discriminate_ome_v4_metadata(v: Any) -> str | None:
+def _discriminate_ome_v05_metadata(v: Any) -> str | None:
     if isinstance(v, dict):
         if "image-label" in v:
             return "label-image"
@@ -328,7 +328,7 @@ OMEMetadata: TypeAlias = Annotated[
         | Annotated[LabelsGroup, Tag("labels-group")]
         | Annotated[Series, Tag("series")]
     ),
-    Discriminator(_discriminate_ome_v4_metadata),
+    Discriminator(_discriminate_ome_v05_metadata),
 ]
 """Anything that can live in the "ome" key of a v0.5 ome-zarr file."""
 
