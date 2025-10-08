@@ -224,9 +224,9 @@ from typing import TypeAlias
 
 from ._bf2raw import Bf2Raw
 from ._image import Image
-from ._label import LabelImage
-from ._ome import OME
+from ._label import LabelImage, LabelsGroup
 from ._plate import Plate
+from ._series import Series
 
 # from ._series import Series  # TODO?
 from ._well import Well
@@ -237,7 +237,9 @@ from ._well import Well
 
 # NOTE:
 # these are ALL also ZarrGroupModels (i.e. have a "uri" attribute)
-OMEZarrGroupJSON: TypeAlias = LabelImage | Image | Plate | Well | OME | Bf2Raw
+OMEZarrGroupJSON: TypeAlias = (
+    LabelImage | Image | Plate | Well | Series | Bf2Raw | LabelsGroup
+)
 """A .zattrs document found in any ome-zarr group.
 
 OME-ZARR v0.4 uses zarr format version 2:

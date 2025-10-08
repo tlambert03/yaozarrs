@@ -27,26 +27,33 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.1.0",
+    "pydantic>=2.5.0",
     "pydantic-core>=2.20.0; python_version>='3.13'",
     "typing-extensions>=4.6.0",
 ]
 
 [project.optional-dependencies]
 io = ["fsspec[http]>=2025.0"]
+storage = ["yaozarrs[io]", "zarr>=2.18", "zarr>=3.1.0; python_version>='3.11'"]
 
 [project.urls]
 homepage = "https://github.com/tlambert03/yaozarrs"
 repository = "https://github.com/tlambert03/yaozarrs"
 
 [dependency-groups]
-test = ["yaozarrs[io]", "pytest>=7.0.0", "pytest-cov>=4.0.0"]
-dev = [
+test = ["pytest>=7.4.0", "pytest-cov>=4.0.0"]
+test-full = [
     { include-group = "test" },
+    "yaozarrs[storage]",
+    "ome-zarr>=0.10.2",
+    "tensorstore>=0.1.66",
+    "tensorstore>=0.1.71; python_version>='3.13'",
+]
+dev = [
+    { include-group = "test-full" },
     { include-group = "docs" },
     "ipython>=8.37.0",
     "mypy>=1.18.2",
-    "ome-zarr>=0.10.2",
     "pdbpp>=0.11.7; sys_platform != 'win32'",
     "pre-commit-uv>=4.1.5",
     "rich>=14.1.0",
@@ -150,3 +157,9 @@ extend-ignore-identifiers-re = ["(?i)ome", "AIMD"]
 
 [tool.ty.environment]
 python = "./.venv"
+
+[tool.pyright]
+reportAttributeAccessIssue = false
+
+[tool.ty.rules]
+unresolved-attribute = "ignore"
