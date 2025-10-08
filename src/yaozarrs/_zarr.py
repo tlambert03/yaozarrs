@@ -387,7 +387,7 @@ class ZarrNode:
             store = _CachedMapper(store)
 
         self._store = store
-        self._path = path.rstrip("/")
+        self._path = str(path).rstrip("/")
         if meta is None:
             self._metadata = _load_zarr_metadata(self._store, self._path)
         elif isinstance(meta, ZarrMetadata):
@@ -664,7 +664,8 @@ def open_group(uri: str | os.PathLike | Any) -> ZarrGroup:
     Parameters
     ----------
     uri : str | os.PathLike
-        The URI of the zarr store (e.g., "https://...", "s3://...", "/path/to/file")
+        The URI of the zarr store (e.g., "https://...", "s3://...", "/path/to/file"),
+        or a zarr-python Group.
 
     Returns
     -------
