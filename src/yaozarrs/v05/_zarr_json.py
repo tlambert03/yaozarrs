@@ -280,9 +280,6 @@ from ._plate import Plate
 from ._series import Series
 from ._well import Well
 
-# LabelImage must come before Image because it's a subclass
-# could also use pydantic.Discriminator, but this is simpler
-
 
 def _discriminate_ome_v05_metadata(v: Any) -> str | None:
     if isinstance(v, dict):

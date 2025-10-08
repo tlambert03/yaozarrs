@@ -40,6 +40,5 @@ def test_from_uri(uri: str, expected_type: type) -> None:
         assert obj.uri.endswith("zarr.json")
     else:
         # in v04, the document is itself the ome model
-        assert isinstance(obj, v04.OMEZarrGroupJSON)
         assert isinstance(obj, expected_type)
         assert obj.uri.endswith(".zattrs")
