@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from yaozarrs import __version__
 from yaozarrs._storage import StorageValidationError, validate_zarr_store
 from yaozarrs._zarr import open_group
 
@@ -77,6 +78,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="yaozarrs",
         description="CLI tools for validating OME-Zarr stores",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
