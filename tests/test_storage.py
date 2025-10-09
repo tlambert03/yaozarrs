@@ -98,22 +98,25 @@ def test_storage_validation_error() -> None:
             "type": "test_error",
             "loc": ("ome", "multiscales", 0),
             "msg": "Test error message",
-            "input": "test_input",
+            "ctx": {"fs_path": "test.zarr/0", "expected": "array"},
         },
         {
             "type": "another_error",
             "loc": ("ome", "datasets", 1, "path"),
             "msg": "Another error message",
-            "input": "another_input",
+            "ctx": {"fs_path": "test.zarr/1", "expected": "group", "found": "array"},
         },
     ]
 
     error = StorageValidationError(errors)
 
-    # Test that error message is generated
-    assert "2 validation error(s) for storage structure:" in str(error)
+    # Test that error message is generated (now uses class title)
+    assert "2 validation error(s) for StorageValidationError" in str(error)
     assert "Test error message" in str(error)
     assert "Another error message" in str(error)
+    # Also verify the new dot-notation format is used
+    assert "ome.multiscales.0" in str(error)
+    assert "ome.datasets.1.path" in str(error)
 
     # Test errors() method
     filtered_errors = error.errors()
@@ -121,9 +124,9 @@ def test_storage_validation_error() -> None:
     assert filtered_errors[0]["type"] == "test_error"
     assert filtered_errors[1]["type"] == "another_error"
 
-    # Test filtering options
-    no_input_errors = error.errors(include_input=False)
-    assert "input" not in no_input_errors[0]
+    # Test filtering options (context should be present)
+    filtered = error.errors(include_context=True)
+    assert "ctx" in filtered[0]
 
     # Test title property
     assert error.title == "StorageValidationError"
@@ -422,3 +425,38 @@ def test_validate_invalid_storage(
     with xfail_internet_error():
         with pytest.raises(StorageValidationError, match=str(case.err_type)):
             validate_zarr_store(path)
+
+
+def test_validate_complex_ome_zarr(complex_ome_zarr: Path) -> None:
+    """Test validation on demo OME-Zarr files."""
+
+    with xfail_internet_error():
+        validate_zarr_store(complex_ome_zarr)
+
+
+def test_validate_complex_ome_zarr_broken(complex_ome_zarr_broken: Path) -> None:
+    """Test validation on demo OME-Zarr files."""
+
+    with pytest.raises(StorageValidationError) as err:
+        validate_zarr_store(complex_ome_zarr_broken)
+
+    err_types = {e["type"] for e in err.value.errors()}
+    assert err_types == {
+        str(StorageErrorType.dataset_path_not_found),
+        str(StorageErrorType.well_path_not_group),
+        str(StorageErrorType.dataset_dimension_mismatch),
+        str(StorageErrorType.dataset_not_array),
+        str(StorageErrorType.dimension_names_mismatch),
+        str(StorageErrorType.field_path_not_group),
+        str(StorageErrorType.field_path_not_found),
+        str(StorageErrorType.field_image_invalid),
+        str(StorageErrorType.well_invalid),
+        str(StorageErrorType.label_path_not_found),
+        str(StorageErrorType.label_path_not_group),
+        str(StorageErrorType.label_image_invalid),
+        str(StorageErrorType.label_non_integer_dtype),
+        str(StorageErrorType.labels_not_group),
+    }
+    assert len(err.value.errors()) == 14
+
+    print(err.value)
