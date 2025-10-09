@@ -399,6 +399,10 @@ You should first check these existing packages to see if they meet your needs:
   models, but brings along [far more
   dependencies](https://github.com/fideus-labs/ngff-zarr/blob/baafd774993d4a1dcfe312cfcd626c06496bb69d/py/pyproject.toml#L31-L43)
   and assumptions (and functionality) than `ome-zarr-models-py`.
+- [ome-zarr](https://github.com/ome/ome-zarr-py).  This is a general toolkit,
+  that provides functions for reading and writing OME-ZARR, among other things,
+  but brings in many dependencies (zarr, scikit-image, dask,...) and doesn't export
+  metadata models.
 
 *In the meantime:*
 
