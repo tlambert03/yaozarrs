@@ -8,6 +8,15 @@
 
 ***Yet Another Ome-ZARR Schema!***
 
+`yaozarrs` is a Python library with minimal dependencies (only pydantic) that:
+
+- provides pydantic models for the [ome-zarr NGFF specification](https://ngff.openmicroscopy.org/specifications/index.html)
+- can create ome-zarr model objects (with IDE completion and type safety) and dump to JSON.
+- can validate ome-zarr metadata, collected either from `zarr.json` documents, or `zarr` stores.
+- can **validate ome-zarr stores** (both metadata and structure) from a URI or zarr store; local or remote.  
+  (This functionality additionally requires `fsspec`, but does *not* depend on or require zarr-python or other zarr implementations)
+
+
 ## Oh no, not another one 🤦
 
 First, let me apologize. The last thing the world needs is yet another ome-zarr
