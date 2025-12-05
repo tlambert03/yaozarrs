@@ -5,6 +5,8 @@
 <https://github.com/ome/ngff/tree/8cbba216e37407bd2d4bd5c7128ab13bd0a6404e>
 """
 
+from typing import TYPE_CHECKING
+
 from yaozarrs._omero import Omero, OmeroChannel, OmeroRenderingDefs, OmeroWindow
 
 from ._bf2raw import Bf2Raw
@@ -30,11 +32,21 @@ from ._label import (
 from ._plate import Acquisition, Column, Plate, PlateDef, PlateWell, Row
 from ._series import Series
 from ._well import FieldOfView, Well, WellDef
+from ._write import (
+    Bf2RawBuilder,
+    prepare_image,
+    write_bioformats2raw,
+    write_image,
+)
 from ._zarr_json import OMEAttributes, OMEMetadata, OMEZarrGroupJSON
+
+if TYPE_CHECKING:
+    from ._write import ZarrWriter as ZarrWriter
 
 __all__ = [
     "Acquisition",
     "Bf2Raw",
+    "Bf2RawBuilder",
     "ChannelAxis",
     "Column",
     "CustomAxis",
@@ -61,10 +73,12 @@ __all__ = [
     "Row",
     "ScaleTransformation",
     "Series",
-    "Series",
     "SpaceAxis",
     "TimeAxis",
     "TranslationTransformation",
     "Well",
     "WellDef",
+    "prepare_image",
+    "write_bioformats2raw",
+    "write_image",
 ]

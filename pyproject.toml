@@ -35,23 +35,23 @@ dependencies = [
 
 [project.optional-dependencies]
 io = ["fsspec[http]>=2025.0"]
-storage = ["yaozarrs[io]", "zarr>=2.18", "zarr>=3.1.0; python_version>='3.11'"]
-
-[project.urls]
-homepage = "https://github.com/tlambert03/yaozarrs"
-repository = "https://github.com/tlambert03/yaozarrs"
-
-[project.scripts]
-yaozarrs = "yaozarrs._cli:main"
+storage = ["yaozarrs[io,write-zarr]"]
+write-zarr = ["zarr>=2.18", "zarr>=3.1.0; python_version>='3.11'"]
+write-tensorstore = [
+    "tensorstore>=0.1.71; python_version>='3.13'",
+    "tensorstore>=0.1.66",
+]
+write-zarrs = ["zarrs>=0.1.5; python_version>='3.11'"]
 
 [dependency-groups]
 test = ["pytest>=7.4.0", "pytest-cov>=4.0.0"]
 test-full = [
     { include-group = "test" },
-    "yaozarrs[storage]",
+    "numpy>=2.3.2; python_version >= '3.14'",          # needed for creating test data to write
+    "numpy>=2.1.0; python_version >= '3.13'",          # needed for creating test data to write
+    "numpy>=2",                                        # needed for creating test data to write
+    "yaozarrs[storage,write-tensorstore,write-zarrs]",
     "ome-zarr>=0.10.2",
-    "tensorstore>=0.1.66",
-    "tensorstore>=0.1.71; python_version>='3.13'",
 ]
 dev = [
     { include-group = "test-full" },
@@ -60,6 +60,8 @@ dev = [
     "mypy>=1.18.2",
     "pdbpp>=0.11.7; sys_platform != 'win32'",
     "pre-commit-uv>=4.1.5",
+    "pyright>=1.1.407",
+    "pytest-xdist>=3.8.0",
     "rich>=14.1.0",
     "ruff>=0.13.1",
     "ty>=0.0.1a21",
@@ -71,6 +73,13 @@ docs = [
     "mkdocstrings-python>=1.18.2",
     "ruff>=0.13.2",
 ]
+
+[project.urls]
+homepage = "https://github.com/tlambert03/yaozarrs"
+repository = "https://github.com/tlambert03/yaozarrs"
+
+[project.scripts]
+yaozarrs = "yaozarrs._cli:main"
 
 [tool.uv.sources]
 yaozarrs = { workspace = true }
