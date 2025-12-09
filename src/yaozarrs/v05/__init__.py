@@ -59,7 +59,6 @@ __all__ = [
     "Row",
     "ScaleTransformation",
     "Series",
-    "Series",
     "SpaceAxis",
     "TimeAxis",
     "TranslationTransformation",

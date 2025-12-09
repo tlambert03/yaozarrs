@@ -38,7 +38,7 @@ def write_ome_bf2raw(
         write_ome_image(path / str(n), **img_kwargs)
         series.append(str(n))
     group = zarr.open_group(path, mode="a")
-    if version == "0.4":
+    if version == "0.4":  # pragma: no cover
         group.attrs.update({"version": version, "bioformats2raw.layout": 3})
     else:
         group.attrs["ome"] = {"version": version, "bioformats2raw.layout": 3}
@@ -48,7 +48,7 @@ def write_ome_bf2raw(
         ome_dir.mkdir()
         (ome_dir / "METADATA.ome.xml").touch()
         ome_group = zarr.open_group(ome_dir, mode="a")
-        if version == "0.4":
+        if version == "0.4":  # pragma: no cover
             ome_group.attrs.update({"version": version, "series": series})
         else:
             ome_group.attrs["ome"] = {"version": version, "series": series}
@@ -368,10 +368,10 @@ def write_ome_plate(
             well_group = row_group.require_group(col_name)
 
             # Create field paths
-            field_paths = [str(i) for i in range(fields_per_well)]
+            field_paths: list[str | dict] = [str(i) for i in range(fields_per_well)]
 
             # Write well metadata
-            well_metadata = {"images": [{"path": path} for path in field_paths]}
+            well_metadata: dict = {"images": [{"path": path} for path in field_paths]}
 
             if acquisitions:
                 # Add acquisition references to images
