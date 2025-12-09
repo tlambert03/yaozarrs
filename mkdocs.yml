@@ -2,7 +2,7 @@ site_name: YAOZARRS ‼️
 repo_name: tlambert03/yaozarrs
 repo_url: https://github.com/tlambert03/yaozarrs
 site_url: https://tlambert03.github.io/yaozarrs/
-watch: [mkdocs.yml, README.md, src]
+watch: [mkdocs.yml, README.md, docs, src/yaozarrs]
 
 theme:
   name: material
@@ -16,6 +16,7 @@ theme:
     - search.suggest
     - content.code.copy
     - content.code.annotate
+    - content.tabs.link
     - navigation.indexes
     - navigation.footer
     - navigation.sections
@@ -47,6 +48,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - markdown-exec
   - api-autonav:
       modules: ["src/yaozarrs"]
   - mkdocstrings:
@@ -55,7 +57,7 @@ plugins:
           inventories:
             - https://docs.python.org/3/objects.inv
           options:
-            docstring_section_style: list # or "table"
+            docstring_section_style: table # or "list"
             docstring_style: "numpy"
             filters: ["!^_"]
             heading_level: 1
@@ -65,8 +67,12 @@ plugins:
             show_root_heading: true
             show_signature_annotations: true
             show_symbol_type_heading: true
+            show_bases: false
             show_symbol_type_toc: true
             summary: true
+            extensions:
+              - griffe_fieldz:
+                  strip_annotated: true
 
 extra_css:
   - css/extra.css
