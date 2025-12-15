@@ -48,17 +48,15 @@ from typing_extensions import Self
 from yaozarrs.v05 import (
     Bf2Raw,
     Column,
-    FieldOfView,
     LabelImage,
     LabelsGroup,
     Plate,
     PlateDef,
     PlateWell,
     Row,
-    Series,
-    Well,
-    WellDef,
 )
+from yaozarrs.v05._bf2raw import Series
+from yaozarrs.v05._plate import FieldOfView, Well, WellDef
 
 __all__ = [
     "Bf2RawBuilder",
@@ -93,6 +91,8 @@ if TYPE_CHECKING:
 
     # Shape/dtype specification only (no data) - for prepare/add functions
     ShapeAndDType: TypeAlias = tuple[ShapeLike, DTypeLike]
+    """A tuple of (shape, dtype) describing an array."""
+
     ShapeAndDTypeOrPyramid: TypeAlias = ShapeAndDType | Sequence[ShapeAndDType]
 
     # Compound types for images with data or specs
@@ -106,8 +106,11 @@ if TYPE_CHECKING:
 class CreateArrayFunc(Protocol):
     """Protocol for custom array creation functions.
 
-    Custom functions should create and return an array object that supports
-    numpy-style indexing (e.g., zarr.Array or tensorstore.TensorStore).
+    This is the type signature for functions that can be passed as the `writer`
+    parameter to many functions in this module.  Use this if you'd like to completely
+    customize how arrays are created, e.g., using a different backend, or custom
+    storage options.  See `_create_array_zarr` and `_create_array_tensorstore` for
+    reference implementations.
     """
 
     def __call__(
@@ -145,8 +148,9 @@ class CreateArrayFunc(Protocol):
 
         Returns
         -------
-        Zarr Array object that supports numpy-style indexing for writing
-        (e.g., zarr.Array or tensorstore.TensorStore).
+        Any
+            Array object that supports numpy-style indexing for writing
+            (e.g., `zarr.Array` or `tensorstore.TensorStore`).
         """
         ...
 

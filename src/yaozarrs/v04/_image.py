@@ -2,7 +2,14 @@ from collections.abc import Sequence
 from typing import Annotated, Literal, TypeAlias
 
 from annotated_types import MinLen
-from pydantic import AfterValidator, Field, WrapValidator, model_validator
+from pydantic import (
+    AfterValidator,
+    Field,
+    SerializerFunctionWrapHandler,
+    WrapValidator,
+    model_serializer,
+    model_validator,
+)
 from typing_extensions import Self
 
 from yaozarrs._axis import AxesList
@@ -11,26 +18,57 @@ from yaozarrs._dim_spec import DimSpec
 from yaozarrs._omero import Omero
 from yaozarrs._types import UniqueList
 
+__all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
+    "Image",
+    "Multiscale",
+    "Dataset",
+    "ScaleTransformation",
+    "TranslationTransformation",
+]
+
 # ------------------------------------------------------------------------------
 # Transformations model
 # ------------------------------------------------------------------------------
 
 
 class ScaleTransformation(_BaseModel):
+    """Maps array indices to physical coordinates via scaling.
+
+    Defines the pixel/voxel size in physical units for each dimension.
+    Every dataset must have exactly one scale transformation.
+
+    !!! note
+        Scale values represent physical size per pixel. For example, a scale of
+        `[0.5, 0.5]` means each pixel is 0.5 units wide in physical space.
+    """
+
     type: Literal["scale"] = "scale"
-    scale: Annotated[list[float], MinLen(2)]
+    scale: Annotated[list[float], MinLen(2)] = Field(
+        description="Scaling factor for each dimension in physical units per pixel"
+    )
 
     @property
     def ndim(self) -> int:
+        """Number of dimensions in this transformation."""
         return len(self.scale)
 
 
 class TranslationTransformation(_BaseModel):
+    """Translates the coordinate system origin in physical space.
+
+    Specifies the physical coordinates of the origin (index [0, 0, ...]).
+    At most one translation may be present per dataset, and it must appear
+    after the scale transformation.
+    """
+
     type: Literal["translation"] = "translation"
-    translation: Annotated[list[float], MinLen(2)]
+    translation: Annotated[list[float], MinLen(2)] = Field(
+        description="Translation offset for each dimension in physical units"
+    )
 
     @property
     def ndim(self) -> int:
+        """Number of dimensions in this transformation."""
         return len(self.translation)
 
 
@@ -92,16 +130,24 @@ CoordinateTransformsList: TypeAlias = Annotated[
 
 
 class Dataset(_BaseModel):
+    """A single resolution level in a multiscale image pyramid.
+
+    Each dataset points to a Zarr array and defines how its indices map to
+    physical coordinates. Together, multiple datasets form a resolution pyramid
+    where each level represents the same physical region at different sampling rates.
+    """
+
     path: str = Field(
         description=(
-            "The path to the array for this resolution, "
-            "relative to the current zarr group."
+            "Path to the Zarr array for this resolution level, "
+            "relative to the parent multiscale group"
         )
     )
     coordinateTransformations: CoordinateTransformsList = Field(
         description=(
-            "List of transformations that map the data coordinates to the physical "
-            'coordinates (as specified by "axes") for this resolution level.'
+            "Transformations mapping array indices to physical coordinates. "
+            "Must include exactly one scale transformation, "
+            "and optionally one translation."
         )
     )
 
@@ -134,12 +180,22 @@ DatasetsList: TypeAlias = Annotated[
 
 
 class Multiscale(_BaseModel):
-    """A multiscale representation of an image."""
+    """Multi-resolution image pyramid (<=5D) with coordinate metadata.
 
-    name: str | None = None
-    axes: AxesList = Field(description="The axes of the image.")
+    Defines an image at one or more resolution levels, along with the
+    coordinate system that relates array indices to physical space. This is
+    the core metadata for any OME-NGFF image.
+    """
+
+    name: str | None = Field(
+        default=None,
+        description="Optional identifier for this multiscale image",
+    )
+    axes: AxesList = Field(
+        description="Ordered list of dimension axes defining the coordinate system"
+    )
     datasets: DatasetsList = Field(
-        description="The arrays storing the individual resolution levels"
+        description=("Resolution pyramid levels, from highest to lowest resolution")
     )
     coordinateTransformations: CoordinateTransformsList | None = Field(
         default=None,
@@ -162,6 +218,15 @@ class Multiscale(_BaseModel):
         description="Unstructured key-value pair with additional "
         "information about the downscaling method.",
     )
+
+    @model_serializer(mode="wrap")
+    def serialize_model(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, object]:
+        """Include version in serialization if it is not the default value."""
+        serialized = handler(self)
+        serialized["version"] = self.version  # always include version in serialization
+        return serialized
 
     @model_validator(mode="after")
     def _check_ndim(self) -> Self:
@@ -235,5 +300,30 @@ class Multiscale(_BaseModel):
 
 
 class Image(ZarrGroupModel):
-    multiscales: Annotated[UniqueList[Multiscale], MinLen(1)]
-    omero: Omero | None = None
+    """Top-level OME-NGFF v0.4 image metadata.
+
+    This model corresponds to the `.zattrs` file in an image group
+    (or `zarr.json` attributes in Zarr v3). It contains one or more multiscale
+    pyramids plus optional OMERO rendering hints.
+
+    !!! example "Typical Structure"
+        ```
+        my_image/
+        ├── .zattrs            # contains {"multiscales": [...]}
+        ├── 0/                 # Highest resolution array
+        ├── 1/                 # Next resolution level
+        └── labels/            # Optional segmentation masks
+        ```
+
+    !!! note "v0.4 vs v0.5"
+        In v0.4, the version field is inside the multiscale objects rather than
+        at the top level. See [`Multiscale`][yaozarrs.v04.Multiscale].
+    """
+
+    multiscales: Annotated[UniqueList[Multiscale], MinLen(1)] = Field(
+        description="One or more multiscale image pyramids in this group"
+    )
+    omero: Omero | None = Field(
+        default=None,
+        description="Optional OMERO rendering metadata for visualization",
+    )

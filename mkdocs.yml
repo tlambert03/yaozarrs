@@ -1,75 +1,87 @@
-site_name: YAOZARRS ‼️
-repo_name: tlambert03/yaozarrs
-repo_url: https://github.com/tlambert03/yaozarrs
-site_url: https://tlambert03.github.io/yaozarrs/
-watch: [mkdocs.yml, README.md, src]
+site_name: "YAOZARRS ‼️"
+site_description: "Yet another ome-zarr model."
+site_url: "https://tlambert03.github.io/yaozarrs/"
+repo_url: "https://github.com/tlambert03/yaozarrs"
+repo_name: "tlambert03/yaozarrs"
 
+# https://zensical.org/docs/customization/
 theme:
   name: material
-  icon:
-    logo: octicons/stack-16
-  palette:
-    primary: black
-    accent: light blue
+  custom_dir: docs/overrides
   features:
     - search.highlight
     - search.suggest
-    - content.code.copy
     - content.code.annotate
-    - navigation.indexes
+    - content.code.copy
+    - content.code.select
+    - content.footnote.tooltips
+    - content.tabs.link
+    - content.tooltips
     - navigation.footer
-    - navigation.sections
+    - navigation.indexes
     - toc.follow
+
+  palette:
+    - scheme: "default"
+      primary: white
+      toggle:
+        icon: material/brightness-7
+        name: "Switch to dark mode"
+    - scheme: "slate"
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: "Switch to light mode"
+
+  font:
+    text: "Inter"
+    # code: "Fira Code"
 
 markdown_extensions:
   - admonition
   - attr_list
   - md_in_html
+  - toc:
+      permalink: "#"
+      permalink_title: "Link to this section"
   - pymdownx.details
-  - pymdownx.keys
-  - pymdownx.tilde
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
-  - pymdownx.snippets:
-      check_paths: true
   - pymdownx.highlight:
       pygments_lang_class: true
       line_spans: __span
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.inlinehilite
-  - pymdownx.superfences
-  - toc:
-      permalink: "#"
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
   - search
-  - api-autonav:
-      modules: ["src/yaozarrs"]
   - mkdocstrings:
       handlers:
         python:
           inventories:
-            - https://docs.python.org/3/objects.inv
+            # - "https://docs.python.org/3/objects.inv"
+            - "https://docs.pydantic.dev/latest/objects.inv"
+          paths:
+            - "src"
           options:
-            docstring_section_style: list # or "table"
             docstring_style: "numpy"
-            filters: ["!^_"]
-            heading_level: 1
-            merge_init_into_class: true
-            parameter_headings: true
-            separate_signature: true
-            show_root_heading: true
-            show_signature_annotations: true
-            show_symbol_type_heading: true
+            show_bases: false
             show_symbol_type_toc: true
-            summary: true
+            show_symbol_type_heading: true
+            heading_level: 3
+            show_root_heading: false
+            show_root_toc_entry: false
+            members_order: "__all__"
+            extensions:
+              - griffe_fieldz:
+                  strip_annotated: true
 
 extra_css:
-  - css/extra.css
+  - stylesheets/zensical.css
+  - stylesheets/extra.css
 
 extra_javascript:
-  - js/yaozarrs-animation.js
+  - javascripts/yaozarrs-animation.js

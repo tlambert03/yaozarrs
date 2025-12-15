@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 class DimSpec(_BaseModel):
     """Specification for a single dimension of an OME-Zarr image.
 
-    !!! important
+    !!! warning
 
-        This is a convenience class and is not part of the OME-Zarr specification.
+        This is a convenience class and is **not** a part of the OME-Zarr specification.
 
     There are some places in the OME Zarr spec where information about a given axis must
     be entered in multiple different places (e.g., `Multiscale.axes` must agree with
@@ -29,15 +29,18 @@ class DimSpec(_BaseModel):
     --------
     5D timelapse with channels:
 
-    >>> from yaozarrs import DimSpec, v05
-    >>> dims = [
-    ...     DimSpec(name="t", size=100, scale=1.0, unit="second"),
-    ...     DimSpec(name="c", size=3),
-    ...     DimSpec(name="z", size=50, scale=2.0, unit="micrometer"),
-    ...     DimSpec(name="y", size=512, scale=0.5, unit="micrometer"),
-    ...     DimSpec(name="x", size=512, scale=0.5, unit="micrometer"),
-    ... ]
-    >>> multiscale = v05.Multiscale.from_dims(dims, name="my_image", n_levels=3)
+    ```python
+    from yaozarrs import DimSpec, v05
+
+    dims = [
+        DimSpec(name="t", size=100, scale=1.0, unit="second"),
+        DimSpec(name="c", size=3),
+        DimSpec(name="z", size=50, scale=2.0, unit="micrometer"),
+        DimSpec(name="y", size=512, scale=0.5, unit="micrometer"),
+        DimSpec(name="x", size=512, scale=0.5, unit="micrometer"),
+    ]
+    multiscale = v05.Multiscale.from_dims(dims, name="my_image", n_levels=3)
+    ```
     """
 
     name: str = Field(
@@ -93,13 +96,23 @@ class DimSpec(_BaseModel):
     )
 
     def infer_scale_factor(self) -> float:
-        """Infer the scale factor for downsampling based on dimension type."""
+        """Infer the scale factor for downsampling based on dimension type.
+
+        !!! warning ":sparkles:{ .pulse } **Magic Alert** "
+            *By default, this downscales all spatial dimensions by 2 when creating
+            pyramid levels.  Explicitly set `scale_factor` to override.*
+
+        """
         if self.scale_factor is not None:
             return self.scale_factor
         return 2.0 if self.infer_type() == "space" else 1.0
 
     def infer_type(self) -> str | None:
         """Infer the axis type from the dimension name.
+
+        !!! warning ":sparkles:{ .pulse } **Magic Alert** "
+            *This treats names of "x", "y", "z", "t", "time", "c", and "channel"
+            specially!*
 
         Returns
         -------

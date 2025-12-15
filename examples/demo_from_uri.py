@@ -1,10 +1,18 @@
-#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "yaozarrs[io]",
+# ]
+#
+# [tool.uv.sources]
+# yaozarrs = { path = "../", editable = true }
+# ///
 """Demonstration script for the ZarrGroupModel.from_uri functionality."""
 
 import builtins
 import sys
 
-from yaozarrs import from_uri
+from yaozarrs import validate_ome_uri
 
 try:
     from rich import print  # ty: ignore
@@ -19,7 +27,7 @@ def demo_zarr_uri(uri: str) -> None:
 
     try:
         # Load the zarr group
-        zarr_group = from_uri(uri)
+        zarr_group = validate_ome_uri(uri)
 
         print(zarr_group.model_dump(exclude_unset=True, exclude_none=True))
         print("✅ Successfully loaded!")
@@ -30,13 +38,13 @@ def demo_zarr_uri(uri: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python demo_from_uri.py <uri>")
+        print("Usage: uv run examples/demo_from_uri.py <uri>")
         print()
         print("Examples:")
-        print("  python demo_from_uri.py /path/to/data.zarr")
-        print("  python demo_from_uri.py https://example.com/data.zarr")
-        print("  python demo_from_uri.py https://example.com/data.zarr/zarr.json")
+        print("  uv run examples/demo_from_uri.py /path/to/data.zarr")
+        print(
+            "  uv run examples/demo_from_uri.py https://uk1s3.embassy.ebi.ac.uk/idr/share/ome2024-ngff-challenge/idr0010/76-45.zarr"
+        )
         sys.exit(1)
 
-    uri = sys.argv[1]
-    demo_zarr_uri(uri)
+    demo_zarr_uri(sys.argv[1])

@@ -1,14 +1,14 @@
-"""v05 ome-zarr model.
+"""OME-NGFF v0.5 metadata models.
 
-<https://ngff.openmicroscopy.org/0.5/>
+Specification: <https://ngff.openmicroscopy.org/0.5/>
 
-<https://github.com/ome/ngff/tree/8cbba216e37407bd2d4bd5c7128ab13bd0a6404e>
+Schema: <https://github.com/ome/ngff/tree/8cbba216e37407bd2d4bd5c7128ab13bd0a6404e>
 """
 
 from yaozarrs._axis import Axis, ChannelAxis, CustomAxis, SpaceAxis, TimeAxis
 from yaozarrs._omero import Omero, OmeroChannel, OmeroRenderingDefs, OmeroWindow
 
-from ._bf2raw import Bf2Raw
+from ._bf2raw import Bf2Raw, Series
 from ._image import (
     Dataset,
     Image,
@@ -16,7 +16,7 @@ from ._image import (
     ScaleTransformation,
     TranslationTransformation,
 )
-from ._label import (
+from ._labels import (
     ImageLabel,
     LabelColor,
     LabelImage,
@@ -24,9 +24,17 @@ from ._label import (
     LabelsGroup,
     LabelSource,
 )
-from ._plate import Acquisition, Column, Plate, PlateDef, PlateWell, Row
-from ._series import Series
-from ._well import FieldOfView, Well, WellDef
+from ._plate import (
+    Acquisition,
+    Column,
+    FieldOfView,
+    Plate,
+    PlateDef,
+    PlateWell,
+    Row,
+    Well,
+    WellDef,
+)
 from ._zarr_json import OMEAttributes, OMEMetadata, OMEZarrGroupJSON
 
 __all__ = [

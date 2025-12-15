@@ -57,12 +57,15 @@ Here are ALL the possible zarr.json documents you might encounter with OME metad
 
   Array Discovery: Wells listed explicitly in wells array
   my_plate/
-  ├── zarr.json          # ← Contains THIS metadata
-  ├── A/
-  │   ├── 1/
-  │   │   ├── zarr.json  # Well Group metadata (see below)
-  │   │   ├── 0/         # Field 0
-  │   │   └── 1/         # Field 1
+  ├── zarr.json               # ← Contains plate metadata
+  ├── A/                      # Row A
+  │   ├── 1/                  # Column 1
+  │   │   ├── zarr.json       # Well Group metadata (see below)
+  │   │   ├── 0/              # Field 0
+  │   │   │   ├── 0/          # Resolution level 0 Array
+  │   │   │   ├── ...
+  │   │   │   └── zarr.json   # multiscales metadata for field 0 image
+  │   │   └── 1/              # Field 1
   │   └── 2/
   └── B/
       └── 1/
@@ -274,11 +277,10 @@ from pydantic import BaseModel, Discriminator, Tag
 from yaozarrs._base import ZarrGroupModel, _BaseModel
 from yaozarrs.v05._bf2raw import Bf2Raw
 
+from ._bf2raw import Series
 from ._image import Image
-from ._label import LabelImage, LabelsGroup
-from ._plate import Plate
-from ._series import Series
-from ._well import Well
+from ._labels import LabelImage, LabelsGroup
+from ._plate import Plate, Well
 
 
 def _discriminate_ome_v05_metadata(v: Any) -> str | None:
@@ -327,17 +329,17 @@ OMEMetadata: TypeAlias = Annotated[
     ),
     Discriminator(_discriminate_ome_v05_metadata),
 ]
-"""Anything that can live in the "ome" key of a v0.5 ome-zarr file."""
+"""Union type for anything that can live in the "ome" key of a v0.5 `zarr.json` file."""
 
 
 class OMEAttributes(_BaseModel):
-    """The attributes field of a zarr.json document in an ome-zarr group."""
+    """The attributes field of a `zarr.json` document in an ome-zarr group."""
 
     ome: OMEMetadata
 
 
 class OMEZarrGroupJSON(ZarrGroupModel):
-    """A zarr.json document found in any ome-zarr group."""
+    """A `zarr.json` document found in any ome-zarr group."""
 
     zarr_format: Literal[3] = 3
     node_type: Literal["group"] = "group"
