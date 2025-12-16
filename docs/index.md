@@ -39,7 +39,6 @@ You can create OME-Zarr metadata objects using the pydantic models in
     using the yaozarrs models:
 
     ```python
-    import yaozarrs
     from yaozarrs import v04, v05  # import from appropriate version module
 
     image = v05.Image(
