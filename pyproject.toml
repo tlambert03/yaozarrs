@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-io = ["fsspec[http]>=2025.0"]
+io = ["fsspec[http,s3]>=2025.0"]
 storage = ["yaozarrs[io,write-zarr]"]
 write-zarr = ["zarr>=2.18", "zarr>=3.1.0; python_version>='3.11'"]
 write-tensorstore = [
@@ -53,7 +53,7 @@ test-full = [
     "yaozarrs[storage,write-tensorstore,write-zarrs]",
     "ome-zarr>=0.10.2",
 ]
-docs=[
+docs = [
     "griffe-fieldz>=0.4.0",
     "mkdocs-material>=9.7.0",
     "mkdocstrings-python>=2.0.1",
@@ -126,6 +126,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]
+"tests/test_realworld.py" = ["E501"]
 "docs/*.py" = ["D", "A"]
 
 # https://docs.astral.sh/ruff/formatter/
@@ -136,7 +137,7 @@ skip-magic-trailing-comma = false # default is false
 # https://docs.pytest.org/
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = ["--color=yes"]
+addopts = ["--color=yes", "--ignore=tests/test_realworld.py"]
 testpaths = ["tests"]
 filterwarnings = ["error"]
 

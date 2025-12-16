@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterator, Mapping
+from contextlib import suppress
 from pathlib import Path
 from types import MappingProxyType, NoneType
 from typing import (
@@ -29,9 +30,17 @@ from typing import (
     overload,
 )
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 
 from yaozarrs import v04, v05
+from yaozarrs._base import _BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -50,6 +59,13 @@ __all__ = ["ZarrArray", "ZarrGroup", "ZarrMetadata", "open_group"]
 # JSON DOCUMENTS
 # --------------------------------
 """All of the structures of json docs we might find in a zarr store."""
+
+
+class GenericBf2Raw(_BaseModel):
+    bioformats2raw_layout: Literal[3] = Field(
+        alias="bioformats2raw.layout",
+        description="The top-level identifier metadata added by bioformats2raw",
+    )
 
 
 class ZGroupV2(BaseModel):
@@ -160,13 +176,45 @@ class ZarrMetadata(BaseModel):
                 val["data_type"] = val.pop("dtype")
         return val
 
-    def ome_metadata(self) -> v05.OMEMetadata | v04.OMEZarrGroupJSON | None:
+    def ome_metadata(
+        self, *, version: str | None = None
+    ) -> v05.OMEMetadata | v04.OMEZarrGroupJSON | None:
         """Return the OME metadata if present in attributes, else None."""
         attrs = self.attributes
-        if "ome" in attrs:
+        version = version or self._guess_ome_version()
+        if version == "0.5":
             return TypeAdapter(v05.OMEMetadata).validate_python(attrs["ome"])
-        else:
+        elif version == "0.4":
             return TypeAdapter(v04.OMEZarrGroupJSON).validate_python(attrs)
+        elif version:
+            raise ValueError(f"Unsupported OME-Zarr version: {version}")
+        elif "bioformats2raw.layout" in attrs:
+            # this is the most annoying case... something like
+            # {'bioformats2raw.layout': 3} in ome zarr v0.4 ... there's no way
+            # to determine version for sure without traversing the tree.
+            # so we just try to fallback to v4 if no version has been specified/parsed.
+            with suppress(ValidationError):
+                return TypeAdapter(v04.Bf2Raw).validate_python(attrs)
+        return None
+
+    def _guess_ome_version(self) -> str | None:
+        attrs = self.attributes
+        if "ome" in attrs:
+            if "version" in attrs["ome"]:
+                return attrs["ome"]["version"]
+        # TODO: this is probably flaky
+        if ms := attrs.get("multiscales"):
+            return ms[0]["version"]
+        for possible_key in ["plate", "well", "labels", "series"]:
+            if possible_key in attrs:
+                if "version" in attrs[possible_key]:
+                    return attrs[possible_key]["version"]
+                if "version" in attrs:
+                    return attrs["version"]
+
+        # if "bioformats2raw.layout" in attrs:
+        #     if "0" in self and isinstance(group := self["0"], ZarrGroup):
+        #         return group.ome_version()
         return None
 
 
@@ -282,7 +330,7 @@ class _CachedMapper(Mapping[str, bytes]):
         else:
             val = self._cache[key]
         if isinstance(val, Exception):
-            raise val
+            return default
         return val  # type: ignore[return-value]
 
     def __contains__(self, key: object) -> bool:
@@ -518,7 +566,15 @@ class ZarrGroup(ZarrNode):
         if "ome" in attrs:
             if "version" in attrs["ome"]:
                 return attrs["ome"]["version"]
-        return None  # pragma: no cover
+        # TODO: this is probably flaky
+        if ms := attrs.get("multiscales"):
+            return ms[0]["version"]
+        if plate := attrs.get("plate"):
+            return plate["version"]
+        if "bioformats2raw.layout" in attrs:
+            if "0" in self and isinstance(group := self["0"], ZarrGroup):
+                return group.ome_version()
+        return None
 
     def validate(self) -> Self:
         """Validate the zarr group structure.
@@ -536,9 +592,12 @@ class ZarrGroup(ZarrNode):
         validate_zarr_store(self)
         return self
 
-    def ome_metadata(self) -> v05.OMEMetadata | v04.OMEZarrGroupJSON | None:
+    def ome_metadata(
+        self, *, version: str | None = None
+    ) -> v05.OMEMetadata | v04.OMEZarrGroupJSON | None:
         if not hasattr(self, "_ome_metadata"):
-            self._ome_metadata = self._metadata.ome_metadata()
+            meta = self._metadata
+            self._ome_metadata = meta.ome_metadata(version=version)
         return self._ome_metadata
 
     @classmethod
@@ -569,9 +628,15 @@ class ZarrGroup(ZarrNode):
             if self._metadata.zarr_format >= 3:
                 metadata_paths.append(f"{child_path}/zarr.json")
             else:
-                # For v2, we need to check both .zgroup and .zarray
+                # For v2, we need to check .zgroup, .zarray, AND .zattrs
+                # The .zattrs file contains OME metadata and must be prefetched
+                # to avoid individual HTTP requests when loading group metadata
                 metadata_paths.extend(
-                    [f"{child_path}/.zgroup", f"{child_path}/.zarray"]
+                    [
+                        f"{child_path}/.zgroup",
+                        f"{child_path}/.zarray",
+                        f"{child_path}/.zattrs",
+                    ]
                 )
 
         # Batch fetch using getitems - _CachedMapper handles fallback if needed
@@ -604,7 +669,6 @@ class ZarrGroup(ZarrNode):
     def __getitem__(self, key: str) -> ZarrGroup | ZarrArray:
         """Get a child node (group or array)."""
         child_path = f"{self._path}/{key}" if self._path else key
-
         if self._metadata.zarr_format >= 3:
             return self._getitem_v3(child_path, key)
         else:
@@ -688,7 +752,9 @@ class ZarrArray(ZarrNode):
         return future.result()
 
 
-def open_group(uri: str | os.PathLike | Any) -> ZarrGroup:
+def open_group(
+    uri: str | os.PathLike | Any, storage_options: dict | None = None
+) -> ZarrGroup:
     """Open a zarr v2/v3 group from a URI.
 
     !!!important
@@ -702,6 +768,8 @@ def open_group(uri: str | os.PathLike | Any) -> ZarrGroup:
     uri : str | os.PathLike
         The URI of the zarr store (e.g., "https://...", "s3://...", "/path/to/file"),
         or a zarr-python Group.
+    storage_options : dict | None
+        Additional storage options to pass to fsspec when opening the mapper.
 
     Returns
     -------
@@ -744,7 +812,10 @@ def open_group(uri: str | os.PathLike | Any) -> ZarrGroup:
             "uri must be a string, os.PathLike, or have a 'store' attribute"
         )
 
-    mapper = get_mapper(uri)  # type: ignore
+    storage_options = storage_options or {}
+    if str(uri).startswith("s3://"):
+        storage_options.setdefault("anon", True)
+    mapper = get_mapper(uri, **storage_options)  # type: ignore
 
     if not isinstance(mapper, FSMap):  # pragma: no cover
         raise TypeError(f"Expected FSMap from get_mapper, got {type(mapper)}")

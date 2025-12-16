@@ -99,10 +99,8 @@ def test_cached_mapper_caches_values_and_exceptions(
     memory_mapper["value"] = b"second"
     assert cached.get("value") == b"first"
 
-    missing = cached.getitems(["missing"])
-    assert "missing" in missing
     with pytest.raises(KeyError):
-        cached.get("missing")
+        _missing = cached["missing"]
 
 
 def test_cached_mapper_contains_len_iter_and_getitem(
@@ -242,10 +240,13 @@ def test_zarrgroup_v2_behaviour(v2_store: Path) -> None:
         [
             "array/.zgroup",
             "array/.zarray",
+            "array/.zattrs",
             "group_child/.zgroup",
             "group_child/.zarray",
+            "group_child/.zattrs",
             "missing/.zgroup",
             "missing/.zarray",
+            "missing/.zattrs",
         ]
     )
 
