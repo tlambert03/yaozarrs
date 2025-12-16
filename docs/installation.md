@@ -7,19 +7,28 @@ icon: material/download
 The basic package (with no extras) supports metadata creation & validation,
 but lacks structural validation and writing capabilities.
 
-=== "with pip"
+=== "from PyPI, with pip"
 
     ```sh
     pip install yaozarrs
     ```
 
-=== "with uv"
+=== "from PyPI, with uv"
 
     ```sh
     uv add yaozarrs
     ```
 
-=== "with conda"
+=== "from github"
+
+    To install the bleeding-edge development version from GitHub,
+    (shown here using the `io` extra as an example):
+
+    ```sh
+    pip install "yaozarrs[io] @ git+https://github.com/tlambert03/yaozarrs.git"
+    ```
+
+=== "from conda"
 
     Conda install is not yet supported.
     Please [open an issue](https://github.com/tlambert03/yaozarrs/issues/new)
