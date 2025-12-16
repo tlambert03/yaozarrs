@@ -40,7 +40,6 @@ from pydantic import (
 )
 
 from yaozarrs import v04, v05
-from yaozarrs._base import _BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -54,18 +53,6 @@ if TYPE_CHECKING:
     _T = TypeVar("_T")
 
 __all__ = ["ZarrArray", "ZarrGroup", "ZarrMetadata", "open_group"]
-
-# --------------------------------
-# JSON DOCUMENTS
-# --------------------------------
-"""All of the structures of json docs we might find in a zarr store."""
-
-
-class GenericBf2Raw(_BaseModel):
-    bioformats2raw_layout: Literal[3] = Field(
-        alias="bioformats2raw.layout",
-        description="The top-level identifier metadata added by bioformats2raw",
-    )
 
 
 class ZGroupV2(BaseModel):
@@ -212,9 +199,6 @@ class ZarrMetadata(BaseModel):
                 if "version" in attrs:
                     return attrs["version"]
 
-        # if "bioformats2raw.layout" in attrs:
-        #     if "0" in self and isinstance(group := self["0"], ZarrGroup):
-        #         return group.ome_version()
         return None
 
 
@@ -246,6 +230,24 @@ def _load_zarray(prefix: str, mapper: Mapping[str, bytes]) -> ZarrMetadata | Non
         attrs = json.loads(attrs_data.decode("utf-8")) if attrs_data else {}
         meta = {**zarray_meta, "node_type": "array", "attributes": attrs}
         return ZarrMetadata.model_validate(meta)
+    return None
+
+
+def _load_attrs(
+    prefix: str, mapper: Mapping[str, bytes], zarr_format: int
+) -> dict[str, Any] | None:
+    """Load just the attributes from a zarr node without full metadata parsing.
+
+    This is a lightweight function for walking up the tree to find inherited
+    OME version information.
+    """
+    if zarr_format >= 3:
+        if json_data := mapper.get(f"{prefix}zarr.json".lstrip("/")):
+            data = json.loads(json_data.decode("utf-8"))
+            return data.get("attributes", {})
+    else:
+        if attrs_data := mapper.get(f"{prefix}.zattrs".lstrip("/")):
+            return json.loads(attrs_data.decode("utf-8"))
     return None
 
 
@@ -415,7 +417,13 @@ class _CachedMapper(Mapping[str, bytes]):
 
 
 class ZarrNode:
-    """Base class for zarr nodes (groups and arrays)."""
+    """Base class for zarr nodes ([yaozarrs.ZarrGroup][] and [yaozarrs._zarr.ZarrArray][]).
+
+    This is a minimal implementation that provides access to metadata and hierarchy
+    traversal without requiring a full zarr-python dependency.  You cannot read array
+    data directly without depending on zarr-python or tensorstore, but you can navigate
+    the tree and read metadata.
+    """  # noqa: E501
 
     __slots__ = ("_metadata", "_path", "_store")
 
@@ -478,7 +486,11 @@ class ZarrNode:
         return MappingProxyType(self._store)
 
     def to_zarr_python(self) -> zarr.Array | zarr.Group:
-        """Convert to a zarr-python Array or Group object (requires `zarr-python`)."""
+        """Convert to a zarr-python Array or Group object.
+
+        !!!important
+            Requires `zarr-python` to be installed.
+        """
         try:
             import zarr  # type: ignore
         except ImportError as e:
@@ -560,20 +572,44 @@ class ZarrGroup(ZarrNode):
         """Return ome_version if present, else None.
 
         Attempt to determine version as minimally as possible without
-        parsing full models.
+        parsing full models. For bioformats2raw layouts, looks into child "0".
         """
-        attrs = self._metadata.attributes
-        if "ome" in attrs:
-            if "version" in attrs["ome"]:
-                return attrs["ome"]["version"]
-        # TODO: this is probably flaky
-        if ms := attrs.get("multiscales"):
-            return ms[0]["version"]
-        if plate := attrs.get("plate"):
-            return plate["version"]
-        if "bioformats2raw.layout" in attrs:
+        if v := self._local_ome_version():
+            return v
+        # special case for bioformats2raw layouts...
+        # which, prior to v0.5, may not have version in the attrs, and may have no
+        # other indication of version except in child "0".
+        if "bioformats2raw.layout" in self._metadata.attributes:
             if "0" in self and isinstance(group := self["0"], ZarrGroup):
                 return group.ome_version()
+        return None
+
+    def _local_ome_version(self) -> str | None:
+        """Return ome_version from this node's attrs only (no child traversal)."""
+        return self._metadata._guess_ome_version()
+
+    def _inherited_ome_version(self) -> str | None:
+        """Walk up the path tree to find the nearest ancestor with an OME version.
+
+        Uses _store and _path to load parent metadata without requiring parent
+        references. This is a lazy fallback used only when local version detection
+        fails in ome_metadata().
+        """
+        path = self._path
+        while path:
+            # Get parent path
+            path = path.rsplit("/", 1)[0] if "/" in path else ""
+            prefix = f"{path}/" if path else ""
+
+            # Try to load parent attrs and extract version
+            attrs = _load_attrs(prefix, self._store, self._metadata.zarr_format)
+            if attrs is not None:
+                if "ome" in attrs and "version" in attrs["ome"]:
+                    return attrs["ome"]["version"]
+                if ms := attrs.get("multiscales"):
+                    return ms[0].get("version")
+                if plate := attrs.get("plate"):
+                    return plate.get("version")
         return None
 
     def validate(self) -> Self:
@@ -595,10 +631,27 @@ class ZarrGroup(ZarrNode):
     def ome_metadata(
         self, *, version: str | None = None
     ) -> v05.OMEMetadata | v04.OMEZarrGroupJSON | None:
-        """Return the OME metadata (as a yaozarrs object) if present, else None."""
+        """Return the OME metadata (as a yaozarrs object) if present, else None.
+
+        Parameters
+        ----------
+        version : str | None
+            Optional OME-Zarr version to use when parsing metadata.
+            If not provided (default), will attempt to infer from local or inherited
+            attrs.  This determines the union of types that will be tried when casting
+            metadata to a yaozarrs model.
+
+        Returns
+        -------
+        BaseModel | None
+            A yaozarrs OME metadata model (v0.4 or v0.5) if found, else None.
+        """
         if not hasattr(self, "_ome_metadata"):
             meta = self._metadata
-            self._ome_metadata = meta.ome_metadata(version=version)
+            fallback_version = (
+                version or self._local_ome_version() or self._inherited_ome_version()
+            )
+            self._ome_metadata = meta.ome_metadata(version=fallback_version)
         return self._ome_metadata
 
     @classmethod
@@ -691,7 +744,6 @@ class ZarrGroup(ZarrNode):
     def _getitem_v2(self, child_path: str, key: str) -> ZarrGroup | ZarrArray:
         """Get a v2 child node."""
         prefix = f"{child_path}/"
-        # Try group
         if (meta := _load_zgroup(prefix, self._store)) is not None:
             return ZarrGroup(self._store, child_path, meta)
 
@@ -703,11 +755,21 @@ class ZarrGroup(ZarrNode):
     if TYPE_CHECKING:
 
         def to_zarr_python(self) -> zarr.Group:  # type: ignore
-            """Convert to a zarr-python Group object (requires `zarr-python`)."""
+            """Convert to a zarr-python Group object.
+
+            !!!important
+                Requires `zarr-python` to be installed.
+            """
 
 
 class ZarrArray(ZarrNode):
-    """Wrapper around a zarr v2/v3 array."""
+    """Wrapper around a zarr v2/v3 array.
+
+    This class is not exported publicly. But you may receive this object when traversing
+    a zarr group hierarchy.  It has no ability to directly read array data, but you can
+    convert it to a zarr-python with `to_zarr_python()`, or use another library like
+    tensorstore manually.
+    """
 
     __slots__ = ()
 
@@ -734,10 +796,18 @@ class ZarrArray(ZarrNode):
     if TYPE_CHECKING:
 
         def to_zarr_python(self) -> zarr.Array:  # type: ignore
-            """Convert to a zarr-python Array object (requires `zarr-python`)."""
+            """Convert to a zarr-python Array object.
+
+            !!!important
+                Requires `zarr-python` to be installed.
+            """
 
     def to_tensorstore(self) -> tensorstore.TensorStore:
-        """Convert to a tensorstore TensorStore object."""
+        """Convert to a tensorstore TensorStore object.
+
+        !!!important
+            Requires `tensorstore` to be installed.
+        """
         try:
             import tensorstore as ts  # type: ignore
         except ImportError as e:
