@@ -595,6 +595,7 @@ class ZarrGroup(ZarrNode):
     def ome_metadata(
         self, *, version: str | None = None
     ) -> v05.OMEMetadata | v04.OMEZarrGroupJSON | None:
+        """Return the OME metadata (as a yaozarrs object) if present, else None."""
         if not hasattr(self, "_ome_metadata"):
             meta = self._metadata
             self._ome_metadata = meta.ome_metadata(version=version)
