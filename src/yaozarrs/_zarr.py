@@ -320,7 +320,7 @@ class _CachedMapper(Mapping[str, bytes]):
 
     def __init__(self, mapper: FSMap) -> None:
         self._fsmap = mapper
-        self._cache: dict[str, bytes | None | Exception] = {}
+        self._cache: dict[str, bytes | Exception | None] = {}
 
     @overload
     def get(self, key: str, /) -> bytes | None: ...

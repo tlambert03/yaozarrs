@@ -1,11 +1,11 @@
 """Tests for the `UniqueList` annotated type."""
 
-import time
 from typing import Any
 
 import pytest
 from pydantic import BaseModel, ValidationError
 
+import yaozarrs._types
 from yaozarrs._types import UniqueList, _canonical_key
 
 
@@ -122,17 +122,26 @@ def test_unsupported_type_raises_type_error() -> None:
 # --- performance ----------------------------------------------------------------
 
 
-def test_unique_list_is_not_quadratic() -> None:
-    """Validation must scale ~linearly (see #54)."""
+def test_unique_list_is_not_quadratic(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validation makes one _canonical_key call per item, not one per pair (see #54).
 
-    def _elapsed(n: int) -> float:
-        items = [Item(name=str(i)) for i in range(n)]
-        t0 = time.perf_counter()
-        Model(items=items)
-        return time.perf_counter() - t0
+    A wall-clock timing comparison would demonstrate the same thing, but is
+    inherently flaky on noisy/shared CI runners. Counting calls instead makes
+    this deterministic: a single linear pass calls `_canonical_key` exactly
+    `n` times; the old pairwise-`==` approach would call the equivalent
+    comparison O(n^2) times.
+    """
+    calls = 0
+    original = yaozarrs._types._canonical_key
 
-    _elapsed(500)  # warmup
-    small = _elapsed(1000)
-    large = _elapsed(8000)
-    # quadratic would be ~64x; allow generous headroom for timing noise
-    assert large < max(small, 1e-3) * 20
+    def _counting_key(x: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return original(x)
+
+    monkeypatch.setattr(yaozarrs._types, "_canonical_key", _counting_key)
+
+    n = 2000
+    items = [Item(name=str(i)) for i in range(n)]
+    Model(items=items)
+    assert calls == n
