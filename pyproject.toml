@@ -71,7 +71,8 @@ dev = [
     "pytest-xdist>=3.8.0",
     "rich>=14.1.0",
     "ruff>=0.13.1",
-    "ty>=0.0.1a21",
+    # bump me when running `prek autoupdate`
+    "ty==0.0.80",
 ]
 
 old_docs = [

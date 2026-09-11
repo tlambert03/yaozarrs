@@ -126,9 +126,7 @@ and will cast to an appropriate model if possible.
 ```python
 import yaozarrs
 
-obj = yaozarrs.validate_ome_object(
-  {'version': '0.5', 'series': ["0", "1"]}
-)
+obj = yaozarrs.validate_ome_object({"version": "0.5", "series": ["0", "1"]})
 print(obj)
 # Series(version='0.5', series=['0', '1'])
 ```
@@ -236,7 +234,9 @@ ome.plate.wells.8
 ```python
 import yaozarrs
 
-yaozarrs.validate_zarr_store("https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr")
+yaozarrs.validate_zarr_store(
+    "https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr"
+)
 ```
 
 ### Open zarr arrays using zarr-python or tensorstore
@@ -254,13 +254,15 @@ either `zarr` or `tensorstore` directly.
 ```python
 from yaozarrs import open_group
 
-group = open_group("https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr")
-array = group['0']
+group = open_group(
+    "https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr"
+)
+array = group["0"]
 # <ZarrArray https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr/0>
 
 # read bytes using tensorstore or zarr-python:
-ts_array = array.to_tensorstore() # isinstance(ts_array, tensorstore.TensorStore)
-zarr_array = array.to_zarr_python() # isinstance(zarr_array, zarr.Array)
+ts_array = array.to_tensorstore()  # isinstance(ts_array, tensorstore.TensorStore)
+zarr_array = array.to_zarr_python()  # isinstance(zarr_array, zarr.Array)
 
 # inspect the OME metadata associated with the group:
 print(group.ome_metadata())

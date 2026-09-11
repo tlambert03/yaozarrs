@@ -105,9 +105,9 @@ def _make_plate(
 
 def _make_label_image() -> v06.LabelImage:
     """Create a simple v06.LabelImage model for testing."""
-    return v06.LabelImage(  # ty: ignore[missing-argument]
+    return v06.LabelImage(
         multiscales=[v06.Multiscale.from_dims([DimSpec(name="y"), DimSpec(name="x")])],
-        image_label=v06.ImageLabel(),  # ty: ignore[unknown-argument]
+        image_label=v06.ImageLabel(),
     )
 
 

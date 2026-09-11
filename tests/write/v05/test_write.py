@@ -105,7 +105,7 @@ def _make_plate(
 
 def _make_label_image() -> v05.LabelImage:
     """Create a simple v05.LabelImage model for testing."""
-    return v05.LabelImage(  # ty: ignore[missing-argument]
+    return v05.LabelImage(
         multiscales=[
             v05.Multiscale(
                 axes=[v05.SpaceAxis(name="y"), v05.SpaceAxis(name="x")],
@@ -119,7 +119,7 @@ def _make_label_image() -> v05.LabelImage:
                 ],
             )
         ],
-        image_label=v05.ImageLabel(),  # ty: ignore[unknown-argument]
+        image_label=v05.ImageLabel(),
     )
 
 

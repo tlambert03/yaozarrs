@@ -1102,7 +1102,7 @@ class Bf2RawBuilder:
             raise ValueError("No series added. Use add_series() before prepare().")
 
         # Create root zarr.json with bioformats2raw.layout
-        bf2raw = Bf2Raw(bioformats2raw_layout=3)  # type: ignore
+        bf2raw = Bf2Raw(bioformats2raw_layout=3)
         _create_zarr3_group(
             self._dest,
             bf2raw,
@@ -1156,7 +1156,7 @@ class Bf2RawBuilder:
             return
 
         # Create root zarr.json with bioformats2raw.layout
-        bf2raw = Bf2Raw(bioformats2raw_layout=3)  # type: ignore
+        bf2raw = Bf2Raw(bioformats2raw_layout=3)
         _create_zarr3_group(
             self._dest,
             bf2raw,

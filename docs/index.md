@@ -55,20 +55,18 @@ object (e.g.
             v05.Multiscale(
                 name=None,
                 axes=[
-                    v05.TimeAxis(name='t', unit='second'),
-                    v05.ChannelAxis(name='c'),
-                    v05.SpaceAxis(name='z', unit='micrometer'),
-                    v05.SpaceAxis(name='y', unit='micrometer'),
-                    v05.SpaceAxis(name='x', unit='micrometer')
+                    v05.TimeAxis(name="t", unit="second"),
+                    v05.ChannelAxis(name="c"),
+                    v05.SpaceAxis(name="z", unit="micrometer"),
+                    v05.SpaceAxis(name="y", unit="micrometer"),
+                    v05.SpaceAxis(name="x", unit="micrometer"),
                 ],
                 datasets=[
                     v05.Dataset(
-                        path='0',
+                        path="0",
                         coordinateTransformations=[
-                            v05.ScaleTransformation(
-                                scale=[1.0, 1.0, 0.3, 0.1, 0.1]
-                            )
-                        ]
+                            v05.ScaleTransformation(scale=[1.0, 1.0, 0.3, 0.1, 0.1])
+                        ],
                     )
                 ],
             )
@@ -94,30 +92,30 @@ object (e.g.
 
     image = v05.Image.model_validate(  # (1)!
         {
-            'multiscales': [
+            "multiscales": [
                 {
-                    'axes': [
-                        {'name': 't', 'type': 'time', 'unit': 'second'},
-                        {'name': 'c', 'type': 'channel'},
-                        {'name': 'z', 'type': 'space', 'unit': 'micrometer'},
-                        {'name': 'y', 'type': 'space', 'unit': 'micrometer'},
-                        {'name': 'x', 'type': 'space', 'unit': 'micrometer'}
+                    "axes": [
+                        {"name": "t", "type": "time", "unit": "second"},
+                        {"name": "c", "type": "channel"},
+                        {"name": "z", "type": "space", "unit": "micrometer"},
+                        {"name": "y", "type": "space", "unit": "micrometer"},
+                        {"name": "x", "type": "space", "unit": "micrometer"},
                     ],
-                    'datasets': [
+                    "datasets": [
                         {
-                            'path': '0',
-                            'coordinateTransformations': [
-                                {'type': 'scale', 'scale': [1.0, 1.0, 0.3, 0.1, 0.1]}
-                            ]
+                            "path": "0",
+                            "coordinateTransformations": [
+                                {"type": "scale", "scale": [1.0, 1.0, 0.3, 0.1, 0.1]}
+                            ],
                         }
-                    ]
+                    ],
                 }
             ]
         }
     )
 
     # Export
-    image.model_dump_json(exclude_unset=True, indent=2) # (2)!
+    image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
     ```
 
     1. [`model_validate`][pydantic.BaseModel.model_validate] is part of the
@@ -175,10 +173,10 @@ import yaozarrs
 yaozarrs.validate_ome_json(json_str)  # (1)!
 
 # validate any python object (e.g. dict)
-yaozarrs.validate_ome_object(dict_obj) # (2)!
+yaozarrs.validate_ome_object(dict_obj)  # (2)!
 
 # validate entire Zarr hierarchy (both metadata and structure) at any URI
-yaozarrs.validate_zarr_store(uri) # (3)!
+yaozarrs.validate_zarr_store(uri)  # (3)!
 ```
 
 1. [`yaozarrs.validate_ome_json`][]
@@ -358,7 +356,7 @@ import yaozarrs
 
 # Open a Zarr group at any URI
 group = yaozarrs.open_group(uri)
-print(group.ome_metadata()) # (1)!
+print(group.ome_metadata())  # (1)!
 child = group["0"]  # (2)!
 ```
 
@@ -391,13 +389,15 @@ array node to a full zarr array using your preferred backend.
 ```python
 from yaozarrs import open_group
 
-group = open_group("https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr")
-array = group['0']
+group = open_group(
+    "https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr"
+)
+array = group["0"]
 # <ZarrArray https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.5/idr0062A/6001240_labels.zarr/0>
 
 # read bytes using tensorstore or zarr-python:
-ts_array = array.to_tensorstore() # isinstance(ts_array, tensorstore.TensorStore)
-zarr_array = array.to_zarr_python() # isinstance(zarr_array, zarr.Array)
+ts_array = array.to_tensorstore()  # isinstance(ts_array, tensorstore.TensorStore)
+zarr_array = array.to_zarr_python()  # isinstance(zarr_array, zarr.Array)
 ```
 
 ## Principles

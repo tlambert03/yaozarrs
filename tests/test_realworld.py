@@ -55,7 +55,8 @@ VALID_URLS = (
     "https://s3.embl.de/i2k-2020/ngff-example-data/v0.4/tczyx.ome.zarr",
     "https://s3.embl.de/i2k-2020/ngff-example-data/v0.4/multi-image.ome.zarr",
     # "https://s3.embl.de/eosc-future/EUOS/testdata.zarr",  # actually invalid?  also slow
-    "https://s3.embl.de/ome-zarr-course/data/commons/xyz_8bit_calibrated__fib_sem_crop.ome.zarr",
+    # "https://s3.embl.de/ome-zarr-course/data/commons/xyz_8bit_calibrated__fib_sem_crop.ome.zarr",
+    # bucket returns 403 Access Denied as of 2026-09-11; whole bucket, not just this object
     "s3://janelia-cosem-datasets/jrc_hela-3/jrc_hela-3.zarr/recon-1/em/fibsem-uint8/",
     "s3://janelia-cosem-datasets/jrc_mus-liver-zon-1/jrc_mus-liver-zon-1.zarr/recon-1/em/fibsem-uint8/",
     "s3://janelia-cosem-datasets/jrc_mus-heart-1/jrc_mus-heart-1.zarr/recon-1/em/fibsem-uint8/",
