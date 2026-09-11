@@ -31,10 +31,7 @@ if TYPE_CHECKING:
     from yaozarrs.write.v06._write import CompressionName, ZarrWriter
 
 
-try:
-    import numpy as np
-except ImportError:
-    pytest.skip("numpy not available", allow_module_level=True)
+np = pytest.importorskip("numpy")
 
 WRITERS: list[ZarrWriter] = []
 if importlib.util.find_spec("zarr") is not None:

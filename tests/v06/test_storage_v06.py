@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 # validate_zarr_store needs fsspec (the `io` extra); the stores here are
 # hand-written zarr.json files, so zarr itself is not required.
-pytest.importorskip("fsspec", reason="fsspec not installed")
+pytest.importorskip("fsspec")
 
 # ------------------------------------------------------------------
 # store-building helpers
