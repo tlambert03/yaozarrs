@@ -11,7 +11,7 @@ object in v0.6 (`scene.schema`) and is still in flux:
 
 !!! warning "Experimental / unstable"
     This object is modeled for completeness (it appears in the `ome_zarr` root
-    union) but the spec around it is actively changing. See `TRICKY_NOTES_v06.md`.
+    union) but the spec around it is actively changing.
 """
 
 from typing import Annotated, TypeAlias
@@ -22,7 +22,7 @@ from pydantic import AfterValidator, Field
 from yaozarrs._base import _BaseModel
 
 from ._coordinate_systems import CoordinateSystems
-from ._transforms import Transformation
+from ._transforms import Transformation, _validate_unique_transform_names
 from ._version import OMEV06
 
 __all__ = ["ArrayCoordinateSystem", "Scene", "SceneDef"]
@@ -45,6 +45,7 @@ SceneTransformList: TypeAlias = Annotated[
     list[Transformation],
     MinLen(1),
     AfterValidator(_validate_scene_io_names),
+    AfterValidator(_validate_unique_transform_names),
 ]
 
 
@@ -88,8 +89,7 @@ class Scene(_BaseModel):
     !!! note "Version field"
         `scene.schema` does not list `version` under its `ome` object (likely an
         oversight). For consistency with every other v0.6 document, `yaozarrs`
-        keeps a `version` field here, defaulting to "0.6.dev4". See
-        `TRICKY_NOTES_v06.md`.
+        keeps a `version` field here, defaulting to "0.6.dev4".
     """
 
     version: OMEV06 = Field(

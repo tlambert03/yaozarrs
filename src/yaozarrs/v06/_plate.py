@@ -1,18 +1,19 @@
+import re
 from typing import Annotated, Literal
 
 from annotated_types import MinLen
-from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
+from pydantic import AfterValidator, Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._types import UniqueList
-from yaozarrs._util import RelaxedFOVPathName
 
 from ._version import OMEV06
 
-# NOTE (v0.6): the plate and well schemas are structurally identical to v0.5.
-# Only the `version` string changed to "0.6.dev4". This module is a copy of
-# v05/_plate.py with that single change.
+# NOTE (v0.6): the plate schema is structurally identical to v0.5 (only the
+# `version` string changed), but the well schema changed: field-of-view paths
+# now explicitly allow `._-` (with zarr node-name restrictions), see
+# `FOVPathName` below.
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Plate",
@@ -27,6 +28,31 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "WellDef",
     "FieldOfView",
 ]
+
+_FOV_PATH_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _validate_fov_path(path: str) -> str:
+    # well.schema (v0.6): pattern ^[A-Za-z0-9_.-]+$, and per zarr node-name
+    # rules the path must not consist only of periods or start with "__".
+    if not _FOV_PATH_PATTERN.fullmatch(path):
+        raise ValueError(
+            f"Field-of-view path {path!r} may only contain characters in "
+            "[A-Za-z0-9_.-]."
+        )
+    if all(c == "." for c in path):
+        raise ValueError(
+            f"Field-of-view path {path!r} must not consist only of periods."
+        )
+    if path.startswith("__"):
+        raise ValueError(
+            f"Field-of-view path {path!r} must not start with the reserved prefix '__'."
+        )
+    return path
+
+
+FOVPathName = Annotated[str, AfterValidator(_validate_fov_path)]
+
 
 # ------------------------------------------------------------------------------
 # Acquisition model
@@ -183,6 +209,27 @@ class PlateDef(_BaseModel):
                     f"Well {well.path} has columnIndex {well.columnIndex} "
                     f"but only {len(self.columns)} columns exist"
                 )
+            # spec: rowIndex, columnIndex, and path MUST all refer to the same
+            # row/column pair.
+            expected = (
+                f"{self.rows[well.rowIndex].name}/{self.columns[well.columnIndex].name}"
+            )
+            if well.path != expected:
+                raise ValueError(
+                    f"Well path {well.path!r} does not match the row/column "
+                    f"names at rowIndex {well.rowIndex} and columnIndex "
+                    f"{well.columnIndex} (expected {expected!r})"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_unique_acquisition_ids(self) -> Self:
+        # spec: each acquisition id MUST be unique within the plate.
+        if self.acquisitions:
+            ids = [acq.id for acq in self.acquisitions]
+            if len(ids) != len(set(ids)):
+                dupes = sorted({i for i in ids if ids.count(i) > 1})
+                raise ValueError(f"Acquisition ids must be unique. Duplicates: {dupes}")
         return self
 
 
@@ -254,12 +301,11 @@ class FieldOfView(_BaseModel):
     This class appears within the `images` list of a [`WellDef`][yaozarrs.v06.WellDef].
     """
 
-    path: RelaxedFOVPathName = Field(
+    path: FOVPathName = Field(
         description=(
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
         ),
-        # pattern=r"^[A-Za-z0-9]+$",
     )
     acquisition: int | None = Field(
         default=None,
@@ -280,6 +326,17 @@ class WellDef(_BaseModel):
     images: Annotated[UniqueList[FieldOfView], MinLen(1)] = Field(
         description="List of all fields-of-view imaged in this well",
     )
+
+    @model_validator(mode="after")
+    def _validate_unique_paths(self) -> Self:
+        # spec: a path "MUST NOT be a duplicate of any other path in the images
+        # list" (stronger than whole-object uniqueness: same path with different
+        # acquisition is still forbidden).
+        paths = [img.path for img in self.images]
+        if len(paths) != len(set(paths)):
+            dupes = sorted({p for p in paths if paths.count(p) > 1})
+            raise ValueError(f"Field-of-view paths must be unique. Duplicates: {dupes}")
+        return self
 
 
 # ------------------------------------------------------------------------------

@@ -20,6 +20,7 @@ from ._transforms import (
     SequenceTransformation,
     Transformation,
     TranslationTransformation,
+    _validate_unique_transform_names,
 )
 from ._version import OMEV06
 
@@ -74,6 +75,13 @@ def _validate_dataset_transform(
             raise ValueError(
                 "In a dataset 'sequence' transform, the scale must come before "
                 "the translation."
+            )
+        # spec: scale and translation lengths MUST both equal the dimensionality
+        if len(scales[0].scale) != len(translations[0].translation):
+            raise ValueError(
+                f"In a dataset 'sequence' transform, the scale (length "
+                f"{len(scales[0].scale)}) and translation (length "
+                f"{len(translations[0].translation)}) must have the same length."
             )
     elif not isinstance(t, (ScaleTransformation, IdentityTransformation)):
         raise ValueError(
@@ -141,6 +149,18 @@ class Dataset(_BaseModel):
             "or a sequence of scale+translation."
         )
     )
+
+    @model_validator(mode="after")
+    def _input_path_matches(self) -> Self:
+        # spec: "The `input` object MUST specify a `path` field matching the
+        # `path` field of the dataset."
+        tf = self.transform
+        if tf.input is not None and tf.input.path != self.path:
+            raise ValueError(
+                f"The dataset transform's input.path ({tf.input.path!r}) must "
+                f"match the dataset's path ({self.path!r})."
+            )
+        return self
 
     @property
     def transform(self) -> Transformation:
@@ -271,14 +291,19 @@ class Multiscale(_BaseModel):
             "of these (conventionally named 'intrinsic')."
         )
     )
-    coordinateTransformations: Annotated[list[Transformation], MinLen(1)] | None = (
-        Field(
-            default=None,
-            description=(
-                "Additional transformations between coordinate systems, applied to "
-                "all resolution levels."
-            ),
-        )
+    coordinateTransformations: (
+        Annotated[
+            list[Transformation],
+            MinLen(1),
+            AfterValidator(_validate_unique_transform_names),
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description=(
+            "Additional transformations between coordinate systems, applied to "
+            "all resolution levels."
+        ),
     )
 
     # NOTE: "type" and "metadata" are mentioned in the spec (SHOULD), but are not
@@ -368,19 +393,72 @@ class Multiscale(_BaseModel):
                             f"{t.output.name!r} is not declared in coordinateSystems "
                             f"{sorted(cs_names)}."
                         )
-                elif not isinstance(
-                    t,
-                    (
-                        IdentityTransformation,
-                        ScaleTransformation,
-                        TranslationTransformation,
-                    ),
-                ):
-                    raise ValueError(
-                        f"at {loc}:\n  a transform whose 'output' links to a child "
-                        "labels group (via 'path') must be an identity, scale, or "
-                        f"translation, not {t.type!r}."
-                    )
+                else:
+                    # image.schema: only relative, downward paths are allowed
+                    # (must not reference external metadata documents).
+                    if t.output.path.startswith(("../", "/")):
+                        raise ValueError(
+                            f"at {loc}:\n  'output.path' must be a relative, "
+                            f"downward path, got {t.output.path!r}."
+                        )
+                    if not isinstance(
+                        t,
+                        (
+                            IdentityTransformation,
+                            ScaleTransformation,
+                            TranslationTransformation,
+                        ),
+                    ):
+                        raise ValueError(
+                            f"at {loc}:\n  a transform whose 'output' links to a "
+                            "child labels group (via 'path') must be an identity, "
+                            f"scale, or translation, not {t.type!r}."
+                        )
+
+        # Graph connectedness (spec): the coordinate systems, combined with the
+        # coordinate transformations, form a graph that MUST be fully connected
+        # (any two coordinate systems connected by a sequence of transforms,
+        # direction-agnostic). Dataset arrays connect to the intrinsic system
+        # via their dataset transform; a declared coordinate system that no
+        # transformation reaches is an error. ("cs:"/"path:" prefixes keep
+        # coordinate-system names and dataset paths from colliding.)
+        nodes: set[str] = {f"cs:{name}" for name in cs_names}
+        adjacency: dict[str, set[str]] = {}
+
+        def _connect(a: str, b: str) -> None:
+            nodes.update((a, b))
+            adjacency.setdefault(a, set()).add(b)
+            adjacency.setdefault(b, set()).add(a)
+
+        for ds in self.datasets:
+            tf = ds.transform
+            if tf.input is not None and tf.input.path and ds.output_name:
+                _connect(f"path:{tf.input.path}", f"cs:{ds.output_name}")
+        for t in self.coordinateTransformations or []:
+            if (
+                t.input is not None
+                and t.input.name
+                and t.output is not None
+                and t.output.name
+                and t.output.path is None  # external (labels) outputs: no node here
+            ):
+                _connect(f"cs:{t.input.name}", f"cs:{t.output.name}")
+
+        if len(nodes) > 1:
+            seen = {next(iter(nodes))}
+            stack = list(seen)
+            while stack:
+                for neighbor in adjacency.get(stack.pop(), ()):
+                    if neighbor not in seen:
+                        seen.add(neighbor)
+                        stack.append(neighbor)
+            if unreached := nodes - seen:
+                names = sorted(n.split(":", 1)[1] for n in unreached)
+                raise ValueError(
+                    "The coordinate systems and transformations of this "
+                    "multiscale do not form a fully connected graph. "
+                    f"Disconnected from the rest: {names}"
+                )
 
         # NOTE: scale ordering of datasets is validated in `_validate_datasets_list`
         return self

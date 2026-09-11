@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import posixpath
 import warnings
+from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain, product
 from typing import TypeAlias
@@ -20,6 +21,18 @@ from yaozarrs.v06._bf2raw import Bf2Raw, Series
 from yaozarrs.v06._image import Image, Multiscale
 from yaozarrs.v06._labels import LabelImage, LabelsGroup
 from yaozarrs.v06._plate import Plate, Well
+from yaozarrs.v06._scene import Scene
+from yaozarrs.v06._transforms import (
+    AffineTransformation,
+    BijectionTransformation,
+    ByDimensionTransformation,
+    CoordinatesTransformation,
+    DisplacementsTransformation,
+    InputOutput,
+    RotationTransformation,
+    SequenceTransformation,
+    Transformation,
+)
 from yaozarrs.v06._zarr_json import OMEAttributes, OMEZarrGroupJSON
 
 # ----------------------------------------------------------
@@ -129,6 +142,8 @@ class StorageValidatorV06:
             return validator.visit_bioformats2raw(zarr_group, ome_metadata, loc_prefix)
         elif isinstance(ome_metadata, Series):  # pragma: no cover
             return validator.visit_series(zarr_group, ome_metadata, loc_prefix)
+        elif isinstance(ome_metadata, Scene):
+            return validator.visit_scene(zarr_group, ome_metadata, loc_prefix)
         else:
             raise NotImplementedError(
                 f"Unknown OME metadata type: {type(ome_metadata).__name__}"
@@ -178,6 +193,12 @@ class StorageValidatorV06:
             result = result.merge(
                 self._visit_multiscale_no_prefetch(zarr_group, multiscale, ms_loc)
             )
+            # v0.6: additional transformations may reference on-disk arrays
+            # (affine/rotation matrices, displacement/coordinate fields) and
+            # coordinate systems in child labels groups.
+            result = result.merge(
+                self._visit_multiscale_transforms(zarr_group, multiscale, ms_loc)
+            )
 
         # Check whether this image has a labels group, and validate if so
         lbls_check = self._check_for_labels_group(zarr_group, loc_prefix)
@@ -225,6 +246,22 @@ class StorageValidatorV06:
                 )
                 continue
 
+            # Intermediate groups between `labels` and the images within it are
+            # allowed, but these MUST NOT contain metadata.
+            parts = label_path.split("/")
+            for depth in range(1, len(parts)):
+                inter_path = "/".join(parts[:depth])
+                inter = labels_group.get(inter_path)
+                if isinstance(inter, ZarrGroup) and "ome" in dict(inter.attrs):
+                    result.add_error(
+                        StorageErrorType.labels_intermediate_metadata,
+                        label_loc,
+                        f"Intermediate group '{inter_path}' between the labels "
+                        "group and its label images must not contain OME "
+                        "metadata",
+                        ctx={"fs_path": _build_fs_path(labels_group, inter_path)},
+                    )
+
             label_group = labels_group[label_path]
             if not isinstance(label_group, ZarrGroup):
                 result.add_error(
@@ -262,29 +299,18 @@ class StorageValidatorV06:
             # Within the multiscales object, the JSON array associated with the
             # datasets key MUST have the same number of entries (scale levels) as
             # the original unlabeled image.
+            # (NB: the spec constrains the *dataset* counts, not the number of
+            # multiscales objects, so mismatched multiscales counts are allowed
+            # and any extras are simply not compared.)
             if parent_image_model is not None:
-                n_lbl_ms = len(label_image_model.multiscales)
-                n_img_ms = len(parent_image_model.multiscales)
-
-                if n_lbl_ms != n_img_ms:
-                    result.add_error(
-                        StorageErrorType.label_multiscale_count_mismatch,
-                        label_loc,
-                        f"Label image '{label_path}' has {n_lbl_ms} "
-                        f"multiscales, but parent image has {n_img_ms}",
-                        ctx={
-                            "label_path": label_path,
-                            "label_multiscales": n_lbl_ms,
-                            "parent_multiscales": n_img_ms,
-                        },
-                    )
-
                 for ms_idx, (lbl_ms, img_ms) in enumerate(
                     zip(label_image_model.multiscales, parent_image_model.multiscales)
                 ):
                     n_lbl_ds = len(lbl_ms.datasets)
                     n_img_ds = len(img_ms.datasets)
-                    if n_lbl_ds < n_img_ds:
+                    # spec: the label image MUST have the *same* number of
+                    # entries (scale levels) as the original unlabeled image.
+                    if n_lbl_ds != n_img_ds:
                         result.add_error(
                             StorageErrorType.label_dataset_count_mismatch,
                             (*label_loc, "multiscales", ms_idx),
@@ -320,6 +346,10 @@ class StorageValidatorV06:
     ) -> ValidationResult:
         """Validate multiscale without prefetching (assumes already prefetched)."""
         result = ValidationResult()
+
+        # spec: every array referred to by a dataset path MUST have the same
+        # datatype. (path, dtype) of the first dataset array found:
+        first_dtype: tuple[str, str] | None = None
 
         for ds_idx, dataset in enumerate(multiscale.datasets):
             ds_loc = (*loc_prefix, "datasets", ds_idx, "path")
@@ -366,11 +396,31 @@ class StorageValidatorV06:
                     },
                 )
 
-            # Check dimension_names attribute matches axes
+            # Check dtype consistency across all datasets in this multiscale
+            dtype = str(arr.dtype)
+            if first_dtype is None:
+                first_dtype = (dataset.path, dtype)
+            elif dtype != first_dtype[1]:
+                result.add_error(
+                    StorageErrorType.dataset_dtype_mismatch,
+                    ds_loc,
+                    f"Dataset '{dataset.path}' has dtype '{dtype}' but "
+                    f"'{first_dtype[0]}' has dtype '{first_dtype[1]}'. All "
+                    "datasets in a multiscale must have the same datatype.",
+                    ctx={
+                        "fs_path": _build_fs_path(zarr_group, dataset.path),
+                        "dtype": dtype,
+                        "expected_dtype": first_dtype[1],
+                    },
+                )
+
+            # Check dimension_names attribute matches axes.
+            # NB: a warning (not an error): the 0.5 spec required this, but the
+            # 0.6 draft doesn't mention dimension_names at all.
             if dim_names := list(dict(arr.attrs).get("dimension_names", [])):
                 expected_names = [ax.name for ax in multiscale.axes]
                 if dim_names != expected_names:
-                    result.add_error(
+                    result.add_warning(
                         StorageErrorType.dimension_names_mismatch,
                         (*ds_loc, "dimension_names"),
                         f"Array dimension_names {dim_names} don't match "
@@ -379,6 +429,449 @@ class StorageValidatorV06:
                     )
 
         return result
+
+    # ------------------------------------------------------------------
+    # v0.6 transform validation (RFC-5)
+    # ------------------------------------------------------------------
+
+    def _visit_multiscale_transforms(
+        self, zarr_group: ZarrGroup, multiscale: Multiscale, loc_prefix: Loc
+    ) -> ValidationResult:
+        """Validate `multiscales > coordinateTransformations` against storage.
+
+        Resolves labels-linked output coordinate systems (`output.path`) and any
+        path-backed transform parameters (affine/rotation matrices, displacement
+        and coordinate fields).
+        """
+        result = ValidationResult()
+        cs_dims = {cs.name: len(cs.axes) for cs in multiscale.coordinateSystems}
+
+        for t_idx, t in enumerate(multiscale.coordinateTransformations or []):
+            t_loc = (*loc_prefix, "coordinateTransformations", t_idx)
+
+            n_in = None
+            if t.input is not None and t.input.name is not None:
+                n_in = cs_dims.get(t.input.name)
+
+            n_out = None
+            if t.output is not None:
+                if t.output.path is not None:
+                    # output references a coordinate system in a child labels
+                    # group: the path MUST resolve to a multiscale image group
+                    # declaring a coordinate system with that name.
+                    target = self._load_image_target(
+                        zarr_group, t.output.path, (*t_loc, "output"), result
+                    )
+                    if target is not None and t.output.name is not None:
+                        cs = _find_image_cs(target, t.output.name)
+                        if cs is None:
+                            result.add_error(
+                                StorageErrorType.transform_target_invalid,
+                                (*t_loc, "output"),
+                                f"Group '{t.output.path}' does not declare a "
+                                f"coordinate system named {t.output.name!r}",
+                                ctx={"path": t.output.path, "name": t.output.name},
+                            )
+                        else:
+                            n_out = len(cs.axes)
+                elif t.output.name is not None:
+                    n_out = cs_dims.get(t.output.name)
+
+            result = result.merge(
+                self._validate_transform_params(zarr_group, t, t_loc, n_in, n_out)
+            )
+        return result
+
+    def visit_scene(
+        self, zarr_group: ZarrGroup, scene_model: Scene, loc_prefix: Loc
+    ) -> ValidationResult:
+        """Validate a scene group.
+
+        - every transform `input`/`output` must resolve to a coordinate system,
+          either declared in the scene itself (no `path`) or declared by a
+          multiscale image subgroup at `path`;
+        - path-backed transform parameters must resolve to valid arrays/groups;
+        - the coordinate systems + transformations must form a fully connected
+          graph (spec "Graph connectedness").
+        """
+        result = ValidationResult()
+        scene_def = scene_model.scene
+        scene_cs = {cs.name: cs for cs in (scene_def.coordinateSystems or [])}
+        transforms = scene_def.coordinateTransformations
+
+        # prefetch all endpoint image groups in one batch
+        endpoint_paths = {
+            io.path
+            for t in transforms
+            for io in (t.input, t.output)
+            if io is not None and io.path and _is_relative_downward(io.path)
+        }
+        zarr_group.prefetch_children(endpoint_paths)
+        image_cache: dict[str, Image | None] = {}
+
+        def _endpoint_dims(io: InputOutput | None, io_loc: Loc) -> int | None:
+            """Resolve an endpoint to its coordinate system dimensionality."""
+            if io is None or io.name is None:  # enforced by the Scene model
+                return None  # pragma: no cover
+            if not io.path:
+                if io.name not in scene_cs:
+                    result.add_error(
+                        StorageErrorType.transform_target_invalid,
+                        io_loc,
+                        f"Coordinate system {io.name!r} is not declared in the "
+                        "scene (and no 'path' was given)",
+                        ctx={"name": io.name},
+                    )
+                    return None
+                return len(scene_cs[io.name].axes)
+            if not _is_relative_downward(io.path):
+                result.add_warning(
+                    StorageErrorType.transform_target_not_found,
+                    io_loc,
+                    f"Path {io.path!r} is not a relative downward path; not validated",
+                    ctx={"path": io.path},
+                )
+                return None
+            if io.path not in image_cache:
+                image_cache[io.path] = self._load_image_target(
+                    zarr_group, io.path, io_loc, result
+                )
+            if (image := image_cache[io.path]) is None:
+                return None
+            if (cs := _find_image_cs(image, io.name)) is None:
+                result.add_error(
+                    StorageErrorType.transform_target_invalid,
+                    io_loc,
+                    f"Image '{io.path}' does not declare a coordinate system "
+                    f"named {io.name!r}",
+                    ctx={"path": io.path, "name": io.name},
+                )
+                return None
+            return len(cs.axes)
+
+        # (path, name) pairs identify coordinate systems in the graph;
+        # scene-level systems have path "".
+        nodes: set[tuple[str, str]] = {("", name) for name in scene_cs}
+        adjacency: dict[tuple[str, str], set[tuple[str, str]]] = defaultdict(set)
+
+        for t_idx, t in enumerate(transforms):
+            t_loc = (*loc_prefix, "scene", "coordinateTransformations", t_idx)
+            n_in = _endpoint_dims(t.input, (*t_loc, "input"))
+            n_out = _endpoint_dims(t.output, (*t_loc, "output"))
+            result = result.merge(
+                self._validate_transform_params(zarr_group, t, t_loc, n_in, n_out)
+            )
+            if (
+                t.input is not None
+                and t.input.name is not None
+                and t.output is not None
+                and t.output.name is not None
+            ):
+                u = (t.input.path or "", t.input.name)
+                v = (t.output.path or "", t.output.name)
+                nodes.update((u, v))
+                adjacency[u].add(v)
+                adjacency[v].add(u)
+
+        # Graph connectedness: any two coordinate systems in the metadata MUST
+        # be connected by a sequence of transformations (direction-agnostic).
+        if len(nodes) > 1:
+            seen = {next(iter(nodes))}
+            stack = list(seen)
+            while stack:
+                for neighbor in adjacency[stack.pop()]:
+                    if neighbor not in seen:
+                        seen.add(neighbor)
+                        stack.append(neighbor)
+            if unreached := nodes - seen:
+                names = sorted("/".join(filter(None, n[::-1])) for n in unreached)
+                result.add_error(
+                    StorageErrorType.transform_graph_disconnected,
+                    (*loc_prefix, "scene", "coordinateTransformations"),
+                    "The scene's coordinate systems and transformations do not "
+                    f"form a fully connected graph. Disconnected from the rest: "
+                    f"{names}",
+                    ctx={"disconnected": names},
+                )
+
+        return result
+
+    def _validate_transform_params(
+        self,
+        zarr_group: ZarrGroup,
+        transform: Transformation,
+        loc: Loc,
+        n_in: int | None,
+        n_out: int | None,
+    ) -> ValidationResult:
+        """Validate on-disk parameters of a transform (recursively).
+
+        `n_in`/`n_out` are the dimensionalities of the input/output coordinate
+        systems when known (None when unresolvable, e.g. mid-sequence).
+        """
+        result = ValidationResult()
+        if isinstance(transform, AffineTransformation):
+            if transform.path is not None:
+                # spec: 2D array of shape (M)x(N+1)
+                result = result.merge(
+                    self._check_matrix_array(
+                        zarr_group,
+                        transform.path,
+                        loc,
+                        expected_rows=n_out,
+                        expected_cols=None if n_in is None else n_in + 1,
+                        kind="affine",
+                    )
+                )
+        elif isinstance(transform, RotationTransformation):
+            if transform.path is not None:
+                # spec: 2D array of shape NxN (input and output dims identical)
+                n = n_in if n_in is not None else n_out
+                result = result.merge(
+                    self._check_matrix_array(
+                        zarr_group,
+                        transform.path,
+                        loc,
+                        expected_rows=n,
+                        expected_cols=n,
+                        kind="rotation",
+                    )
+                )
+        elif isinstance(
+            transform, (DisplacementsTransformation, CoordinatesTransformation)
+        ):
+            result = result.merge(
+                self._check_vector_field(zarr_group, transform, loc, n_in, n_out)
+            )
+        elif isinstance(transform, SequenceTransformation):
+            children = transform.transformations
+            for c_idx, child in enumerate(children):
+                # only the outermost dims are known: the first child's input is
+                # the sequence's input, the last child's output its output.
+                c_in = n_in if c_idx == 0 else None
+                c_out = n_out if c_idx == len(children) - 1 else None
+                result = result.merge(
+                    self._validate_transform_params(
+                        zarr_group, child, (*loc, "transformations", c_idx), c_in, c_out
+                    )
+                )
+        elif isinstance(transform, BijectionTransformation):
+            result = result.merge(
+                self._validate_transform_params(
+                    zarr_group, transform.forward, (*loc, "forward"), n_in, n_out
+                )
+            )
+            result = result.merge(
+                self._validate_transform_params(
+                    zarr_group, transform.inverse, (*loc, "inverse"), n_out, n_in
+                )
+            )
+        elif isinstance(transform, ByDimensionTransformation):
+            for c_idx, item in enumerate(transform.transformations):
+                result = result.merge(
+                    self._validate_transform_params(
+                        zarr_group,
+                        item.transformation,
+                        (*loc, "transformations", c_idx, "transformation"),
+                        len(item.input_axes),
+                        len(item.output_axes),
+                    )
+                )
+        return result
+
+    def _check_matrix_array(
+        self,
+        zarr_group: ZarrGroup,
+        path: str,
+        loc: Loc,
+        expected_rows: int | None,
+        expected_cols: int | None,
+        kind: str,
+    ) -> ValidationResult:
+        """Check that a path-backed affine/rotation matrix is a valid 2D array."""
+        result = ValidationResult()
+        if not _is_relative_downward(path):
+            result.add_warning(
+                StorageErrorType.transform_path_not_found,
+                (*loc, "path"),
+                f"Path {path!r} is not a relative downward path; not validated",
+                ctx={"path": path},
+            )
+            return result
+
+        arr = zarr_group.get(path)
+        if arr is None:
+            result.add_error(
+                StorageErrorType.transform_path_not_found,
+                (*loc, "path"),
+                f"The {kind} transform's path '{path}' was not found",
+                ctx={"fs_path": _build_fs_path(zarr_group, path), "kind": kind},
+            )
+            return result
+        if not isinstance(arr, ZarrArray):
+            result.add_error(
+                StorageErrorType.transform_array_invalid,
+                (*loc, "path"),
+                f"The {kind} transform's path '{path}' is not a zarr array",
+                ctx={"path": path, "expected": "array", "found": "group"},
+            )
+            return result
+
+        shape = arr.metadata.shape
+        if shape is None or len(shape) != 2:
+            result.add_error(
+                StorageErrorType.transform_array_invalid,
+                (*loc, "path"),
+                f"The {kind} matrix at '{path}' must be 2-dimensional, "
+                f"got shape {list(shape or ())}",
+                ctx={"path": path, "shape": list(shape or ())},
+            )
+            return result
+
+        rows, cols = shape
+        if (expected_rows is not None and rows != expected_rows) or (
+            expected_cols is not None and cols != expected_cols
+        ):
+            want = (
+                f"({expected_rows or '?'}, {expected_cols or '?'})"
+                if kind == "affine"
+                else f"({expected_rows}, {expected_cols})"
+            )
+            result.add_error(
+                StorageErrorType.transform_array_invalid,
+                (*loc, "path"),
+                f"The {kind} matrix at '{path}' has shape {list(shape)}, "
+                f"but the input/output coordinate systems require {want}",
+                ctx={"path": path, "shape": list(shape)},
+            )
+        return result
+
+    def _check_vector_field(
+        self,
+        zarr_group: ZarrGroup,
+        transform: DisplacementsTransformation | CoordinatesTransformation,
+        loc: Loc,
+        n_in: int | None,
+        n_out: int | None,
+    ) -> ValidationResult:
+        """Check a displacements/coordinates field (a multiscale group at `path`).
+
+        Spec constraints: the multiscale image MUST have N+1 dimensions (N =
+        input dims); exactly one axis MUST have type "displacement"/"coordinate";
+        the array length along that axis MUST equal N (displacements, with M=N)
+        or M (coordinates).
+        """
+        result = ValidationResult()
+        path = transform.path
+        kind = transform.type  # "displacements" | "coordinates"
+        vec_type = "displacement" if kind == "displacements" else "coordinate"
+
+        if not _is_relative_downward(path):
+            result.add_warning(
+                StorageErrorType.transform_path_not_found,
+                (*loc, "path"),
+                f"Path {path!r} is not a relative downward path; not validated",
+                ctx={"path": path},
+            )
+            return result
+
+        image = self._load_image_target(zarr_group, path, (*loc, "path"), result)
+        if image is None:
+            return result
+
+        if kind == "displacements" and None not in (n_in, n_out) and n_in != n_out:
+            result.add_error(
+                StorageErrorType.vector_field_invalid,
+                loc,
+                f"A displacements transform requires input and output coordinate "
+                f"systems of equal dimensionality, got {n_in} and {n_out}",
+                ctx={"path": path, "n_in": n_in, "n_out": n_out},
+            )
+
+        multiscale = image.multiscales[0]
+        axes = multiscale.axes
+        if n_in is not None and len(axes) != n_in + 1:
+            result.add_error(
+                StorageErrorType.vector_field_invalid,
+                (*loc, "path"),
+                f"The {kind} field at '{path}' must have {n_in + 1} dimensions "
+                f"(input dimensionality + 1), but has {len(axes)} axes",
+                ctx={"path": path, "ndim": len(axes), "expected": n_in + 1},
+            )
+
+        vec_idxs = [
+            i for i, ax in enumerate(axes) if getattr(ax, "type", None) == vec_type
+        ]
+        if len(vec_idxs) != 1:
+            result.add_error(
+                StorageErrorType.vector_field_invalid,
+                (*loc, "path"),
+                f"The {kind} field at '{path}' must have exactly one axis of "
+                f"type {vec_type!r}, found {len(vec_idxs)}",
+                ctx={"path": path, "found": len(vec_idxs)},
+            )
+        else:
+            # the length along the vector axis must equal M (coordinates) or
+            # N (displacements). check against the highest-resolution level.
+            expected_len = n_in if kind == "displacements" else n_out
+            target = zarr_group.get(path)
+            if expected_len is not None and isinstance(target, ZarrGroup):
+                arr = target.get(multiscale.datasets[0].path)
+                if isinstance(arr, ZarrArray) and (shape := arr.metadata.shape):
+                    if len(shape) == len(axes) and shape[vec_idxs[0]] != expected_len:
+                        result.add_error(
+                            StorageErrorType.vector_field_invalid,
+                            (*loc, "path"),
+                            f"The {kind} field at '{path}' has length "
+                            f"{shape[vec_idxs[0]]} along its {vec_type!r} axis, "
+                            f"but the transform requires {expected_len}",
+                            ctx={
+                                "path": path,
+                                "found": shape[vec_idxs[0]],
+                                "expected": expected_len,
+                            },
+                        )
+        return result
+
+    def _load_image_target(
+        self, zarr_group: ZarrGroup, path: str, loc: Loc, result: ValidationResult
+    ) -> Image | None:
+        """Resolve `path` to a multiscale image group, recording errors."""
+        target = zarr_group.get(path)
+        if target is None:
+            result.add_error(
+                StorageErrorType.transform_target_not_found,
+                loc,
+                f"Path '{path}' was not found in the zarr group",
+                ctx={"fs_path": _build_fs_path(zarr_group, path)},
+            )
+            return None
+        if not isinstance(target, ZarrGroup):
+            result.add_error(
+                StorageErrorType.transform_target_invalid,
+                loc,
+                f"Path '{path}' is not a zarr group",
+                ctx={"path": path, "expected": "group", "found": "array"},
+            )
+            return None
+        try:
+            meta = target.ome_metadata(version="0.6.dev4")
+        except ValueError as e:
+            meta = e
+        if not isinstance(meta, Image):
+            ctx: dict = {"path": path}
+            if isinstance(meta, Exception):
+                ctx["error"] = str(meta)
+            else:
+                ctx["type"] = type(meta).__name__
+            result.add_error(
+                StorageErrorType.transform_target_invalid,
+                loc,
+                f"Path '{path}' does not contain valid Image ('multiscales') metadata",
+                ctx=ctx,
+            )
+            return None
+        return meta
 
     def visit_plate(
         self, zarr_group: ZarrGroup, plate_model: Plate, loc_prefix: Loc
@@ -426,6 +919,9 @@ class StorageValidatorV06:
             except ValueError as e:
                 well_model = e
             if isinstance(well_model, Well):
+                result = result.merge(
+                    self._validate_well_acquisitions(plate_model, well_model, well_loc)
+                )
                 result = result.merge(self.visit_well(well_group, well_model, well_loc))
             else:
                 ctx: dict = {"path": well.path}
@@ -440,6 +936,45 @@ class StorageValidatorV06:
                     ctx=ctx,
                 )
 
+        return result
+
+    def _validate_well_acquisitions(
+        self, plate_model: Plate, well_model: Well, loc_prefix: Loc
+    ) -> ValidationResult:
+        """Cross-check well field-of-view acquisition ids against the plate.
+
+        Spec: if multiple acquisitions were performed in the plate, each field
+        of view MUST contain an `acquisition` key whose value MUST match one of
+        the acquisitions defined in the plate metadata.
+        """
+        result = ValidationResult()
+        if (acquisitions := plate_model.plate.acquisitions) is None:
+            return result
+        acq_ids = {acq.id for acq in acquisitions}
+        for field_idx, field_image in enumerate(well_model.well.images):
+            field_loc = (*loc_prefix, "well", "images", field_idx, "acquisition")
+            if field_image.acquisition is None:
+                if len(acquisitions) > 1:
+                    result.add_error(
+                        StorageErrorType.well_acquisition_invalid,
+                        field_loc,
+                        f"Field '{field_image.path}' has no 'acquisition' key, "
+                        "but the plate defines multiple acquisitions",
+                        ctx={"path": field_image.path},
+                    )
+            elif field_image.acquisition not in acq_ids:
+                result.add_error(
+                    StorageErrorType.well_acquisition_invalid,
+                    field_loc,
+                    f"Field '{field_image.path}' references acquisition "
+                    f"{field_image.acquisition}, which is not defined in the "
+                    f"plate metadata (defined: {sorted(acq_ids)})",
+                    ctx={
+                        "path": field_image.path,
+                        "acquisition": field_image.acquisition,
+                        "defined": sorted(acq_ids),
+                    },
+                )
         return result
 
     def visit_well(
@@ -870,6 +1405,20 @@ class StorageValidatorV06:
 # ----------------------------------------------------------
 # HELPER FUNCTIONS
 # ----------------------------------------------------------
+
+
+def _is_relative_downward(path: str) -> bool:
+    """Whether `path` stays inside the current group (validatable)."""
+    return not path.startswith(("/", "../"))
+
+
+def _find_image_cs(image: Image, name: str):
+    """Find a coordinate system by name across an image's multiscales."""
+    for multiscale in image.multiscales:
+        for cs in multiscale.coordinateSystems:
+            if cs.name == name:
+                return cs
+    return None
 
 
 def _resolve_source_path(zarr_group: ZarrGroup, src_rel_path: str) -> str:

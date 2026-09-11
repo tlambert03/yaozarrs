@@ -665,3 +665,54 @@ def test_axes_compat_property_readonly() -> None:
     # axes accessor mirrors the intrinsic coordinate system
     assert [a.name for a in ms.axes] == ["y", "x"]
     assert ms.coordinateSystems[0].axes is ms.axes
+
+
+def test_multiscale_transform_graph_connectivity() -> None:
+    """Spec: coordinate systems + transformations must form a connected graph."""
+    axes = [
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"},
+    ]
+    datasets = [
+        {
+            "path": "s0",
+            "coordinateTransformations": [
+                {
+                    "type": "scale",
+                    "scale": [1.0, 1.0],
+                    "input": {"path": "s0"},
+                    "output": {"name": "physical"},
+                }
+            ],
+        }
+    ]
+    # a declared coordinate system that no transformation reaches -> error
+    with pytest.raises(ValidationError, match="fully connected"):
+        v06.Multiscale.model_validate(
+            {
+                "coordinateSystems": [
+                    {"name": "physical", "axes": axes},
+                    {"name": "lonely", "axes": axes},
+                ],
+                "datasets": datasets,
+            }
+        )
+
+    # connecting it with a multiscale-level transformation -> valid
+    ms = v06.Multiscale.model_validate(
+        {
+            "coordinateSystems": [
+                {"name": "physical", "axes": axes},
+                {"name": "lonely", "axes": axes},
+            ],
+            "datasets": datasets,
+            "coordinateTransformations": [
+                {
+                    "type": "identity",
+                    "input": {"name": "physical"},
+                    "output": {"name": "lonely"},
+                }
+            ],
+        }
+    )
+    assert ms.intrinsic_coordinate_system.name == "physical"

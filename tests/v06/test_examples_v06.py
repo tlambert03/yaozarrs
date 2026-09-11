@@ -1,8 +1,10 @@
 """Validate yaozarrs.v06 models against the real OME-NGFF spec examples.
 
-The fixtures in ``tests/data/v06/examples`` are taken verbatim (comments
-stripped) from ``ome/ngff-spec/examples`` on the ``main`` branch (the v0.6
-source of truth). This is the strongest correctness check for the v06 models.
+The fixtures in ``tests/data/v06/examples`` are adapted from
+``ome/ngff-spec/examples`` on the ``main`` branch (the v0.6 source of truth):
+comments are stripped, and ``"type": "space"`` was added to axes in the
+transformation examples (the spec's type-less axes violate its own
+``axes.schema`` ``oneOf``, which yaozarrs enforces).
 """
 
 import json

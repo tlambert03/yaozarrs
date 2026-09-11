@@ -26,20 +26,22 @@ systems. When nested (inside `sequence`/`bijection`/`byDimension`) it does not.
 
 !!! warning "Pragmatic validation"
     Following the rest of `yaozarrs`, validation here is deliberately pragmatic.
-    See `TRICKY_NOTES_v06.md` in the repo for the (recorded) list of places where we
-    do **not** fully enforce the letter of the spec (e.g. affine/rotation matrix
-    shapes, `byDimension` axis references, full coordinate-system-graph
-    connectivity).
+    Constraints that require resolving the input/output coordinate systems
+    (parameter lengths vs. dimensionality, full coordinate-system-graph
+    connectivity) are not enforced at this level; only locally-checkable rules
+    are.
 """
 
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal, TypeAlias
 
+from annotated_types import Interval
 from pydantic import Discriminator, Field, PositiveFloat, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._types import UniqueList  # noqa: TC001
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "InputOutput",
@@ -113,7 +115,7 @@ class MapAxisTransformation(_Transform):
     """Permute axes by mapping input axes to output axes (by zero-based index)."""
 
     type: Literal["mapAxis"] = "mapAxis"
-    mapAxis: list[Annotated[int, Field(ge=0, le=4)]] = Field(
+    mapAxis: UniqueList[Annotated[int, Interval(ge=0, le=4)]] = Field(
         description="New axis order as zero-based indices of the input axes.",
         min_length=2,
         max_length=5,
@@ -174,17 +176,20 @@ class AffineTransformation(_Transform):
                 "An affine transformation must provide exactly one of "
                 "'affine' (inline matrix) or 'path'."
             )
+        # spec: MxN+1 matrix -> non-empty and rectangular (M/N vs. the coordinate
+        # systems can only be checked where those are in scope).
+        if self.affine is not None:
+            if not self.affine or not self.affine[0]:
+                raise ValueError("An affine matrix must be non-empty.")
+            if len({len(row) for row in self.affine}) != 1:
+                raise ValueError(
+                    "All rows of an affine matrix must have the same length."
+                )
         return self
 
 
 class RotationTransformation(_Transform):
-    """Rotation, given inline as an NxN matrix or by `path` to a zarr array.
-
-    !!! note "Pragmatic validation"
-        The spec restricts the inline matrix to a square NxN matrix with N in
-        2..5. We accept any nested list of numbers and do not enforce squareness
-        (recorded in `TRICKY_NOTES_v06.md`).
-    """
+    """Rotation, given inline as an NxN matrix or by `path` to a zarr array."""
 
     type: Literal["rotation"] = "rotation"
     rotation: list[list[float]] | None = Field(
@@ -201,6 +206,15 @@ class RotationTransformation(_Transform):
                 "A rotation transformation must provide exactly one of "
                 "'rotation' (inline matrix) or 'path'."
             )
+        # rotation.schema: the inline matrix must be square NxN with N in 2..5.
+        # (determinant/orthonormality are not checked here.)
+        if self.rotation is not None:
+            n = len(self.rotation)
+            if not 2 <= n <= 5 or any(len(row) != n for row in self.rotation):
+                raise ValueError(
+                    "A rotation matrix must be square (NxN) with N in 2..5, "
+                    f"got rows of lengths {[len(r) for r in self.rotation]}."
+                )
         return self
 
 
@@ -221,7 +235,8 @@ class SequenceTransformation(_Transform):
     # `scale` or `translation`. This is enforced by the _validate_dataset_transform
     # validator in _image.py, not here.
     transformations: list[Transformation] = Field(
-        description="Transformations applied in order."
+        description="Transformations applied in order.",
+        min_length=1,  # spec prose: "A non-empty array of transformations."
     )
 
 
@@ -231,11 +246,32 @@ class ByDimensionItem(_BaseModel):
     transformation: Transformation = Field(
         description="The transformation applied to the referenced axes."
     )
-    # NOTE (v0.6): the schema types these items as `number` even though the prose
-    # describes them as axis names/indices (recorded in TRICKY_NOTES_v06.md). We follow
-    # the schema and accept numbers.
-    input_axes: list[float] = Field(description="Input axes for this transformation.")
-    output_axes: list[float] = Field(description="Output axes for this transformation.")
+    # NOTE (v0.6): the schema loosely types these as `number`, but the prose says
+    # "arrays of integers" (axis indices). int coerces 1.0, so schema-valid docs
+    # still parse.
+    input_axes: list[Annotated[int, Field(ge=0)]] = Field(
+        description="Input axes (indices) for this transformation."
+    )
+    output_axes: list[Annotated[int, Field(ge=0)]] = Field(
+        description="Output axes (indices) for this transformation."
+    )
+
+    @model_validator(mode="after")
+    def _axes_match_params(self) -> Self:
+        # spec: input_axes/output_axes "MUST have the same length as that
+        # transformation's parameter arrays." Only locally checkable for
+        # transforms with a same-length-in-and-out inline parameter array.
+        t = self.transformation
+        if isinstance(t, (ScaleTransformation, TranslationTransformation)):
+            params = t.scale if isinstance(t, ScaleTransformation) else t.translation
+            for field in ("input_axes", "output_axes"):
+                if len(getattr(self, field)) != len(params):
+                    raise ValueError(
+                        f"{field} (length {len(getattr(self, field))}) must have "
+                        f"the same length as the child {t.type!r} transformation's "
+                        f"parameter array (length {len(params)})."
+                    )
+        return self
 
 
 class ByDimensionTransformation(_Transform):
@@ -245,6 +281,22 @@ class ByDimensionTransformation(_Transform):
     transformations: list[ByDimensionItem] = Field(
         description="Per-dimension transformations."
     )
+
+    @model_validator(mode="after")
+    def _unique_output_axes(self) -> Self:
+        # spec: every output axis index "MUST appear in exactly one child
+        # transformation's output_axes array." Full coverage of the output
+        # coordinate system requires document-level context; duplicates are
+        # checkable locally.
+        seen: set[int] = set()
+        for item in self.transformations:
+            if dupes := seen.intersection(item.output_axes):
+                raise ValueError(
+                    f"Output axes {sorted(dupes)} appear in more than one "
+                    "byDimension child transformation."
+                )
+            seen.update(item.output_axes)
+        return self
 
 
 class DisplacementsTransformation(_Transform):
@@ -267,6 +319,19 @@ class CoordinatesTransformation(_Transform):
         default="linear",
         description="Interpolation method used when applying the coordinate field.",
     )
+
+
+def _validate_unique_transform_names(
+    transforms: list[Transformation],
+) -> list[Transformation]:
+    """Enforce spec: transform `name`s MUST be unique within the same list."""
+    names = [t.name for t in transforms if t.name is not None]
+    if len(names) != len(set(names)):
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        raise ValueError(
+            f"Coordinate transformation names must be unique. Duplicates: {dupes}"
+        )
+    return transforms
 
 
 Transformation: TypeAlias = Annotated[

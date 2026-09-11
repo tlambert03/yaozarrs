@@ -1,7 +1,7 @@
-from typing import Annotated
+from typing import Annotated, ClassVar, TypeVar
 
 from annotated_types import Interval, Len, MinLen
-from pydantic import Field
+from pydantic import AfterValidator, ConfigDict, Field
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._types import UniqueList
@@ -34,6 +34,11 @@ class LabelColor(_BaseModel):
     visualization purposes.
     """
 
+    # spec: "Additional keys under colors are allowed" -> preserve them.
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+
+    # NOTE: the prose says label-value MUST be an integer, but label.schema
+    # types it as "number"; we follow the schema to avoid rejecting valid docs.
     label_value: float = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
@@ -62,6 +67,11 @@ class LabelProperty(_BaseModel):
         LabelProperty(label_value=2, cell_type="glia", perimeter=180.3)
         ```
     """
+
+    # spec: "an arbitrary number of key-value pairs MAY be present for each
+    # label value" -- that metadata is the whole point of `properties`, so it
+    # must be preserved on round-trip.
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
     label_value: int = Field(
         description="Integer label value from the segmentation image",
@@ -94,6 +104,18 @@ class LabelSource(_BaseModel):
 # ImageLabel model
 # ------------------------------------------------------------------------------
 
+_L = TypeVar("_L", LabelColor, LabelProperty)
+
+
+def _validate_unique_label_values(items: list[_L]) -> list[_L]:
+    # spec: one object "for each unique custom label" -- label-values must not
+    # repeat (stronger than whole-object uniqueness).
+    values = [item.label_value for item in items]
+    if len(values) != len(set(values)):
+        dupes = sorted({v for v in values if values.count(v) > 1})
+        raise ValueError(f"label-values must be unique. Duplicates: {dupes}")
+    return items
+
 
 class ImageLabel(_BaseModel):
     """Metadata for a segmentation/annotation label image.
@@ -108,11 +130,25 @@ class ImageLabel(_BaseModel):
         [`LabelImage`][yaozarrs.v06.LabelImage]).
     """
 
-    colors: Annotated[UniqueList[LabelColor], MinLen(1)] | None = Field(
+    colors: (
+        Annotated[
+            UniqueList[LabelColor],
+            MinLen(1),
+            AfterValidator(_validate_unique_label_values),
+        ]
+        | None
+    ) = Field(
         default=None,
         description="Color mappings for label values, used for visualization",
     )
-    properties: Annotated[UniqueList[LabelProperty], MinLen(1)] | None = Field(
+    properties: (
+        Annotated[
+            UniqueList[LabelProperty],
+            MinLen(1),
+            AfterValidator(_validate_unique_label_values),
+        ]
+        | None
+    ) = Field(
         default=None,
         description="Arbitrary metadata properties for individual label values",
     )
