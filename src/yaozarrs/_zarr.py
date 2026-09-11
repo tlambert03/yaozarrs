@@ -382,16 +382,34 @@ class _CachedMapper(Mapping[str, bytes]):
                 # use on_error='return' to get all results including missing keys
                 # which will be stored as exceptions (usually KeyErrors)
                 results = self._fsmap.getitems(uncached_keys, on_error="return")
-                self._cache.update(results)
             except Exception:
-                # If batch fetch fails, fall back to individual gets
-                for key in uncached_keys:
-                    try:
-                        self._cache[key] = self._fsmap.get(key)
-                    except Exception:
-                        if on_error == "raise":
-                            raise
-                        self._cache[key] = None
+                # Batch call itself failed outright - retry every key below.
+                results = {}
+
+            # fsspec normalizes genuine "missing key" errors to KeyError here;
+            # anything else (timeout, connection reset, throttling, etc.) is a
+            # transient failure, not a "not found" - don't cache it as a
+            # permanent negative result. Cache the good results now and only
+            # retry the keys that actually failed, individually, below.
+            failed_keys: list[str] = []
+            for key in uncached_keys:
+                if key not in results:
+                    # batch call failed outright, or omitted this key
+                    failed_keys.append(key)
+                    continue
+                val = results[key]
+                if isinstance(val, Exception) and not isinstance(val, KeyError):
+                    failed_keys.append(key)
+                else:
+                    self._cache[key] = val
+
+            for key in failed_keys:
+                try:
+                    self._cache[key] = self._fsmap.get(key)
+                except Exception:
+                    if on_error == "raise":
+                        raise
+                    self._cache[key] = None
 
         # Return cached results (only keys with non-None values)
         result: dict[str, bytes] = {}
@@ -954,6 +972,14 @@ def open_group(
     storage_options = storage_options or {}
     if str(uri).startswith("s3://"):
         storage_options.setdefault("anon", True)
+    elif str(uri).startswith(("http://", "https://")):
+        # Without a timeout, a hung connection can stall validation
+        # indefinitely (aiohttp's own default is a 5-minute total timeout,
+        # and batch fetches may queue hundreds of requests behind it).
+        import aiohttp
+
+        client_kwargs = storage_options.setdefault("client_kwargs", {})
+        client_kwargs.setdefault("timeout", aiohttp.ClientTimeout(total=30))
     mapper = get_mapper(uri, **storage_options)
 
     if not isinstance(mapper, FSMap):  # pragma: no cover
