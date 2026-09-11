@@ -26,7 +26,7 @@ def validate_zarr_store(obj: ZarrGroup | str | Path | Any) -> ZarrGroup:
     of a complete OME-Zarr store.  This is the function used by the `yaozarrs validate`
     CLI command.
 
-    Currently only supports OME-Zarr version 0.5.
+    Supports OME-Zarr versions 0.4, 0.5 and 0.6.
 
     Parameters
     ----------

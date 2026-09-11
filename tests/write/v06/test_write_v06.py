@@ -927,7 +927,7 @@ def test_write_doctests_parametrized(
     )
 
     # put all paths inside the test tmp_path
-    monkeypatch.setattr(_write, "Path", lambda p: tmp_path / p)
+    monkeypatch.chdir(tmp_path)
     runner.run(case)
     if runner.failures > 0:
         captured = capsys.readouterr().out.split("******************")[-1]

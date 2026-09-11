@@ -88,6 +88,7 @@ You may also implement and pass in your own `writer` function.  See the
 
 ::: yaozarrs.write.v06
       options:
+        inherited_members: true
         heading_level: 2
         show_root_heading: true
         summary: false
