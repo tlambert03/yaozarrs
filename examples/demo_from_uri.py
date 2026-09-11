@@ -17,7 +17,7 @@ from yaozarrs import validate_ome_uri
 try:
     from rich import print
 except ImportError:
-    print = builtins.print  # type: ignore # noqa
+    print = builtins.print  # noqa
 
 
 def demo_zarr_uri(uri: str) -> None:
