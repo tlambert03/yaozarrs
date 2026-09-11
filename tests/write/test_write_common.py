@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 np = pytest.importorskip("numpy")
 zarr = pytest.importorskip("zarr")
+if int(zarr.__version__.split(".")[0]) < 3:
+    # (python 3.10 can only install zarr 2.x; OME-Zarr v0.5+ needs zarr v3)
+    pytest.skip("zarr v3 required for OME-Zarr v0.5+ writing", allow_module_level=True)
 
 
 def _img05(n_levels: int = 2) -> v05.Image:

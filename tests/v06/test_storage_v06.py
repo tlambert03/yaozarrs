@@ -18,6 +18,10 @@ from yaozarrs._storage import StorageValidationError, StorageValidationWarning
 if TYPE_CHECKING:
     from pathlib import Path
 
+# validate_zarr_store needs fsspec (the `io` extra); the stores here are
+# hand-written zarr.json files, so zarr itself is not required.
+pytest.importorskip("fsspec", reason="fsspec not installed")
+
 # ------------------------------------------------------------------
 # store-building helpers
 # ------------------------------------------------------------------
