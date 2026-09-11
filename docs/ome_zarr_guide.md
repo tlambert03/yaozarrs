@@ -266,9 +266,7 @@ as well as stage positions and spatial offsets for registration.
 
     dataset = v04.Dataset(
         path="0",
-        coordinateTransformations=[
-            v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1])
-        ]
+        coordinateTransformations=[v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1])],
     )
     ```
 
@@ -294,8 +292,8 @@ as well as stage positions and spatial offsets for registration.
         path="0",
         coordinateTransformations=[
             v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
-            v04.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0])
-        ]
+            v04.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
+        ],
     )
     ```
 
@@ -318,8 +316,8 @@ as well as stage positions and spatial offsets for registration.
         path="0",
         coordinateTransformations=[
             v05.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
-            v05.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0])
-        ]
+            v05.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
+        ],
     )
     ```
 
@@ -424,10 +422,10 @@ They are represented as a special group named "labels/" within an image group.
             image_label=v05.ImageLabel(
                 colors=[
                     v05.LabelColor(label_value=1, rgba=[255, 0, 0, 255]),
-                    v05.LabelColor(label_value=2, rgba=[0, 255, 0, 255])
+                    v05.LabelColor(label_value=2, rgba=[0, 255, 0, 255]),
                 ],
-                source=v05.LabelSource(image="../../")
-            )
+                source=v05.LabelSource(image="../../"),
+            ),
         )
         ```
 
@@ -487,10 +485,10 @@ They are represented as a special group named "labels/" within an image group.
             image_label=v04.ImageLabel(
                 colors=[
                     v04.LabelColor(label_value=1, rgba=[255, 0, 0, 255]),
-                    v04.LabelColor(label_value=2, rgba=[0, 255, 0, 255])
+                    v04.LabelColor(label_value=2, rgba=[0, 255, 0, 255]),
                 ],
-                source=v04.LabelSource(image="../../")
-            )
+                source=v04.LabelSource(image="../../"),
+            ),
         )
         ```
 
@@ -595,15 +593,8 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
 
     plate_def = v04.PlateDef(
         name="HCS Experiment",
-        columns=[
-            v04.Column(name="1"),
-            v04.Column(name="2"),
-            v04.Column(name="3")
-        ],
-        rows=[
-            v04.Row(name="A"),
-            v04.Row(name="B")
-        ],
+        columns=[v04.Column(name="1"), v04.Column(name="2"), v04.Column(name="3")],
+        rows=[v04.Row(name="A"), v04.Row(name="B")],
         wells=[
             v04.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
             v04.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
@@ -612,7 +603,7 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
         acquisitions=[
             v04.Acquisition(id=0, name="Initial", maximumfieldcount=4),
             v04.Acquisition(id=1, name="24h", maximumfieldcount=4),
-        ]
+        ],
     )
 
     plate = v04.Plate(plate=plate_def)
@@ -667,22 +658,22 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
         columns=[  # must have at least 1 column
             v05.Column(name="1"),
             v05.Column(name="2"),
-            v05.Column(name="3")
+            v05.Column(name="3"),
         ],
         rows=[  # must have at least 1 row
             v05.Row(name="A"),
-            v05.Row(name="B")
+            v05.Row(name="B"),
         ],
         wells=[  # must have at least 1 well, paths match tree structure
             v05.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
             v05.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
             v05.PlateWell(path="B/1", rowIndex=1, columnIndex=0),
         ],
-        acquisitions=[  # optional 
+        acquisitions=[  # optional
             v05.Acquisition(id=0, name="Initial", maximumfieldcount=4),
             v05.Acquisition(id=1, name="24h", maximumfieldcount=4),
         ],
-        field_count=4  # max FOV per well
+        field_count=4,  # max FOV per well
     )
 
     plate = v05.Plate(plate=plate_def)
@@ -834,9 +825,7 @@ This bioformats2raw layout described in the NGFF spec, is described below:
     from yaozarrs import v05
 
     # Root zarr.json
-    root_zarr_json = v05.OMEZarrGroupJSON(
-      attributes={"ome": v05.Bf2Raw()}
-    )
+    root_zarr_json = v05.OMEZarrGroupJSON(attributes={"ome": v05.Bf2Raw()})
 
     # OME/zarr.json
     ome_zarr_json = v05.OMEZarrGroupJSON(
