@@ -9,6 +9,7 @@ a whole *coordinate-transformation graph*: transforms map between named
 
 - `identity`
 - `mapAxis`
+- `projectAxis`  (new in 0.6rc0)
 - `scale`
 - `translation`
 - `affine`        (inline matrix OR a `path` to a zarr array)
@@ -34,19 +35,28 @@ systems. When nested (inside `sequence`/`bijection`/`byDimension`) it does not.
 
 from __future__ import annotations
 
+import warnings
 from typing import Annotated, Any, Literal, TypeAlias
 
-from annotated_types import Interval
-from pydantic import Discriminator, Field, PositiveFloat, model_validator
+from annotated_types import Interval, Len
+from pydantic import (
+    AfterValidator,
+    Discriminator,
+    Field,
+    PositiveFloat,
+    model_validator,
+)
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._types import UniqueList  # noqa: TC001
+from yaozarrs._validation_warning import ValidationWarning
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "InputOutput",
     "IdentityTransformation",
     "MapAxisTransformation",
+    "ProjectAxisTransformation",
     "ScaleTransformation",
     "TranslationTransformation",
     "AffineTransformation",
@@ -120,6 +130,39 @@ class MapAxisTransformation(_Transform):
         min_length=2,
         max_length=5,
     )
+
+
+class ProjectAxisTransformation(_Transform):
+    """Add or drop axes from a coordinate vector.
+
+    !!! note "New in v0.6rc0"
+        Added alongside the other RFC-5 transforms. `droppedInputs` removes
+        (projects out) the given input axis indices; `createdOutputs` inserts
+        zero-valued axes at the given output indices. At least one must be given.
+    """
+
+    type: Literal["projectAxis"] = "projectAxis"
+    droppedInputs: (
+        Annotated[UniqueList[Annotated[int, Interval(ge=0, le=4)]], Len(1, 3)] | None
+    ) = Field(
+        default=None,
+        description="Indices of the input axes to drop.",
+    )
+    createdOutputs: (
+        Annotated[UniqueList[Annotated[int, Interval(ge=0, le=4)]], Len(1, 3)] | None
+    ) = Field(
+        default=None,
+        description="Indices where zero-valued axes are inserted in the output.",
+    )
+
+    @model_validator(mode="after")
+    def _at_least_one(self) -> Self:
+        if self.droppedInputs is None and self.createdOutputs is None:
+            raise ValueError(
+                "A projectAxis transformation must provide at least one of "
+                "'droppedInputs' or 'createdOutputs'."
+            )
+        return self
 
 
 class ScaleTransformation(_Transform):
@@ -246,14 +289,19 @@ class ByDimensionItem(_BaseModel):
     transformation: Transformation = Field(
         description="The transformation applied to the referenced axes."
     )
-    # NOTE (v0.6): the schema loosely types these as `number`, but the prose says
-    # "arrays of integers" (axis indices). int coerces 1.0, so schema-valid docs
-    # still parse.
+    # NOTE (v0.6rc0): the schema loosely types these as `number`, but the prose
+    # says "arrays of integers" (axis indices). int coerces 1.0, so schema-valid
+    # docs still parse. rc0 renamed these from snake_case (`input_axes`,
+    # `output_axes`, as in 0.6.dev4) to camelCase (`inputAxes`/`outputAxes`) for
+    # consistency with the rest of the spec; we alias to the new name for
+    # serialization but keep accepting the old one on input (validate_by_name).
     input_axes: list[Annotated[int, Field(ge=0)]] = Field(
-        description="Input axes (indices) for this transformation."
+        alias="inputAxes",
+        description="Input axes (indices) for this transformation.",
     )
     output_axes: list[Annotated[int, Field(ge=0)]] = Field(
-        description="Output axes (indices) for this transformation."
+        alias="outputAxes",
+        description="Output axes (indices) for this transformation.",
     )
 
     @model_validator(mode="after")
@@ -299,12 +347,31 @@ class ByDimensionTransformation(_Transform):
         return self
 
 
+def _warn_if_unknown_interpolation(v: str) -> str:
+    # spec (index.md): the interpolation method list ("nearest", "linear",
+    # "cubic") is explicitly non-exhaustive and non-normative (e.g. prose also
+    # mentions "bspline-cubic"), so an unrecognized value is a warning, not a
+    # rejection.
+    if v not in ("nearest", "linear", "cubic"):
+        warnings.warn(
+            f"Unrecognized interpolation method {v!r}; the spec's list "
+            "('nearest', 'linear', 'cubic') is non-exhaustive, so this is "
+            "accepted, but check for typos.",
+            ValidationWarning,
+            stacklevel=3,
+        )
+    return v
+
+
 class DisplacementsTransformation(_Transform):
     """Transformation defined by a displacement field stored in a zarr array."""
 
     type: Literal["displacements"] = "displacements"
     path: str = Field(description="Path to the zarr array with the displacement field.")
-    interpolation: Literal["nearest", "linear", "cubic"] = Field(
+    interpolation: Annotated[
+        Literal["nearest", "linear", "cubic"] | str,
+        AfterValidator(_warn_if_unknown_interpolation),
+    ] = Field(
         default="linear",
         description="Interpolation method used when applying the displacement field.",
     )
@@ -315,7 +382,10 @@ class CoordinatesTransformation(_Transform):
 
     type: Literal["coordinates"] = "coordinates"
     path: str = Field(description="Path to the zarr array with the coordinate field.")
-    interpolation: Literal["nearest", "linear", "cubic"] = Field(
+    interpolation: Annotated[
+        Literal["nearest", "linear", "cubic"] | str,
+        AfterValidator(_warn_if_unknown_interpolation),
+    ] = Field(
         default="linear",
         description="Interpolation method used when applying the coordinate field.",
     )
@@ -324,12 +394,23 @@ class CoordinatesTransformation(_Transform):
 def _validate_unique_transform_names(
     transforms: list[Transformation],
 ) -> list[Transformation]:
-    """Enforce spec: transform `name`s MUST be unique within the same list."""
+    """Warn if transform `name`s repeat within the same list.
+
+    !!! note "Relaxed in v0.6rc0"
+        0.6.dev4's prose had a MUST here ("Its value MUST be unique across all
+        `name` fields ... in the same list"); rc0 dropped that sentence and now
+        only says a `name` is "a unique name for this transformation" with no
+        stated scope or MUST. rc0's own `examples/scene/scene.json` (a "valid"
+        fixture) repeats a transform name three times, so this can no longer be
+        a hard error -- only a warning.
+    """
     names = [t.name for t in transforms if t.name is not None]
     if len(names) != len(set(names)):
         dupes = sorted({n for n in names if names.count(n) > 1})
-        raise ValueError(
-            f"Coordinate transformation names must be unique. Duplicates: {dupes}"
+        warnings.warn(
+            f"Coordinate transformation names SHOULD be unique. Duplicates: {dupes}",
+            ValidationWarning,
+            stacklevel=3,
         )
     return transforms
 
@@ -337,6 +418,7 @@ def _validate_unique_transform_names(
 Transformation: TypeAlias = Annotated[
     IdentityTransformation
     | MapAxisTransformation
+    | ProjectAxisTransformation
     | ScaleTransformation
     | TranslationTransformation
     | AffineTransformation

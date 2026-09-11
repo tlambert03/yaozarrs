@@ -2,18 +2,20 @@ import re
 from typing import Annotated, Literal
 
 from annotated_types import MinLen
-from pydantic import AfterValidator, Field, NonNegativeInt, PositiveInt, model_validator
+from pydantic import AfterValidator, Field, PositiveInt, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._plate_common import Acquisition, Column, PlateWell, Row
 from yaozarrs._types import UniqueList
 
-from ._version import OMEV06
+from ._version import CURRENT_VERSION, OMEV06
 
 # NOTE (v0.6): the plate schema is structurally identical to v0.5 (only the
 # `version` string changed), but the well schema changed: field-of-view paths
 # now explicitly allow `._-` (with zarr node-name restrictions), see
-# `FOVPathName` below.
+# `FOVPathName` below. Acquisition/Column/Row/PlateWell are identical between
+# v0.5 and v0.6 and are defined once in `yaozarrs._plate_common`.
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Plate",
@@ -55,113 +57,6 @@ FOVPathName = Annotated[str, AfterValidator(_validate_fov_path)]
 
 
 # ------------------------------------------------------------------------------
-# Acquisition model
-# ------------------------------------------------------------------------------
-
-
-class Acquisition(_BaseModel):
-    """An imaging acquisition run within a plate.
-
-    In high-content screening, multiple acquisition runs may be performed on the
-    same plate (e.g., at different timepoints or with different settings).
-    This class groups related images from a single acquisition session.
-    """
-
-    id: NonNegativeInt = Field(
-        description="Unique identifier within the plate for this acquisition",
-    )
-    maximumfieldcount: PositiveInt | None = Field(
-        default=None,
-        description=(
-            "Maximum number of fields-of-view across all wells in this acquisition"
-        ),
-    )
-    name: str | None = Field(
-        default=None,
-        description="Human-readable name for this acquisition",
-    )
-    description: str | None = Field(
-        default=None,
-        description="Detailed description of the acquisition parameters or purpose",
-    )
-    starttime: NonNegativeInt | None = Field(
-        default=None,
-        description=(
-            "Acquisition start time as Unix epoch timestamp (seconds since 1970-01-01)"
-        ),
-    )
-    endtime: NonNegativeInt | None = Field(
-        default=None,
-        description=(
-            "Acquisition end time as Unix epoch timestamp (seconds since 1970-01-01)"
-        ),
-    )
-
-
-# ------------------------------------------------------------------------------
-# Column model
-# ------------------------------------------------------------------------------
-
-
-class Column(_BaseModel):
-    """A column in the plate grid.
-
-    Columns are typically numbered (1, 2, 3, ...) but can use any
-    alphanumeric identifier.
-    """
-
-    name: str = Field(
-        description="Column identifier (typically numeric, e.g., '1', '2', '3')",
-        pattern=r"^[A-Za-z0-9]+$",
-    )
-
-
-# ------------------------------------------------------------------------------
-# Row model
-# ------------------------------------------------------------------------------
-
-
-class Row(_BaseModel):
-    """A row in the plate grid.
-
-    Rows are typically lettered (A, B, C, ...) but can use any alphanumeric identifier.
-    """
-
-    name: str = Field(
-        description="Row identifier (typically alphabetic, e.g., 'A', 'B', 'C')",
-        pattern=r"^[A-Za-z0-9]+$",
-    )
-
-
-# ------------------------------------------------------------------------------
-# Well model
-# ------------------------------------------------------------------------------
-
-
-# naming this PlateWell to disambiguate from a top level Well (see _well.py)
-class PlateWell(_BaseModel):
-    """A well location reference within a plate.
-
-    Maps a well's row/column position to its data location. This is a
-    lightweight reference used in plate metadata, not the full well group
-    (see [`Well`][yaozarrs.v06.Well] for the complete well metadata).
-    """
-
-    path: str = Field(
-        description=(
-            "Relative path to the well's group (format: 'row/column', e.g., 'A/1')"
-        ),
-        pattern=r"^[A-Za-z0-9]+/[A-Za-z0-9]+$",
-    )
-    rowIndex: NonNegativeInt = Field(
-        description="Zero-based index into the plate's rows list",
-    )
-    columnIndex: NonNegativeInt = Field(
-        description="Zero-based index into the plate's columns list",
-    )
-
-
-# ------------------------------------------------------------------------------
 # Plate model
 # ------------------------------------------------------------------------------
 
@@ -198,6 +93,14 @@ class PlateDef(_BaseModel):
 
     @model_validator(mode="after")
     def _validate_well_indices(self) -> Self:
+        # NOTE: index.md is explicit that `path` MUST be "a name in the `rows`
+        # array, a file separator, and a name from the `columns` array, in that
+        # order" -- i.e. path == f"{row}/{column}". A handful of upstream
+        # `ngff-spec` "valid" example fixtures (e.g. plate/minimal_acquisitions)
+        # violate this MUST themselves (they use path == f"{column}/{row}");
+        # that's an upstream fixture bug, not something to relax here, since the
+        # JSON schema's `path` pattern doesn't encode side order and can't catch
+        # it -- only the prose does.
         for well in self.wells:
             if well.rowIndex >= len(self.rows):
                 raise ValueError(
@@ -248,8 +151,8 @@ class Plate(_BaseModel):
     !!! example "Typical Structure"
         ```
         my_plate.ome.zarr
-        ├── A                       # Col A
-        │   ├── 1                   # Row 1
+        ├── A                       # Row A
+        │   ├── 1                   # Column 1
         │   │   ├── 0               # FOV 0 (in A1)
         │   │   │   ├── 0           # FOV 0 - Multiscale level 0
         │   │   │   └── zarr.json   # contains ["ome"]["multiscales"]
@@ -276,7 +179,7 @@ class Plate(_BaseModel):
     """
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     plate: PlateDef = Field(
@@ -363,7 +266,7 @@ class Well(_BaseModel):
     """
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     well: WellDef = Field(

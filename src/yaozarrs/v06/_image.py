@@ -13,6 +13,7 @@ from yaozarrs._types import UniqueList
 from yaozarrs._util import SuggestDatasetPath
 from yaozarrs._validation_warning import ValidationWarning
 
+from ._axes import validate_multiscale_axes_ordering
 from ._coordinate_systems import CoordinateSystem, CoordinateSystems
 from ._transforms import (
     IdentityTransformation,
@@ -22,7 +23,7 @@ from ._transforms import (
     TranslationTransformation,
     _validate_unique_transform_names,
 )
-from ._version import OMEV06
+from ._version import CURRENT_VERSION, OMEV06
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Image",
@@ -324,6 +325,17 @@ class Multiscale(_BaseModel):
     def _post_validate(self) -> Self:
         cs_names = {cs.name for cs in self.coordinateSystems}
 
+        # spec: the axis ordering/count rules (<=1 time, <=1 channel/custom,
+        # [time,] [channel/custom,] space ordering) apply to every coordinate
+        # system "inside multiscales metadata" (index.md) -- unlike the
+        # structural axes.schema oneOf (enforced unconditionally in _axes.py),
+        # this does NOT apply to scene-level coordinate systems.
+        for cs in self.coordinateSystems:
+            try:
+                validate_multiscale_axes_ordering(cs.axes)
+            except ValueError as e:
+                raise ValueError(f"coordinateSystems[{cs.name!r}]: {e}") from e
+
         # All datasets MUST map to the SAME output coordinate system (the spec:
         # the dataset transform's `output.name` "MUST be the same value for every
         # resolution level in a single multiscales").
@@ -354,66 +366,71 @@ class Multiscale(_BaseModel):
                         f"coordinate system {out!r}."
                     )
 
-        # `multiscales > coordinateTransformations` rules (spec): each transform's
-        # `input` MUST be the intrinsic coordinate system (referenced by `name`),
-        # and `output` MUST reference either a coordinate system declared here (by
-        # `name`) or one in a child `labels` group (by `name` + `path`). In the
-        # labels case the transform MUST be an identity/scale/translation.
+        # `multiscales > coordinateTransformations` rules (spec, index.md ~1370):
+        # - One of `input`/`output` MUST reference the intrinsic coordinate
+        #   system by `name` (with no `path`).
+        # - The other MUST reference either a coordinate system declared here
+        #   (by `name`, no `path`) or one in a child `labels` group (by `name` +
+        #   `path`). In the labels case the transform MUST be an
+        #   identity/scale/translation.
         if self.coordinateTransformations:
             intrinsic_name = next(iter(out_names), None)
             for _id, t in enumerate(self.coordinateTransformations):
                 loc = f"coordinateTransformations.[{_id}]"
                 if t.input is None or t.input.name is None:
-                    raise ValueError(
-                        f"at {loc}:\n  'input' must reference the intrinsic "
-                        "coordinate system by 'name'."
-                    )
-                if intrinsic_name is not None and t.input.name != intrinsic_name:
-                    raise ValueError(
-                        f"at {loc}:\n  'input' must be the intrinsic coordinate "
-                        f"system {intrinsic_name!r}, not {t.input.name!r}."
-                    )
-                if t.input.path is not None:
-                    warnings.warn(
-                        f"at {loc}: 'input.path' SHOULD be omitted; the input "
-                        "refers to the intrinsic coordinate system in the same "
-                        "document.",
-                        ValidationWarning,
-                        stacklevel=2,
-                    )
+                    raise ValueError(f"at {loc}:\n  'input' must provide a 'name'.")
                 if t.output is None or t.output.name is None:
-                    raise ValueError(
-                        f"at {loc}:\n  'output' must reference a coordinate system "
-                        "by 'name'."
+                    raise ValueError(f"at {loc}:\n  'output' must provide a 'name'.")
+
+                sides = (("input", t.input), ("output", t.output))
+                is_intrinsic = {
+                    side: (
+                        intrinsic_name is not None
+                        and io.name == intrinsic_name
+                        and io.path is None
                     )
-                if t.output.path is None:
-                    if t.output.name not in cs_names:
-                        raise ValueError(
-                            f"at {loc}:\n  'output' coordinate system "
-                            f"{t.output.name!r} is not declared in coordinateSystems "
-                            f"{sorted(cs_names)}."
-                        )
-                else:
-                    # image.schema: only relative, downward paths are allowed
-                    # (must not reference external metadata documents).
-                    if t.output.path.startswith(("../", "/")):
-                        raise ValueError(
-                            f"at {loc}:\n  'output.path' must be a relative, "
-                            f"downward path, got {t.output.path!r}."
-                        )
-                    if not isinstance(
-                        t,
-                        (
-                            IdentityTransformation,
-                            ScaleTransformation,
-                            TranslationTransformation,
-                        ),
-                    ):
-                        raise ValueError(
-                            f"at {loc}:\n  a transform whose 'output' links to a "
-                            "child labels group (via 'path') must be an identity, "
-                            f"scale, or translation, not {t.type!r}."
-                        )
+                    for side, io in sides
+                }
+                if intrinsic_name is not None and not any(is_intrinsic.values()):
+                    raise ValueError(
+                        f"at {loc}:\n  one of 'input' or 'output' must reference "
+                        f"the intrinsic coordinate system {intrinsic_name!r} by "
+                        "'name' (with no 'path')."
+                    )
+
+                # validate whichever side(s) are not the intrinsic reference.
+                for side, io in sides:
+                    if is_intrinsic[side]:
+                        continue
+                    if io.path is None:
+                        if io.name not in cs_names:
+                            raise ValueError(
+                                f"at {loc}:\n  {side!r} coordinate system "
+                                f"{io.name!r} is not declared in "
+                                f"coordinateSystems {sorted(cs_names)}."
+                            )
+                    else:
+                        # image.schema: only relative, downward paths are
+                        # allowed (must not reference external metadata docs).
+                        if io.path.startswith(("../", "/")):
+                            raise ValueError(
+                                f"at {loc}:\n  {side!r}.path must be a relative, "
+                                f"downward path, got {io.path!r}."
+                            )
+                        if not isinstance(
+                            t,
+                            (
+                                IdentityTransformation,
+                                ScaleTransformation,
+                                TranslationTransformation,
+                            ),
+                        ):
+                            raise ValueError(
+                                f"at {loc}:\n  a transform linking to a "
+                                f"coordinate system in a child labels group (via "
+                                f"{side!r}.path) must be an identity, scale, or "
+                                f"translation, not {t.type!r}."
+                            )
 
         # Graph connectedness (spec): the coordinate systems, combined with the
         # coordinate transformations, form a graph that MUST be fully connected
@@ -438,9 +455,10 @@ class Multiscale(_BaseModel):
             if (
                 t.input is not None
                 and t.input.name
+                and t.input.path is None  # external (labels) endpoints: no node here
                 and t.output is not None
                 and t.output.name
-                and t.output.path is None  # external (labels) outputs: no node here
+                and t.output.path is None
             ):
                 _connect(f"cs:{t.input.name}", f"cs:{t.output.name}")
 
@@ -570,7 +588,7 @@ class Image(_BaseModel):
     """
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     multiscales: Annotated[UniqueList[Multiscale], MinLen(1)] = Field(

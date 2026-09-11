@@ -172,6 +172,13 @@ class ZarrMetadata(BaseModel):
         """Return the OME metadata if present in attributes, else None."""
         attrs = self.attributes
         version = version or self._guess_ome_version()
+        if (version == "0.5" or (version and version.startswith("0.6"))) and (
+            "ome" not in attrs
+        ):
+            raise ValueError(
+                f"Group attributes have no 'ome' key (expected OME-Zarr "
+                f"version {version!r} metadata)"
+            )
         if version == "0.5":
             return TypeAdapter(v05.OMEMetadata).validate_python(attrs["ome"])
         elif version and version.startswith("0.6"):

@@ -447,7 +447,9 @@ V06_INVALID_IMAGES: list[tuple[dict, str]] = [
         },
         "names must be unique",
     ),
-    # multiscale-level CT: input is not the intrinsic coordinate system
+    # multiscale-level CT: neither input nor output is the intrinsic coordinate
+    # system (v0.6rc0 allows the intrinsic reference on *either* side, but one
+    # of them MUST be it)
     (
         {
             "version": "0.6.dev4",
@@ -456,6 +458,7 @@ V06_INVALID_IMAGES: list[tuple[dict, str]] = [
                     "coordinateSystems": [
                         cs("cs", [X_AXIS, Y_AXIS]),
                         cs("phys", [X_AXIS, Y_AXIS]),
+                        cs("other", [X_AXIS, Y_AXIS]),
                     ],
                     "datasets": [scale_ds("0", 2, out="cs")],
                     "coordinateTransformations": [
@@ -463,13 +466,13 @@ V06_INVALID_IMAGES: list[tuple[dict, str]] = [
                             "type": "scale",
                             "scale": [2.0, 2.0],
                             "input": {"name": "phys"},
-                            "output": {"name": "cs"},
+                            "output": {"name": "other"},
                         }
                     ],
                 }
             ],
         },
-        "must be the intrinsic coordinate system",
+        "must reference the intrinsic coordinate system",
     ),
     # multiscale-level CT: output references an undeclared coordinate system
     (
@@ -531,7 +534,7 @@ V06_INVALID_IMAGES: list[tuple[dict, str]] = [
                 }
             ],
         },
-        "'input' must reference the intrinsic",
+        "'input' must provide a 'name'",
     ),
     # type-less axes are invalid (fail the axes.schema oneOf: 0 space, 0 array)
     (
@@ -656,7 +659,7 @@ def test_multiscale_from_dims() -> None:
         assert ds.transform.output.name == "intrinsic"
 
     img = v06.Image(multiscales=[ms])
-    assert img.version == "0.6.dev4"
+    assert img.version == "0.6rc0"
     validate_ome_object(img)
 
 

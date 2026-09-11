@@ -5,11 +5,11 @@ from pydantic import Field
 
 from yaozarrs._base import _BaseModel
 
-from ._version import OMEV06
+from ._version import CURRENT_VERSION, OMEV06
 
 # NOTE (v0.6): structurally identical to v0.5 except for the `version` string.
 # The bf2raw and ome (series) schemas only bumped their `$id`/version enum to
-# "0.6.dev4"; no fields changed.
+# "0.6rc0"; no fields changed.
 
 
 class Bf2Raw(_BaseModel):
@@ -42,7 +42,7 @@ class Bf2Raw(_BaseModel):
     """
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     bioformats2raw_layout: Literal[3] = Field(
@@ -77,7 +77,7 @@ class Series(_BaseModel):
     """
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     series: Annotated[list[str], MinLen(1)] = Field(

@@ -10,6 +10,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from pydantic import ValidationError
 
 from yaozarrs import validate_zarr_store
 from yaozarrs._storage import StorageValidationError, StorageValidationWarning
@@ -151,6 +152,18 @@ def test_scene_missing_image(tmp_path: Path) -> None:
         validate_zarr_store(root)
 
 
+def test_scene_endpoint_image_recursively_validated(tmp_path: Path) -> None:
+    # a scene's endpoint images must themselves be fully valid (dataset arrays
+    # present, etc), not just have parseable metadata -- `visit_scene` now
+    # recurses into each referenced image via `visit_image`.
+    import shutil
+
+    root = _build_scene(tmp_path)
+    shutil.rmtree(root / "imageB" / "s0")
+    with pytest.raises(StorageValidationError, match="dataset_path_not_found"):
+        validate_zarr_store(root)
+
+
 def test_scene_missing_coordinate_system(tmp_path: Path) -> None:
     root = _build_scene(tmp_path)
 
@@ -173,7 +186,10 @@ def test_scene_scene_level_cs_not_declared(tmp_path: Path) -> None:
         t["output"] = {"name": "world"}  # no path, not declared in the scene
 
     _update_ome(root, _use_undeclared)
-    with pytest.raises(StorageValidationError, match="transform_target_invalid"):
+    # SceneDef now catches this document-locally (no storage access needed), so
+    # it's a pydantic ValidationError raised while parsing metadata, not a
+    # StorageValidationError from the storage-layer graph/endpoint checks.
+    with pytest.raises(ValidationError, match="is not declared in this scene"):
         validate_zarr_store(root)
 
 
@@ -306,8 +322,9 @@ def test_image_displacement_field(tmp_path: Path) -> None:
         validate_zarr_store(root)
 
     # valid displacement field: N+1 = 3 dims, displacement axis of length N=2
+    # (v0.6rc0 requires "discrete": true on the displacement/coordinate axis)
     disp_axes = [
-        {"name": "c", "type": "displacement"},
+        {"name": "c", "type": "displacement", "discrete": True},
         {"name": "y", "type": "space", "unit": "micrometer"},
         {"name": "x", "type": "space", "unit": "micrometer"},
     ]
@@ -353,6 +370,32 @@ def test_image_dimension_names_mismatch_warns(tmp_path: Path) -> None:
     doc["attributes"] = {"dimension_names": ["a", "b"]}
     zj.write_text(json.dumps(doc))
     with pytest.warns(StorageValidationWarning, match="dimension_names_mismatch"):
+        validate_zarr_store(root)
+
+
+def test_child_version_mismatch(tmp_path: Path) -> None:
+    # spec (index.md): the OME-Zarr version MUST be consistent within a
+    # hierarchy. A labels child declaring a different version than the root
+    # must be reported, not silently force-parsed and accepted.
+    root = tmp_path / "img.zarr"
+    _write_image(root)
+    _write_group(root / "labels", ome={"labels": ["cells"]})
+    _write_image(root / "labels" / "cells", image_label={"colors": None})
+    _update_ome(
+        root / "labels" / "cells", lambda ome: ome.__setitem__("version", "0.6rc0")
+    )
+    with pytest.raises(StorageValidationError, match="version_mismatch"):
+        validate_zarr_store(root)
+
+
+def test_plain_group_where_label_expected_reports_error(tmp_path: Path) -> None:
+    # a plain zarr group with no "ome" key (e.g. a stray directory) must be
+    # reported as a normal validation error, not crash with a raw KeyError.
+    root = tmp_path / "img.zarr"
+    _write_image(root)
+    _write_group(root / "labels", ome={"labels": ["cells"]})
+    _write_group(root / "labels" / "cells")  # no "ome" metadata at all
+    with pytest.raises(StorageValidationError, match="label_image_invalid"):
         validate_zarr_store(root)
 
 

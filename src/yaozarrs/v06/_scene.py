@@ -3,29 +3,33 @@
 A *scene* combines coordinate systems and coordinate transformations to express
 spatial relationships *between* images (e.g. registering several multiscale
 datasets into a common world coordinate system). It is a brand-new top-level
-object in v0.6 (`scene.schema`) and is still in flux:
-
-- `arrayCoordinateSystem` is slated for removal (ngff-spec PR #151).
-- the `input.path`/`output.path` constraints are being reworked
-  (ngff-spec PRs #149, #137).
+object in v0.6 (`scene.schema`), adopted from RFC-5 in the 0.6rc0 release.
 
 !!! warning "Experimental / unstable"
     This object is modeled for completeness (it appears in the `ome_zarr` root
-    union) but the spec around it is actively changing.
+    union) but the spec around it is still actively changing.
+
+!!! note "Change from 0.6.dev4"
+    `arrayCoordinateSystem` was removed in 0.6rc0 (replaced by prose explaining
+    how to express dimensionless transforms) and is no longer modeled here --
+    it round-trips as a dropped/ignored extra field on older documents. `scene`
+    documents now also require a `version` field (it was previously absent from
+    `scene.schema`'s `required` list, presumably an oversight).
 """
 
 from typing import Annotated, TypeAlias
 
 from annotated_types import MinLen
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, Field, model_validator
+from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 
 from ._coordinate_systems import CoordinateSystems
 from ._transforms import Transformation, _validate_unique_transform_names
-from ._version import OMEV06
+from ._version import CURRENT_VERSION, OMEV06
 
-__all__ = ["ArrayCoordinateSystem", "Scene", "SceneDef"]
+__all__ = ["Scene", "SceneDef"]
 
 
 def _validate_scene_io_names(
@@ -49,20 +53,6 @@ SceneTransformList: TypeAlias = Annotated[
 ]
 
 
-class ArrayCoordinateSystem(_BaseModel):
-    """A coordinate system whose axes are all of `type="array"`.
-
-    !!! warning "Deprecated"
-        Slated for removal from the spec (ngff-spec PR #151); modeled here only
-        to round-trip existing documents.
-    """
-
-    name: str | None = Field(
-        default=None, description="Name of the array coordinate space."
-    )
-    axes: list = Field(description="Axes, all of type 'array'.")
-
-
 class SceneDef(_BaseModel):
     """The content of the `scene` metadata field."""
 
@@ -77,23 +67,31 @@ class SceneDef(_BaseModel):
         default=None,
         description="Coordinate systems combined with the transforms.",
     )
-    arrayCoordinateSystem: ArrayCoordinateSystem | None = Field(
-        default=None,
-        description="(Deprecated) array coordinate system; being removed from spec.",
-    )
+
+    @model_validator(mode="after")
+    def _validate_local_cs_refs(self) -> Self:
+        # A transform endpoint given by `name` alone (no `path`) must resolve
+        # to a coordinate system declared in this scene's own
+        # `coordinateSystems`. An endpoint that also gives `path` refers to a
+        # coordinate system declared in an external image group and can't be
+        # checked without touching storage (see `_storage.visit_scene`).
+        names = {cs.name for cs in (self.coordinateSystems or [])}
+        for i, t in enumerate(self.coordinateTransformations):
+            for side, io in (("input", t.input), ("output", t.output)):
+                if io is not None and io.path is None and io.name not in names:
+                    raise ValueError(
+                        f"coordinateTransformations[{i}].{side}: coordinate "
+                        f"system {io.name!r} is not declared in this scene's "
+                        "'coordinateSystems' (and no 'path' was given)."
+                    )
+        return self
 
 
 class Scene(_BaseModel):
-    """Top-level `scene` metadata (combines coordinate systems + transforms).
-
-    !!! note "Version field"
-        `scene.schema` does not list `version` under its `ome` object (likely an
-        oversight). For consistency with every other v0.6 document, `yaozarrs`
-        keeps a `version` field here, defaulting to "0.6.dev4".
-    """
+    """Top-level `scene` metadata (combines coordinate systems + transforms)."""
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     scene: SceneDef = Field(description="Coordinate systems and transformations.")

@@ -354,6 +354,7 @@ class StorageErrorType(Enum):
     transform_target_invalid = auto()
     transform_target_not_found = auto()
     vector_field_invalid = auto()
+    version_mismatch = auto()
     well_acquisition_invalid = auto()
     well_invalid = auto()
     well_path_not_found = auto()

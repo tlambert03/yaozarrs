@@ -2,6 +2,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from yaozarrs import v06
+from yaozarrs._validation_warning import ValidationWarning
 
 TA = TypeAdapter(v06.Transformation)
 
@@ -73,11 +74,8 @@ def test_bare_string_io_rejected() -> None:
         ({"type": "rotation"}, "exactly one"),
         ({"type": "mapAxis", "mapAxis": [0]}, "at least 2"),
         ({"type": "mapAxis", "mapAxis": [0, 9]}, "less than or equal to 4"),
-        (
-            {"type": "displacements", "path": "p", "interpolation": "bspline"},
-            "interpolation",
-        ),
         ({"type": "bogus"}, "tag"),
+        ({"type": "projectAxis"}, "at least one"),
     ],
 )
 def test_invalid_transforms(data: dict, msg: str) -> None:
@@ -88,3 +86,20 @@ def test_invalid_transforms(data: dict, msg: str) -> None:
 def test_interpolation_default_linear() -> None:
     t = v06.DisplacementsTransformation(path="d")
     assert t.interpolation == "linear"
+
+
+def test_interpolation_unknown_value_warns_not_rejects() -> None:
+    # spec: the interpolation method list is explicitly non-exhaustive/
+    # non-normative (prose also mentions "bspline-cubic"), so an unrecognized
+    # value is accepted with a warning, not rejected.
+    with pytest.warns(ValidationWarning, match="Unrecognized interpolation"):
+        t = v06.DisplacementsTransformation(path="p", interpolation="bspline-cubic")
+    assert t.interpolation == "bspline-cubic"
+
+
+def test_project_axis() -> None:
+    t = v06.ProjectAxisTransformation(droppedInputs=[0])
+    assert t.model_dump()["droppedInputs"] == [0]
+    t2 = v06.ProjectAxisTransformation(createdOutputs=[1, 2])
+    assert t2.model_dump()["createdOutputs"] == [1, 2]
+    TA.validate_python({"type": "projectAxis", "droppedInputs": [0, 1]})

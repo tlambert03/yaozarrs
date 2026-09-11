@@ -7,7 +7,7 @@ from yaozarrs._base import _BaseModel
 from yaozarrs._types import UniqueList
 
 from ._image import Image
-from ._version import OMEV06
+from ._version import CURRENT_VERSION, OMEV06
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     # LabelImage and its dependencies
@@ -38,8 +38,10 @@ class LabelColor(_BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
     # NOTE: the prose says label-value MUST be an integer, but label.schema
-    # types it as "number"; we follow the schema to avoid rejecting valid docs.
-    label_value: float = Field(
+    # types it as "number"; we follow the schema to avoid rejecting valid docs,
+    # but prefer `int` where possible so integer inputs round-trip without
+    # picking up a spurious ".0".
+    label_value: int | float = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
@@ -187,7 +189,7 @@ class LabelsGroup(_BaseModel):
     """
 
     version: OMEV06 = Field(
-        default="0.6.dev4",
+        default=CURRENT_VERSION,
         description="OME-NGFF specification version",
     )
     labels: Annotated[list[str], MinLen(1)] = Field(

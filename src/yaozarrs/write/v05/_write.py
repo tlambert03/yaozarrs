@@ -827,12 +827,13 @@ def prepare_image(
         import numpy as np
 
         dtype = np.dtype(dtype_spec)
+        resolved_chunks = _resolve_chunks(shape, dtype, chunks)
         arrays[dataset_meta.path] = create_func(
             path=dest_path / dataset_meta.path,
             shape=shape,
             dtype=dtype,
-            chunks=_resolve_chunks(shape, dtype, chunks),
-            shards=shards,
+            chunks=resolved_chunks,
+            shards=_resolve_shards(shape, resolved_chunks, shards),
             dimension_names=dimension_names,
             overwrite=overwrite,
             compression=compression,
@@ -1835,11 +1836,11 @@ class LabelsBuilder:
         # Initialize labels group structure if needed
         self._ensure_initialized()
 
-        # Update labels/zarr.json with this label
-        self._update_labels_group(name)
-
         # Write the label using the existing write_image function
-        # (LabelImage is a subclass of Image)
+        # (LabelImage is a subclass of Image) BEFORE registering it in
+        # labels/zarr.json: if this raises (bad dataset count, backend not
+        # installed, FileExistsError, ...), the labels group must not end up
+        # pointing at a name that was never actually written.
         write_image(
             self._dest / name,
             label_image,
@@ -1851,6 +1852,9 @@ class LabelsBuilder:
             compression=self._compression,
             progress=progress,
         )
+
+        # Only now update labels/zarr.json with this label.
+        self._update_labels_group(name)
 
         return self
 
@@ -2355,6 +2359,31 @@ def _resolve_chunks(
         return tuple(min(c, s) for c, s in zip(chunk_shape, shape))
 
 
+def _resolve_shards(
+    shape: tuple[int, ...],
+    chunks: tuple[int, ...],
+    shard_shape: tuple[int, ...] | None,
+) -> tuple[int, ...] | None:
+    """Clamp a requested shard shape against the array shape and chunk shape.
+
+    Mirrors `_resolve_chunks`'s clamp-to-array-shape behavior for `shards`,
+    which previously passed the user's `shards` through unclamped: for a
+    multiscale pyramid, a fixed `shards=` tuple that fits the highest-res level
+    can be larger than -- or not a multiple of -- the (already-shape-clamped)
+    chunk size at a coarser level, producing an invalid Zarr v3 store (shard
+    shape must be a multiple of chunk shape along every axis) partway through
+    writing a pyramid, after the group metadata already claims that level
+    exists.
+    """
+    if shard_shape is None:
+        return None
+    clamped = tuple(min(sh, s) for sh, s in zip(shard_shape, shape))
+    # round each axis down to the nearest whole multiple of the (already
+    # shape-clamped) chunk size, with a floor of one chunk per shard -- chunks
+    # are already <= shape, so this can't exceed the array shape.
+    return tuple(max(c, (sh // c) * c) if c else sh for sh, c in zip(clamped, chunks))
+
+
 def _calculate_auto_chunks(
     shape: tuple[int, ...],
     dtype_itemsize: int,
@@ -2522,12 +2551,23 @@ def _write_to_array(array: Any, data: ArrayLike, *, progress: bool) -> None:
             ctx = nullcontext()
 
         with ctx:
-            # Handle both zarr and tensorstore
-            if hasattr(array, "store"):  # zarr.Array
-                da.store(dask_data, array, lock=False)  # ty: ignore[invalid-argument-type]
-            else:  # tensorstore
-                computed = dask_data.compute()
-                array[:].write(computed).result()
+            # `da.store` writes block-by-block via the target's `__setitem__`,
+            # which both `zarr.Array` and tensorstore's `TensorStore` support --
+            # this keeps memory bounded to one dask chunk at a time. (Do NOT
+            # `.compute()` the whole array first: that materializes the entire
+            # array in memory before writing, defeating the point of passing a
+            # dask array in the first place.)
+            #
+            # NB: use the default lock (`lock=True`, not `lock=False`). When
+            # the dask array's chunk boundaries don't line up with the
+            # storage's own chunk boundaries -- e.g. an "auto"-chunked target
+            # array coarser than the dask chunks -- multiple worker threads
+            # can end up writing into the *same* underlying storage chunk
+            # concurrently. Without a lock those unsynchronized writes race
+            # and silently corrupt data (verified: with `lock=False`, ~87% of
+            # a small test array's elements ended up wrong; with the default
+            # lock, zero).
+            da.store(dask_data, array)  # ty: ignore[invalid-argument-type]
 
     else:
         if hasattr(array, "store"):  # zarr.Array

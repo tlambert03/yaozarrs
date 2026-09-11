@@ -230,9 +230,17 @@ def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
     Enforces the `axes.schema` `oneOf`: an axes array MUST be *either* a physical
     coordinate system with 2-3 `space` axes, *or* an array coordinate system with
     >=2 `array` axes (exactly one branch). This is a structural schema rule and
-    applies to *every* coordinate system, so a fully type-less axes array is
-    invalid. The physical branch additionally enforces the prose rules (<=1 time,
-    <=1 channel/custom, and time->channel/custom->space ordering).
+    applies to *every* coordinate system (multiscale or scene), so a fully
+    type-less axes array is invalid.
+
+    !!! note
+        The prose ordering/count rules (<=1 time, <=1 channel/custom, and
+        time->channel/custom->space ordering) are scoped by index.md to
+        "coordinate systems inside multiscales metadata" -- they are enforced
+        separately by
+        [`validate_multiscale_axes_ordering`][yaozarrs.v06._axes.validate_multiscale_axes_ordering],
+        called from `Multiscale._post_validate`, not here. A scene-level
+        coordinate system (e.g. axes ordered `[x, y, t]`) is not subject to them.
     """
     # names MUST be unique within the (coordinate system's) list.
     names = [ax.name for ax in axes]
@@ -251,32 +259,60 @@ def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
             "An axes array must contain either 2-3 axes of type 'space' or "
             f"at least 2 axes of type 'array' (got {n_space} space, {n_array} array)."
         )
+    return axes
 
-    if array_branch:
-        # array coordinate system: time/channel/ordering rules do not apply.
-        return axes
 
-    # physical (space) branch: prose structural rules.
+def _axis_order_class(ax: Axis) -> int:
+    t = getattr(ax, "type", None)
+    if t == "time":
+        return 0
+    if t in ("displacement", "coordinate"):
+        # spec (coordinates/displacements): the vector-field axis is inserted
+        # after a time axis (if present) and before the spatial axes, and MUST
+        # NOT coincide with a channel/custom axis -- i.e. it is a distinct slot
+        # from "channel or custom", not folded into the same <=1 count.
+        return 2
+    if t == "space":
+        return 3
+    return 1  # channel, or a null/custom type
+
+
+def validate_multiscale_axes_ordering(axes: list[Axis]) -> None:
+    """Enforce the multiscales-scoped axis ordering/count prose rules.
+
+    index.md restricts these rules to "coordinate systems inside multiscales
+    metadata" (this also covers the multiscale groups that back a
+    `displacements`/`coordinates` vector field, per index.md's `coordinates and
+    displacements` section). Callers (`Multiscale._post_validate`) apply this to
+    each of a multiscale's declared coordinate systems; it is intentionally NOT
+    applied to scene-level coordinate systems by `_validate_axes_list` above.
+    """
+    types = [getattr(ax, "type", None) for ax in axes]
+    if types.count("array") >= 2:
+        return  # array coordinate systems: these ordering rules don't apply
+
     if types.count("time") > 1:
         raise ValueError("There can be at most 1 axis of type 'time'.")
-    # at most one "additional" non-space, non-time axis (channel or null/custom).
-    if len(axes) - n_space - types.count("time") > 1:
+    if (
+        sum(1 for t in types if t not in ("time", "space"))
+        - types.count("displacement")
+        - types.count("coordinate")
+        > 1
+    ):
         raise ValueError(
             "There can be at most 1 axis of type 'channel' or a null/custom type."
         )
-
-    # The entries MUST be ordered by "type": the "time" axis first (if present),
-    # then the "channel"/custom axis (if present), then the space axes.
-    def _order_key(ax: Axis) -> int:
-        t = getattr(ax, "type", None)
-        return 0 if t == "time" else (2 if t == "space" else 1)
-
-    if axes != sorted(axes, key=_order_key):
+    if (n_vec := types.count("displacement") + types.count("coordinate")) > 1:
         raise ValueError(
-            "Axes are not in the required order by type. "
-            "Order must be [time,] [channel/custom,] space."
+            f"There can be at most 1 axis of type 'displacement'/'coordinate', "
+            f"got {n_vec}."
         )
-    return axes
+
+    if axes != sorted(axes, key=_axis_order_class):
+        raise ValueError(
+            "Axes are not in the required order by type. Order must be "
+            "[time,] [channel/custom,] [displacement/coordinate,] space."
+        )
 
 
 AxesList: TypeAlias = Annotated[

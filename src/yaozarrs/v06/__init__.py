@@ -1,17 +1,19 @@
 """OME-NGFF v0.6 metadata models.
 
-Specification (in development): the `main` branch of
-<https://github.com/ome/ngff-spec> *is* the v0.6 (currently `0.6.dev4`) spec.
+Specification: <https://github.com/ome/ngff-spec>, targeting the `0.6rc0`
+release-candidate tag (RFC-5 adopted: transformations, coordinate systems, and
+`scene` metadata).
 
-!!! warning "In-development version"
-    v0.6 is still a development version (`0.6.dev4`). Models accept the whole
-    **0.6 line** -- `"0.6"`, `"0.6.0"`, and `"0.6.dev*"` tags -- and emit
-    `"0.6.dev4"` by default, so nothing needs bumping when v0.6 lands or when
-    testing a newer dev tag. (A `0.6.Z` *patch* release such as `"0.6.1"` is
-    rejected: it would be different content.) The headline change from v0.5 is the
-    coordinate-systems + coordinate-transformations redesign (RFC-5): the
-    multiscale `axes` field is replaced by named `coordinateSystems`, and
-    dataset transforms carry `input`/`output`.
+!!! warning "Release candidate"
+    v0.6 is a release candidate (`0.6rc0`), not yet final. Models accept the
+    whole **0.6 line** -- `"0.6"`, `"0.6.0"`, `"0.6rc*"`, and older `"0.6.dev*"`
+    tags (for backwards parsing of pre-rc documents) -- and emit `"0.6rc0"` by
+    default, so nothing needs bumping for a later rc tag. (A `0.6.Z` *patch*
+    release such as `"0.6.1"` is rejected: it would be different content.) The
+    headline change from v0.5 is the coordinate-systems +
+    coordinate-transformations redesign (RFC-5): the multiscale `axes` field is
+    replaced by named `coordinateSystems`, and dataset transforms carry
+    `input`/`output`.
 """
 
 from yaozarrs._omero import Omero, OmeroChannel, OmeroRenderingDefs, OmeroWindow
@@ -39,7 +41,7 @@ from ._plate import (
     Well,
     WellDef,
 )
-from ._scene import ArrayCoordinateSystem, Scene, SceneDef
+from ._scene import Scene, SceneDef
 from ._transforms import (
     AffineTransformation,
     BijectionTransformation,
@@ -49,6 +51,7 @@ from ._transforms import (
     IdentityTransformation,
     InputOutput,
     MapAxisTransformation,
+    ProjectAxisTransformation,
     RotationTransformation,
     ScaleTransformation,
     SequenceTransformation,
@@ -60,7 +63,6 @@ from ._zarr_json import OMEAttributes, OMEMetadata, OMEZarrGroupJSON
 __all__ = [
     "Acquisition",
     "AffineTransformation",
-    "ArrayCoordinateSystem",
     "Axis",
     "Bf2Raw",
     "BijectionTransformation",
@@ -94,6 +96,7 @@ __all__ = [
     "Plate",
     "PlateDef",
     "PlateWell",
+    "ProjectAxisTransformation",
     "RotationTransformation",
     "Row",
     "ScaleTransformation",

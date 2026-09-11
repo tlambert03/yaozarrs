@@ -33,6 +33,7 @@ from yaozarrs.v06._transforms import (
     SequenceTransformation,
     Transformation,
 )
+from yaozarrs.v06._version import CURRENT_VERSION
 from yaozarrs.v06._zarr_json import OMEAttributes, OMEZarrGroupJSON
 
 # ----------------------------------------------------------
@@ -99,7 +100,7 @@ class LabelsCheckResult:
 class StorageValidatorV06:
     """Concrete implementation of storage validator. for OME-ZARR v0.6 spec."""
 
-    __slots__ = ()
+    __slots__ = ("_root_version",)
 
     @classmethod
     def validate_group(
@@ -126,6 +127,11 @@ class StorageValidatorV06:
         validator = cls()
         ome_metadata = attrs_model.ome
         loc_prefix = ("ome",)
+        # The version declared at the root of this hierarchy. Children are
+        # force-parsed against this same version (not a hardcoded literal), and
+        # checked for consistency against it (spec index.md: "the OME-Zarr
+        # version MUST be consistent within a hierarchy").
+        validator._root_version = getattr(ome_metadata, "version", CURRENT_VERSION)
 
         # Dispatch to appropriate visitor method based on metadata type
         if isinstance(ome_metadata, LabelImage):
@@ -148,6 +154,36 @@ class StorageValidatorV06:
             raise NotImplementedError(
                 f"Unknown OME metadata type: {type(ome_metadata).__name__}"
             )
+
+    def _child_metadata(
+        self, child_group: ZarrGroup, loc: Loc, result: ValidationResult
+    ) -> object:
+        """Force-parse a child group's OME metadata as v0.6, checking version.
+
+        Uses the hierarchy's root version (not a hardcoded literal) to parse the
+        child, and records a `version_mismatch` error if the child's own
+        declared version differs (spec: version MUST be consistent within a
+        hierarchy). Returns either the parsed metadata object, or the
+        `ValueError` raised while parsing (so callers can report either an
+        `isinstance` mismatch or the underlying error).
+        """
+        declared = dict(child_group.attrs).get("ome", {})
+        declared_version = (
+            declared.get("version") if isinstance(declared, dict) else None
+        )
+        if declared_version is not None and declared_version != self._root_version:
+            result.add_error(
+                StorageErrorType.version_mismatch,
+                loc,
+                f"Group has version {declared_version!r}, but the root of this "
+                f"hierarchy declares version {self._root_version!r}. The "
+                "OME-Zarr version MUST be consistent within a hierarchy.",
+                ctx={"declared": declared_version, "root": self._root_version},
+            )
+        try:
+            return child_group.ome_metadata(version=self._root_version)
+        except ValueError as e:
+            return e
 
     def visit_label_image(
         self, zarr_group: ZarrGroup, label_image_model: LabelImage, loc_prefix: Loc
@@ -277,10 +313,7 @@ class StorageValidatorV06:
                 continue
 
             # Validate as LabelImage
-            try:
-                label_image_model = label_group.ome_metadata(version="0.6.dev4")
-            except ValueError as e:
-                label_image_model = e
+            label_image_model = self._child_metadata(label_group, label_loc, result)
             if not isinstance(label_image_model, Image):
                 ctx: dict = {"path": label_path}
                 if isinstance(label_image_model, Exception):
@@ -439,44 +472,42 @@ class StorageValidatorV06:
     ) -> ValidationResult:
         """Validate `multiscales > coordinateTransformations` against storage.
 
-        Resolves labels-linked output coordinate systems (`output.path`) and any
-        path-backed transform parameters (affine/rotation matrices, displacement
-        and coordinate fields).
+        Resolves labels-linked coordinate systems (`input.path` or
+        `output.path` -- the model allows the labels link on either side as of
+        v0.6rc0, see `Multiscale._post_validate`) and any path-backed transform
+        parameters (affine/rotation matrices, displacement and coordinate
+        fields).
         """
         result = ValidationResult()
         cs_dims = {cs.name: len(cs.axes) for cs in multiscale.coordinateSystems}
 
+        def _resolve(io: InputOutput | None, io_loc: Loc) -> int | None:
+            if io is None or io.name is None:
+                return None
+            if io.path is None:
+                return cs_dims.get(io.name)
+            # references a coordinate system in a child labels group: the path
+            # MUST resolve to a multiscale image group declaring a coordinate
+            # system with that name.
+            target = self._load_image_target(zarr_group, io.path, io_loc, result)
+            if target is None:
+                return None
+            cs = _find_image_cs(target, io.name)
+            if cs is None:
+                result.add_error(
+                    StorageErrorType.transform_target_invalid,
+                    io_loc,
+                    f"Group '{io.path}' does not declare a coordinate system "
+                    f"named {io.name!r}",
+                    ctx={"path": io.path, "name": io.name},
+                )
+                return None
+            return len(cs.axes)
+
         for t_idx, t in enumerate(multiscale.coordinateTransformations or []):
             t_loc = (*loc_prefix, "coordinateTransformations", t_idx)
-
-            n_in = None
-            if t.input is not None and t.input.name is not None:
-                n_in = cs_dims.get(t.input.name)
-
-            n_out = None
-            if t.output is not None:
-                if t.output.path is not None:
-                    # output references a coordinate system in a child labels
-                    # group: the path MUST resolve to a multiscale image group
-                    # declaring a coordinate system with that name.
-                    target = self._load_image_target(
-                        zarr_group, t.output.path, (*t_loc, "output"), result
-                    )
-                    if target is not None and t.output.name is not None:
-                        cs = _find_image_cs(target, t.output.name)
-                        if cs is None:
-                            result.add_error(
-                                StorageErrorType.transform_target_invalid,
-                                (*t_loc, "output"),
-                                f"Group '{t.output.path}' does not declare a "
-                                f"coordinate system named {t.output.name!r}",
-                                ctx={"path": t.output.path, "name": t.output.name},
-                            )
-                        else:
-                            n_out = len(cs.axes)
-                elif t.output.name is not None:
-                    n_out = cs_dims.get(t.output.name)
-
+            n_in = _resolve(t.input, (*t_loc, "input"))
+            n_out = _resolve(t.output, (*t_loc, "output"))
             result = result.merge(
                 self._validate_transform_params(zarr_group, t, t_loc, n_in, n_out)
             )
@@ -511,6 +542,7 @@ class StorageValidatorV06:
 
         def _endpoint_dims(io: InputOutput | None, io_loc: Loc) -> int | None:
             """Resolve an endpoint to its coordinate system dimensionality."""
+            nonlocal result
             if io is None or io.name is None:  # enforced by the Scene model
                 return None  # pragma: no cover
             if not io.path:
@@ -533,9 +565,17 @@ class StorageValidatorV06:
                 )
                 return None
             if io.path not in image_cache:
-                image_cache[io.path] = self._load_image_target(
-                    zarr_group, io.path, io_loc, result
-                )
+                image = self._load_image_target(zarr_group, io.path, io_loc, result)
+                image_cache[io.path] = image
+                # spec: a scene's endpoint images are themselves ordinary image
+                # groups -- their own datasets/transforms/labels MUST be valid.
+                # Recurse into them (once per unique path) so e.g. a missing
+                # array or an invalid child labels group is actually caught,
+                # not just the endpoint's own metadata shape.
+                if image is not None:
+                    target = zarr_group.get(io.path)
+                    if isinstance(target, ZarrGroup):
+                        result = result.merge(self.visit_image(target, image, io_loc))
             if (image := image_cache[io.path]) is None:
                 return None
             if (cs := _find_image_cs(image, io.name)) is None:
@@ -779,6 +819,19 @@ class StorageValidatorV06:
         if image is None:
             return result
 
+        target = zarr_group.get(path)
+        multiscale = image.multiscales[0]
+        if isinstance(target, ZarrGroup):
+            # spec (0.6rc0 changelog): displacements/coordinates vector fields
+            # are stored as a *normal* multiscale group with the same metadata
+            # as other multiscales -- validate it exactly like `visit_image`
+            # would (dataset arrays exist, ndim/dtype match, etc). Without this
+            # a missing or wrong-shaped dataset array silently passes: only the
+            # *metadata* was being checked before, not the arrays on disk.
+            result = result.merge(
+                self._visit_multiscale_no_prefetch(target, multiscale, (*loc, "path"))
+            )
+
         if kind == "displacements" and None not in (n_in, n_out) and n_in != n_out:
             result.add_error(
                 StorageErrorType.vector_field_invalid,
@@ -788,7 +841,6 @@ class StorageValidatorV06:
                 ctx={"path": path, "n_in": n_in, "n_out": n_out},
             )
 
-        multiscale = image.multiscales[0]
         axes = multiscale.axes
         if n_in is not None and len(axes) != n_in + 1:
             result.add_error(
@@ -811,23 +863,34 @@ class StorageValidatorV06:
                 ctx={"path": path, "found": len(vec_idxs)},
             )
         else:
+            idx = vec_idxs[0]
+            vec_axis = axes[idx]
+            # spec (0.6rc0 changelog): the displacement/coordinate axis is now
+            # required to set `discrete: true`.
+            if not getattr(vec_axis, "discrete", False):
+                result.add_error(
+                    StorageErrorType.vector_field_invalid,
+                    (*loc, "path"),
+                    f"The {kind} field's {vec_type!r} axis ({vec_axis.name!r}) "
+                    "must set 'discrete': true",
+                    ctx={"path": path, "axis": vec_axis.name},
+                )
             # the length along the vector axis must equal M (coordinates) or
             # N (displacements). check against the highest-resolution level.
             expected_len = n_in if kind == "displacements" else n_out
-            target = zarr_group.get(path)
             if expected_len is not None and isinstance(target, ZarrGroup):
                 arr = target.get(multiscale.datasets[0].path)
                 if isinstance(arr, ZarrArray) and (shape := arr.metadata.shape):
-                    if len(shape) == len(axes) and shape[vec_idxs[0]] != expected_len:
+                    if len(shape) == len(axes) and shape[idx] != expected_len:
                         result.add_error(
                             StorageErrorType.vector_field_invalid,
                             (*loc, "path"),
                             f"The {kind} field at '{path}' has length "
-                            f"{shape[vec_idxs[0]]} along its {vec_type!r} axis, "
+                            f"{shape[idx]} along its {vec_type!r} axis, "
                             f"but the transform requires {expected_len}",
                             ctx={
                                 "path": path,
-                                "found": shape[vec_idxs[0]],
+                                "found": shape[idx],
                                 "expected": expected_len,
                             },
                         )
@@ -854,10 +917,7 @@ class StorageValidatorV06:
                 ctx={"path": path, "expected": "group", "found": "array"},
             )
             return None
-        try:
-            meta = target.ome_metadata(version="0.6.dev4")
-        except ValueError as e:
-            meta = e
+        meta = self._child_metadata(target, loc, result)
         if not isinstance(meta, Image):
             ctx: dict = {"path": path}
             if isinstance(meta, Exception):
@@ -914,10 +974,7 @@ class StorageValidatorV06:
                 continue
 
             # Validate well metadata
-            try:
-                well_model = well_group.ome_metadata(version="0.6.dev4")
-            except ValueError as e:
-                well_model = e
+            well_model = self._child_metadata(well_group, well_loc, result)
             if isinstance(well_model, Well):
                 result = result.merge(
                     self._validate_well_acquisitions(plate_model, well_model, well_loc)
@@ -1018,10 +1075,7 @@ class StorageValidatorV06:
                 continue
 
             # Validate field as image group
-            try:
-                field_group_model = field_group.ome_metadata(version="0.6.dev4")
-            except ValueError as e:
-                field_group_model = e
+            field_group_model = self._child_metadata(field_group, field_loc, result)
             if isinstance(field_group_model, Image):
                 result = result.merge(
                     self.visit_image(field_group, field_group_model, field_loc)
@@ -1112,10 +1166,7 @@ class StorageValidatorV06:
                 continue
 
             # Validate as image group
-            try:
-                image_group_meta = image_group.ome_metadata(version="0.6.dev4")
-            except ValueError as e:
-                image_group_meta = e
+            image_group_meta = self._child_metadata(image_group, image_loc, result)
             if isinstance(image_group_meta, Image):
                 result = result.merge(
                     self.visit_image(image_group, image_group_meta, image_loc)
@@ -1185,10 +1236,7 @@ class StorageValidatorV06:
                 continue
 
             # Validate series as image group
-            try:
-                series_group_meta = series_group.ome_metadata(version="0.6.dev4")
-            except ValueError as e:
-                series_group_meta = e
+            series_group_meta = self._child_metadata(series_group, series_loc, result)
             if isinstance(series_group_meta, Image):
                 result = result.merge(
                     self.visit_image(series_group, series_group_meta, series_loc)
@@ -1408,8 +1456,16 @@ class StorageValidatorV06:
 
 
 def _is_relative_downward(path: str) -> bool:
-    """Whether `path` stays inside the current group (validatable)."""
-    return not path.startswith(("/", "../"))
+    """Whether `path` stays inside the current group (validatable).
+
+    Normalizes first so a path that only *looks* downward at the start but
+    escapes via a later `..` segment (e.g. `"a/../../outside"`) is caught too,
+    not just one starting with `"../"` or `"/"`.
+    """
+    if path.startswith("/"):
+        return False
+    normalized = posixpath.normpath(path)
+    return normalized != ".." and not normalized.startswith("../")
 
 
 def _find_image_cs(image: Image, name: str):
