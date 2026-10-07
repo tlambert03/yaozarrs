@@ -73,6 +73,10 @@ jobs:
             platform: ubuntu-latest
             resolution: highest
             group: test
+          - python-version: "3.15"
+            platform: ubuntu-latest
+            resolution: highest
+            group: test
 
     steps:
       - uses: actions/checkout@v7
