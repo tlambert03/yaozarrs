@@ -367,7 +367,7 @@ class StorageValidatorV05:
                 )
 
             # Check dimension_names attribute matches axes
-            if dim_names := list(dict(arr.attrs).get("dimension_names", [])):
+            if dim_names := arr.dimension_names:
                 expected_names = [ax.name for ax in multiscale.axes]
                 if dim_names != expected_names:
                     result.add_error(
