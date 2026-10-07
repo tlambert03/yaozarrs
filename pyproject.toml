@@ -40,6 +40,7 @@ io = ["fsspec[http,s3]>=2025.0"]
 storage = ["yaozarrs[io,write-zarr]"]
 write-zarr = ["zarr>=2.18", "zarr>=3.1.0; python_version>='3.11'"]
 write-tensorstore = [
+    "tensorstore>=0.1.79; python_version>='3.14'",
     "tensorstore>=0.1.71; python_version>='3.13'",
     "tensorstore>=0.1.66",
 ]
