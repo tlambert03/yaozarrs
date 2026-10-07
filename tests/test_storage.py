@@ -433,6 +433,12 @@ def test_validate_invalid_storage(
             validate_zarr_store(path)
 
 
+def _drop_key(zarr_json: Path, key: str) -> None:
+    data = json.loads(zarr_json.read_text())
+    del data[key]
+    zarr_json.write_text(json.dumps(data))
+
+
 @pytest.mark.parametrize(
     "case",
     [
@@ -440,6 +446,12 @@ def test_validate_invalid_storage(
             StorageErrorType.label_image_invalid,
             {"type": "labels"},
             update_meta("annotations", ("attributes", "ome"), IMAGE_META),
+        ),
+        StorageTestCase(
+            # zarr-python omits dimension_names unless explicitly passed
+            StorageErrorType.dimension_names_missing,
+            {"type": "image"},
+            lambda p: _drop_key(p / "s0" / "zarr.json", "dimension_names"),
         ),
     ],
     ids=lambda x: x.err_type,
