@@ -273,7 +273,13 @@ IMAGE_META = {"version": "0.5", "multiscales": [MULTI_SCALE]}
         StorageTestCase(
             StorageErrorType.dimension_names_mismatch,
             {"type": "image"},
-            update_meta("s0", ("attributes",), {"dimension_names": ["a", "b", "c"]}),
+            update_meta("s0", ("dimension_names",), ["a", "b", "c", "d"]),
+        ),
+        StorageTestCase(
+            # e.g. tifffile writes Y1, X1 for level 1 (issue #60)
+            StorageErrorType.dimension_names_mismatch,
+            {"type": "image"},
+            update_meta("s1", ("dimension_names",), ["c1", "z1", "y1", "x1"]),
         ),
         StorageTestCase(
             StorageErrorType.well_path_not_found,
