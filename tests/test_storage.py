@@ -1,6 +1,6 @@
 import json
 import shutil
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.metadata import version
@@ -37,7 +37,7 @@ from yaozarrs._storage import (
 
 
 @contextmanager
-def xfail_internet_error() -> Iterator[None]:
+def xfail_internet_error() -> Generator[None, None, None]:
     """Decorator to xfail tests on internet connection errors."""
     try:
         yield

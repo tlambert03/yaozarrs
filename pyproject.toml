@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Typing :: Typed",
 ]
 dependencies = [
@@ -39,6 +40,7 @@ io = ["fsspec[http,s3]>=2025.0"]
 storage = ["yaozarrs[io,write-zarr]"]
 write-zarr = ["zarr>=2.18", "zarr>=3.1.0; python_version>='3.11'"]
 write-tensorstore = [
+    "tensorstore>=0.1.79; python_version>='3.14'",
     "tensorstore>=0.1.71; python_version>='3.13'",
     "tensorstore>=0.1.66",
 ]
@@ -72,7 +74,7 @@ dev = [
     "rich>=14.1.0",
     "ruff>=0.13.1",
     # bump me when running `prek autoupdate`
-    "ty==0.0.80",
+    "ty==0.0.85",
 ]
 
 old_docs = [
