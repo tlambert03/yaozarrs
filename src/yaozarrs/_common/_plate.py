@@ -1,5 +1,6 @@
 """Plate building blocks (identical in v0.5 and v0.6)."""
 
+import warnings
 from typing import Annotated
 
 from annotated_types import MinLen
@@ -8,6 +9,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._types import UniqueList
+from yaozarrs._validation_warning import ValidationWarning
 
 # ------------------------------------------------------------------------------
 # Acquisition model
@@ -164,4 +166,41 @@ class PlateDef(_BaseModel):
                     f"Well {well.path} has columnIndex {well.columnIndex} "
                     f"but only {len(self.columns)} columns exist"
                 )
+            # The `rowIndex`, `columnIndex`, and `path` MUST all refer to the same
+            # row/column pair.
+            row = self.rows[well.rowIndex].name
+            col = self.columns[well.columnIndex].name
+            if well.path != f"{row}/{col}":
+                raise ValueError(
+                    f"Well path {well.path!r} does not match its rowIndex "
+                    f"({well.rowIndex}) and columnIndex ({well.columnIndex}), "
+                    f"which refer to '{row}/{col}'"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _warn_case_collisions(self) -> Self:
+        # Care SHOULD be taken to avoid collisions on case-insensitive filesystems
+        # (e.g. avoid using both `Aa` and `aA`).
+        for kind, items in (("row", self.rows), ("column", self.columns)):
+            lowered = [x.name.lower() for x in items]
+            if clashes := [x.name for x in items if lowered.count(x.name.lower()) > 1]:
+                warnings.warn(
+                    f"Plate {kind} names {clashes} differ only by case, which will "
+                    "collide on case-insensitive filesystems.",
+                    ValidationWarning,
+                    stacklevel=2,
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_acquisition_ids(self) -> Self:
+        # Each acquisition object MUST contain an `id` key whose value MUST be an
+        # unique integer identifier greater than or equal to 0 within the context
+        # of the plate
+        ids = [acq.id for acq in self.acquisitions or ()]
+        if dupes := sorted({i for i in ids if ids.count(i) > 1}):
+            raise ValueError(
+                f"Acquisition ids must be unique within a plate. Duplicates: {dupes}"
+            )
         return self

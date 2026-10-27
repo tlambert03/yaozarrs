@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from yaozarrs import v05, validate_ome_object
+from yaozarrs._validation_warning import ValidationWarning
 
 # Helper data
 COLUMN_A = {"name": "01"}
@@ -427,6 +428,31 @@ V05_INVALID_PLATES: list[tuple[dict, str]] = [
         },
         "List items are not unique",
     ),
+    # path doesn't match rowIndex/columnIndex
+    (
+        {
+            "version": "0.5",
+            "plate": {
+                "columns": [COLUMN_A, COLUMN_B],
+                "rows": [ROW_A, ROW_B],
+                "wells": [{"path": "A/01", "rowIndex": 1, "columnIndex": 0}],
+            },
+        },
+        "does not match its rowIndex",
+    ),
+    # duplicate acquisition ids
+    (
+        {
+            "version": "0.5",
+            "plate": {
+                "columns": [COLUMN_A],
+                "rows": [ROW_A],
+                "wells": [WELL_A01],
+                "acquisitions": [ACQUISITION_1, {**ACQUISITION_2, "id": 0}],
+            },
+        },
+        "Acquisition ids must be unique",
+    ),
 ]
 
 
@@ -482,3 +508,23 @@ def test_fov_path_ignore_warning_env_var(monkeypatch: pytest.MonkeyPatch) -> Non
     # Path with invalid characters still raises error
     with pytest.raises(ValidationError, match="should match pattern"):
         v05.FieldOfView(path="fov 0")
+
+
+def test_plate_names_differing_by_case_warn() -> None:
+    plate = {
+        "columns": [COLUMN_A],
+        "rows": [{"name": "a"}, {"name": "A"}],
+        "wells": [
+            {"path": "a/01", "rowIndex": 0, "columnIndex": 0},
+            {"path": "A/01", "rowIndex": 1, "columnIndex": 0},
+        ],
+    }
+    with pytest.warns(ValidationWarning, match=r"row names \['a', 'A'\] differ only"):
+        v05.PlateDef.model_validate(plate)
+
+
+def test_well_fov_paths_unique() -> None:
+    # same path but different acquisition: not identical items, still invalid
+    images = [{"path": "0", "acquisition": 0}, {"path": "0", "acquisition": 1}]
+    with pytest.raises(ValidationError, match="Field of view paths must be unique"):
+        v05.WellDef.model_validate({"images": images})

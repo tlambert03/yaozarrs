@@ -440,9 +440,10 @@
       "type": "object"
     },
     "LabelColor": {
+      "additionalProperties": true,
       "properties": {
         "label-value": {
-          "type": "number"
+          "type": "integer"
         },
         "rgba": {
           "anyOf": [
@@ -505,6 +506,7 @@
       "type": "object"
     },
     "LabelProperty": {
+      "additionalProperties": true,
       "properties": {
         "label-value": {
           "type": "integer"

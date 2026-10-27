@@ -6,7 +6,7 @@ from yaozarrs import v05, validate_ome_object
 # Helper data
 COLOR_1 = {"label-value": 1, "rgba": [255, 0, 0, 255]}  # red
 COLOR_2 = {"label-value": 2, "rgba": [0, 255, 0, 255]}  # green
-COLOR_3 = {"label-value": 3.5}  # no color specified
+COLOR_3 = {"label-value": 3}  # no color specified
 
 PROPERTY_1 = {"label-value": 1}
 PROPERTY_2 = {"label-value": 2}
@@ -243,6 +243,18 @@ V05_INVALID_LABELS: list[tuple[dict, str]] = [
         },
         "Input should be a valid integer",
     ),
+    # Wrong type for label-value in colors (should be int)
+    (
+        {
+            "version": "0.5",
+            "image-label": {
+                "colors": [
+                    {"label-value": 3.5},  # float not allowed for colors either
+                ],
+            },
+        },
+        "Input should be a valid integer",
+    ),
     # Wrong type for RGBA values (should be int)
     (
         {
@@ -284,3 +296,23 @@ V05_INVALID_LABELS_GROUPS: list[tuple[dict, str]] = [
 def test_invalid_v05_labels_groups(obj: dict, msg: str) -> None:
     with pytest.raises(ValidationError, match=msg):
         v05.LabelsGroup.model_validate(obj)
+
+
+def test_v05_label_extra_keys_preserved() -> None:
+    # "Additional keys under `colors` are allowed." and "an arbitrary number of
+    # key-value pairs MAY be present for each label value" (properties)
+    label = v05.ImageLabel.model_validate(
+        {
+            "colors": [{"label-value": 1, "rgba": [255, 0, 0, 255], "name": "red"}],
+            "properties": [{"label-value": 1, "cell type": "neuron", "area": 12.5}],
+        }
+    )
+    dumped = label.model_dump(mode="json", exclude_none=True)
+    assert dumped["colors"] == [
+        {"label-value": 1, "rgba": [255, 0, 0, 255], "name": "red"}
+    ]
+    assert dumped["properties"] == [
+        {"label-value": 1, "cell type": "neuron", "area": 12.5}
+    ]
+    prop = v05.LabelProperty(label_value=1, cell_type="neuron")
+    assert prop.model_dump()["cell_type"] == "neuron"
