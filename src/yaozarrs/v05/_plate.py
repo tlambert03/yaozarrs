@@ -6,6 +6,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._common._plate import Acquisition, Column, PlateDef, PlateWell, Row
+from yaozarrs._rules import rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import RelaxedFOVPathName
 
@@ -124,7 +125,10 @@ class WellDef(_BaseModel):
         # list.  (UniqueList only catches fully identical entries.)
         paths = [img.path for img in self.images]
         if dupes := sorted({p for p in paths if paths.count(p) > 1}):
-            raise ValueError(f"Field of view paths must be unique. Duplicates: {dupes}")
+            raise rule_error(
+                "NGFF-WL-002",
+                f"Field of view paths must be unique. Duplicates: {dupes}",
+            )
         return self
 
 

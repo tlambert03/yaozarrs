@@ -9,6 +9,7 @@ from yaozarrs._axis import AxesList
 from yaozarrs._base import _BaseModel
 from yaozarrs._common._omero import Omero
 from yaozarrs._dim_spec import DimSpec
+from yaozarrs._rules import rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import SuggestDatasetPath
 
@@ -76,23 +77,25 @@ def _validate_transforms_list(
     # specifies the pixel size in physical units or time duration
     num_scales = len([t for t in transforms if isinstance(t, ScaleTransformation)])
     if num_scales != 1:
-        raise ValueError(
+        raise rule_error(
+            "NGFF-CT-001",
             "There must be exactly one scale transformation in the list of transforms. "
             f"Found {num_scales}.\n\n"
             "TIP:\n"
             "If scaling information is not available or applicable for one of the axes,"
             " the value MUST express the scaling factor between the current resolution "
             "and the first resolution for the given axis, defaulting to 1.0 if there is"
-            " no downsampling along the axis"
+            " no downsampling along the axis",
         )
 
     # It MAY contain exactly one translation that specifies the offset from the origin
     # in physical units.
     num_trans = len([t for t in transforms if isinstance(t, TranslationTransformation)])
     if num_trans > 1:
-        raise ValueError(
+        raise rule_error(
+            "NGFF-CT-002",
             "There can be at most one translation transformation in the list of "
-            f"transforms. Found {num_trans}."
+            f"transforms. Found {num_trans}.",
         )
 
     # If translation is given it MUST be listed after scale to ensure that it is given
@@ -107,9 +110,10 @@ def _validate_transforms_list(
             i for i, t in enumerate(transforms) if isinstance(t, ScaleTransformation)
         )
         if translation_idx < scale_idx:
-            raise ValueError(
+            raise rule_error(
+                "NGFF-CT-003",
                 "If a translation transformation is given, it must be listed after "
-                "the scale transformation."
+                "the scale transformation.",
             )
 
     return transforms
@@ -188,13 +192,16 @@ def _validate_datasets_list(datasets: list[Dataset]) -> list[Dataset]:
     # Here we interpret it to mean the dimensionality of the coordinate transformations
     ndims = {dt.path: dt.coordinateTransformations[0].ndim for dt in datasets}
     if len(set(ndims.values())) != 1:
-        raise ValueError(
+        raise rule_error(
+            "NGFF-DS-002",
             "All datasets must have the same number of dimensions. "
-            f"Found differing dimensions: {ndims}"
+            f"Found differing dimensions: {ndims}",
         )
     # ... and MUST NOT have more than 5 dimensions.
     if any(n > 5 for n in ndims.values()):
-        raise ValueError("Datasets must not have more than 5 dimensions.")
+        raise rule_error(
+            "NGFF-DS-003", "Datasets must not have more than 5 dimensions."
+        )
 
     return datasets
 
@@ -269,18 +276,20 @@ class Multiscale(_BaseModel):
         for _id, ds in enumerate(self.datasets):
             for _it, transform in enumerate(ds.coordinateTransformations):
                 if transform.ndim != self.ndim:
-                    raise ValueError(
+                    raise rule_error(
+                        "NGFF-CT-004",
                         f"at datasets.[{_id}].coordinateTransformations[{_it}]:\n"
                         f"  The length of the transformation ({transform.ndim}) does "
-                        f"not match the number of axes ({self.ndim})."
+                        f"not match the number of axes ({self.ndim}).",
                     )
         if self.coordinateTransformations:
             for _it, transform in enumerate(self.coordinateTransformations):
                 if transform.ndim != self.ndim:
-                    raise ValueError(
+                    raise rule_error(
+                        "NGFF-CT-004",
                         f"at coordinateTransformations[{_it}]:\n"
                         f"  The length of the transformation ({transform.ndim}) "
-                        f"does not match the number of axes ({self.ndim})."
+                        f"does not match the number of axes ({self.ndim}).",
                     )
 
         # The "paths" of the datasets MUST be be ordered from the highest resolution to
@@ -293,9 +302,10 @@ class Multiscale(_BaseModel):
             for ds in self.datasets
         ]
         if spatial_scales != sorted(spatial_scales):
-            raise ValueError(
+            raise rule_error(
+                "NGFF-DS-001",
                 "The datasets are not ordered from highest to lowest resolution. "
-                f"Found spatial scales: {spatial_scales}"
+                f"Found spatial scales: {spatial_scales}",
             )
 
         return self

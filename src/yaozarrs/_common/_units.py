@@ -1,12 +1,11 @@
 """Units recommended by the spec for space and time axes (from UDUNITS-2)."""
 
-import warnings
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import AfterValidator
 from typing_extensions import get_args
 
-from yaozarrs._validation_warning import ValidationWarning
+from yaozarrs._rules import warn_rule
 
 ValidSpaceUnit: TypeAlias = Literal[
     "angstrom",
@@ -70,9 +69,9 @@ _VALID_TIME_UNITS = get_args(ValidTimeUnit)
 
 def _warn_if_not_space_unit(v: str) -> str:
     if v not in _VALID_SPACE_UNITS:
-        warnings.warn(
-            f"Warning: Space axis unit {v!r}, SHOULD be one of {_VALID_SPACE_UNITS}",
-            ValidationWarning,
+        warn_rule(
+            "NGFF-AX-006",
+            f"Space axis unit {v!r} SHOULD be one of {_VALID_SPACE_UNITS}",
             stacklevel=3,
         )
     return v
@@ -80,9 +79,9 @@ def _warn_if_not_space_unit(v: str) -> str:
 
 def _warn_if_not_time_unit(v: str) -> str:
     if v not in _VALID_TIME_UNITS:
-        warnings.warn(
-            f"Warning: Time axis unit {v!r}, SHOULD be one of {_VALID_TIME_UNITS}",
-            ValidationWarning,
+        warn_rule(
+            "NGFF-AX-006",
+            f"Time axis unit {v!r} SHOULD be one of {_VALID_TIME_UNITS}",
             stacklevel=3,
         )
     return v

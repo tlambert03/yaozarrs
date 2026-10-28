@@ -1,0 +1,595 @@
+# Registry of rule codes: one entry per normative statement in the NGFF spec
+# (`NGFF-*`), plus checks yaozarrs adds beyond the spec (`YZ-*`).
+#
+# Codes are permanent: never renumber or reuse one. Line numbers are maintained by
+# `uv run python scripts/ngff_rules.py check --fix`; never edit them by hand.
+# See `.claude/skills/ngff-rules/SKILL.md` for how to add, change, or retire rules.
+
+# Spec source files, pinned to immutable commits. Keys are the tracked versions.
+
+[spec."0.4"]
+tag = '0.4.1'
+repo = 'ome/ngff'
+sha = '106c3010dcb4079eb0a69868a11cc5943f942fdf'
+path = '0.4/index.bs'
+
+[spec."0.5"]
+tag = '0.5.2'
+repo = 'ome/ngff'
+sha = '5cdf83b6806b5e500477c7af69dae9ed2adcf77d'
+path = '0.5/index.bs'
+
+# ------------------------------------------------------------------------------
+# NGFF-AX
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-AX-001]
+slug = 'axis-name-unique'
+level = 'MUST'
+summary = 'Axis names must be unique within `axes`.'
+introduced = '0.4'
+
+[[rules.NGFF-AX-001.sources]]
+quote = 'The values MUST be unique across all "name" fields.'
+lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
+
+[rules.NGFF-AX-001.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "x", "type": "space"},
+    {"name": "x", "type": "space", "unit": "meter"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-AX-002]
+slug = 'axes-space-count'
+level = 'MUST'
+summary = '`axes` must contain 2 or 3 axes of type `space`.'
+introduced = '0.4'
+
+[[rules.NGFF-AX-002.sources]]
+quote = 'The "axes" MUST contain 2 or 3 entries of "type:space"'
+lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
+
+[rules.NGFF-AX-002.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "c", "type": "channel"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-AX-003]
+slug = 'axes-time-at-most-one'
+level = 'MAY'
+summary = '`axes` may contain at most one axis of type `time`.'
+introduced = '0.4'
+
+[[rules.NGFF-AX-003.sources]]
+quote = 'MAY contain one additional entry of "type:time"'
+lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
+
+[rules.NGFF-AX-003.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "t", "type": "time"},
+    {"name": "t2", "type": "time"},
+    {"name": "y", "type": "space"},
+    {"name": "x", "type": "space"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-AX-004]
+slug = 'axes-channel-at-most-one'
+level = 'MAY'
+summary = '`axes` may contain at most one axis of type `channel` (or of a null/custom type).'
+introduced = '0.4'
+notes = 'yaozarrs currently only counts axes of type `channel`; multiple null/custom axes are not rejected.'
+
+[[rules.NGFF-AX-004.sources]]
+quote = 'MAY contain one additional entry of "type:channel" or a null / custom type'
+lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
+
+[rules.NGFF-AX-004.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "c", "type": "channel"},
+    {"name": "c2", "type": "channel"},
+    {"name": "y", "type": "space"},
+    {"name": "x", "type": "space"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-AX-005]
+slug = 'axes-type-order'
+level = 'MUST'
+summary = 'Axes must be ordered by type: `time` (if present), then `channel` or custom (if present), then `space`.'
+introduced = '0.4'
+
+[[rules.NGFF-AX-005.sources]]
+quote = 'the entries MUST be ordered by "type" where the "time" axis must come first (if present), followed by the "channel" or custom axis (if present) and the axes of type "space".'
+lines = { "0.4" = [361, 361], "0.5" = [305, 305] }
+
+[rules.NGFF-AX-005.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "y", "type": "space"},
+    {"name": "t", "type": "time"},
+    {"name": "x", "type": "space"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-AX-006]
+slug = 'axis-unit-recognized'
+level = 'SHOULD'
+summary = 'An axis `unit` should be one of the UDUNITS-2 units in the spec.'
+introduced = '0.4'
+notes = 'yaozarrs checks this for `space` and `time` axes.'
+
+[[rules.NGFF-AX-006.sources]]
+quote = 'The value SHOULD be one of the following strings, which are valid units according to UDUNITS-2.'
+lines = { "0.4" = [245, 245], "0.5" = [185, 185] }
+
+[rules.NGFF-AX-006.example]
+model = 'SpaceAxis'
+json = '''
+{"name": "x", "type": "space", "unit": "lightyear"}
+'''
+# ------------------------------------------------------------------------------
+# NGFF-MS
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-MS-001]
+slug = 'multiscales-name'
+level = 'SHOULD'
+summary = 'Each "multiscales" dictionary should contain the field "name".'
+introduced = '0.4'
+
+[[rules.NGFF-MS-001.sources]]
+quote = 'Each "multiscales" dictionary SHOULD contain the field "name".'
+lines = { "0.4" = [380, 380], "0.5" = [324, 324] }
+
+# ------------------------------------------------------------------------------
+# NGFF-DS
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-DS-001]
+slug = 'datasets-resolution-order'
+level = 'MUST'
+summary = '`datasets` must be ordered from highest to lowest resolution.'
+introduced = '0.4'
+notes = 'yaozarrs compares the `scale` values of the spatial axes.'
+
+[[rules.NGFF-DS-001.sources]]
+quote = 'The "path"s MUST be ordered from largest (i.e. highest resolution) to smallest.'
+lines = { "0.4" = [366, 366], "0.5" = [310, 310] }
+
+[rules.NGFF-DS-001.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [2, 2]}]
+    },
+    {
+      "path": "1",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-DS-002]
+slug = 'datasets-same-ndim'
+level = 'MUST'
+summary = 'All `datasets` must have the same number of dimensions.'
+introduced = '0.4'
+notes = "The spec does not define a dataset's number of dimensions; yaozarrs uses the length of its coordinate transformations."
+
+[[rules.NGFF-DS-002.sources]]
+quote = 'Each "datasets" dictionary MUST have the same number of dimensions'
+lines = { "0.4" = [368, 368], "0.5" = [312, 312] }
+
+[rules.NGFF-DS-002.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    },
+    {
+      "path": "1",
+      "coordinateTransformations": [{"type": "scale", "scale": [2, 2, 2]}]
+    }
+  ]
+}
+'''
+
+[rules.NGFF-DS-003]
+slug = 'datasets-max-5d'
+level = 'MUST NOT'
+summary = '`datasets` must not have more than 5 dimensions.'
+introduced = '0.4'
+
+[[rules.NGFF-DS-003.sources]]
+quote = 'MUST NOT have more than 5 dimensions.'
+lines = { "0.4" = [368, 368], "0.5" = [312, 312] }
+
+[rules.NGFF-DS-003.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1, 1, 1, 1]}]
+    }
+  ]
+}
+'''
+# ------------------------------------------------------------------------------
+# NGFF-CT
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-CT-001]
+slug = 'scale-exactly-one'
+level = 'MUST'
+summary = '`coordinateTransformations` must contain exactly one `scale`.'
+introduced = '0.4'
+
+[[rules.NGFF-CT-001.sources]]
+quote = 'They MUST contain exactly one `scale` transformation'
+lines = { "0.4" = [371, 371], "0.5" = [315, 315] }
+
+[rules.NGFF-CT-001.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "0",
+  "coordinateTransformations": [
+    {"type": "scale", "scale": [1, 1]},
+    {"type": "scale", "scale": [1, 1]}
+  ]
+}
+'''
+
+[rules.NGFF-CT-002]
+slug = 'translation-at-most-one'
+level = 'MAY'
+summary = '`coordinateTransformations` may contain at most one `translation`.'
+introduced = '0.4'
+
+[[rules.NGFF-CT-002.sources]]
+quote = 'It MAY contain exactly one `translation`'
+lines = { "0.4" = [372, 372], "0.5" = [316, 316] }
+
+[rules.NGFF-CT-002.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "0",
+  "coordinateTransformations": [
+    {"type": "scale", "scale": [1, 1]},
+    {"type": "translation", "translation": [0, 0]},
+    {"type": "translation", "translation": [1, 1]}
+  ]
+}
+'''
+
+[rules.NGFF-CT-003]
+slug = 'translation-after-scale'
+level = 'MUST'
+summary = 'A `translation` must be listed after the `scale`.'
+introduced = '0.4'
+
+[[rules.NGFF-CT-003.sources]]
+quote = 'If `translation` is given it MUST be listed after `scale`'
+lines = { "0.4" = [372, 372], "0.5" = [316, 316] }
+
+[rules.NGFF-CT-003.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "0",
+  "coordinateTransformations": [
+    {"type": "translation", "translation": [0, 0]},
+    {"type": "scale", "scale": [1, 1]}
+  ]
+}
+'''
+
+[rules.NGFF-CT-004]
+slug = 'transform-length-matches-axes'
+level = 'MUST'
+summary = '`scale` and `translation` arrays must have one entry per axis.'
+introduced = '0.4'
+
+[[rules.NGFF-CT-004.sources]]
+quote = 'The length of the `scale` and `translation` array MUST be the same as the length of "axes".'
+lines = { "0.4" = [373, 373], "0.5" = [317, 317] }
+
+[rules.NGFF-CT-004.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1]}]
+    }
+  ]
+}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-OM
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-OM-001]
+slug = 'omero-channel-color-hex'
+level = 'MUST'
+summary = 'An omero channel `color` must be a string of 6 hexadecimal digits.'
+introduced = '0.5'
+notes = 'yaozarrs also accepts a leading `#` and 3-digit shorthand, and normalizes them. The same check is currently applied to 0.4 documents, although the 0.4 spec has no such statement.'
+
+[[rules.NGFF-OM-001.sources]]
+quote = 'Each dictionary in "channels" MUST contain the field "color", which is a string of 6 hexadecimal digits specifying the color of the channel in RGB format.'
+lines = { "0.5" = [385, 385] }
+
+[rules.NGFF-OM-001.example]
+model = 'OmeroChannel'
+json = '''
+{
+  "color": "GGGGGG",
+  "window": {"start": 0, "end": 1, "min": 0, "max": 1}
+}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-PL
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-PL-001]
+slug = 'acquisition-id-unique'
+level = 'MUST'
+summary = 'Acquisition `id`s must be unique within a plate.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-001.sources]]
+quote = 'whose value MUST be an unique integer identifier greater than or equal to 0 within the context of the plate'
+lines = { "0.4" = [531, 532], "0.5" = [466, 467] }
+
+[rules.NGFF-PL-001.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "acquisitions": [{"id": 0}, {"id": 0, "name": "dupe"}]
+}
+'''
+
+[rules.NGFF-PL-002]
+slug = 'plate-column-names-case-collision'
+level = 'SHOULD'
+summary = 'Plate column names should not differ only by case.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-002.sources]]
+quote = 'other `name` in the `columns` list. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
+lines = { "0.4" = [548, 549], "0.5" = [483, 484] }
+
+[rules.NGFF-PL-002.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}, {"name": "a"}, {"name": "A"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-003]
+slug = 'plate-row-names-case-collision'
+level = 'SHOULD'
+summary = 'Plate row names should not differ only by case.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-003.sources]]
+quote = 'other `name` in the `rows` list. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
+lines = { "0.4" = [563, 564], "0.5" = [498, 499] }
+
+[rules.NGFF-PL-003.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}, {"name": "a"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-004]
+slug = 'well-row-index-valid'
+level = 'MUST'
+summary = "A well's `rowIndex` must be an index into the plate's `rows`."
+introduced = '0.4'
+
+[[rules.NGFF-PL-004.sources]]
+quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` list'
+lines = { "0.4" = [574, 575], "0.5" = [509, 510] }
+
+[rules.NGFF-PL-004.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 3, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-005]
+slug = 'well-column-index-valid'
+level = 'MUST'
+summary = "A well's `columnIndex` must be an index into the plate's `columns`."
+introduced = '0.4'
+
+# sic: "indentifying" is a typo in the 0.4 spec
+[[rules.NGFF-PL-005.sources]]
+quote = 'a `columnIndex` key whose value MUST be an integer indentifying the index into the `columns` list'
+lines = { "0.4" = [575, 576] }
+
+[[rules.NGFF-PL-005.sources]]
+quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` list'
+lines = { "0.5" = [510, 511] }
+
+[rules.NGFF-PL-005.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 3}]
+}
+'''
+
+[rules.NGFF-PL-006]
+slug = 'well-path-matches-indices'
+level = 'MUST'
+summary = "A well's `path`, `rowIndex`, and `columnIndex` must agree."
+introduced = '0.4'
+
+[[rules.NGFF-PL-006.sources]]
+quote = '`rowIndex`, `columnIndex`, and `path` MUST all refer to the same row/column pair.'
+lines = { "0.4" = [577, 577], "0.5" = [512, 512] }
+
+[rules.NGFF-PL-006.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}, {"name": "B"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 1, "columnIndex": 0}]
+}
+'''
+# ------------------------------------------------------------------------------
+# NGFF-WL
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-WL-001]
+slug = 'field-path-alphanumeric'
+level = 'MUST'
+summary = 'A field of view `path` must contain only alphanumeric characters.'
+introduced = '0.4'
+notes = 'yaozarrs relaxes this rule: `.`, `_` and `-` produce a warning instead of an error (see ome/ngff-spec#71). Set `YAOZARRS_STRICT_FOV_NAMES=1` to make them errors, or `YAOZARRS_IGNORE_RISKY_FOV_NAMES=1` to silence the warning.'
+
+[[rules.NGFF-WL-001.sources]]
+quote = 'The `path` MUST contain only alphanumeric characters'
+lines = { "0.4" = [604, 605], "0.5" = [539, 540] }
+
+[rules.NGFF-WL-001.example]
+model = 'WellDef'
+json = '''
+{"images": [{"path": "a.b"}]}
+'''
+
+[rules.NGFF-WL-002]
+slug = 'field-path-unique'
+level = 'MUST NOT'
+summary = 'Field of view `path`s must be unique within a well.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-002.sources]]
+quote = 'MUST NOT be a duplicate of any other `path` in the `images` list.'
+lines = { "0.4" = [605, 606], "0.5" = [540, 541] }
+
+[rules.NGFF-WL-002.example]
+model = 'WellDef'
+json = '''
+{"images": [{"path": "0"}, {"path": "0", "acquisition": 1}]}
+'''
+# ------------------------------------------------------------------------------
+# YZ
+# ------------------------------------------------------------------------------
+
+[rules.YZ-001]
+slug = 'zarr-node-name-invalid'
+summary = 'A path used as a Zarr node name violates the Zarr v3 node-name rules.'
+severity = 'error'
+notes = 'See the [Zarr v3 node names](https://zarr-specs.readthedocs.io/en/latest/v3/core/index.html#node-names) rules.'
+
+[rules.YZ-001.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "__x",
+  "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+}
+'''
+
+[rules.YZ-002]
+slug = 'zarr-node-name-risky'
+summary = 'A path used as a Zarr node name contains characters outside `[A-Za-z0-9._-]`, which can cause problems on some filesystems or in URLs.'
+severity = 'warning'
+notes = 'Set `YAOZARRS_ALLOW_RISKY_NODE_NAMES=1` to silence this warning.'
+
+[rules.YZ-002.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "a b",
+  "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+}
+'''

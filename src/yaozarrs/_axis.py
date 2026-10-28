@@ -11,6 +11,7 @@ from pydantic import (
 
 from ._base import _BaseModel
 from ._common._units import SpaceUnits, TimeUnits
+from ._rules import rule_error
 from ._types import UniqueList
 
 
@@ -109,18 +110,22 @@ def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
     # names MUST be unique within the list.
     names = [ax.name for ax in axes]
     if len(names) != len(set(names)):
-        raise ValueError(f"Axis names must be unique. Found duplicates in {names}")
+        raise rule_error(
+            "NGFF-AX-001", f"Axis names must be unique. Found duplicates in {names}"
+        )
 
     # The "axes" MUST contain 2 or 3 entries of "type:space"
     # and MAY contain one additional entry of "type:time"
     # and MAY contain one additional entry of "type:channel" or a null / custom type.
     n_space_axes = len([ax for ax in axes if ax.type == "space"])
     if n_space_axes < 2 or n_space_axes > 3:
-        raise ValueError("There must be 2 or 3 axes of type 'space'.")
+        raise rule_error("NGFF-AX-002", "There must be 2 or 3 axes of type 'space'.")
     if len([ax for ax in axes if ax.type == "time"]) > 1:
-        raise ValueError("There can be at most 1 axis of type 'time'.")
+        raise rule_error("NGFF-AX-003", "There can be at most 1 axis of type 'time'.")
     if len([ax for ax in axes if ax.type == "channel"]) > 1:
-        raise ValueError("There can be at most 1 axis of type 'channel'.")
+        raise rule_error(
+            "NGFF-AX-004", "There can be at most 1 axis of type 'channel'."
+        )
 
     # The entries MUST be ordered by "type" where the "time" axis must come first (if
     # present), followed by the "channel" or custom axis (if present) and the axes of
@@ -129,9 +134,10 @@ def _validate_axes_list(axes: list[Axis]) -> list[Axis]:
     type_order = {"time": 0, "channel": 1, "space": 2}
     sorted_axes = sorted(axes, key=lambda ax: type_order.get(ax.type or "", 1))
     if axes != sorted_axes:
-        raise ValueError(
+        raise rule_error(
+            "NGFF-AX-005",
             "Axes are not in the required order by type. "
-            "Order must be [time,] [channel,] space."
+            "Order must be [time,] [channel,] space.",
         )
     return axes
 

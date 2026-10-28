@@ -1,6 +1,5 @@
 """Plate building blocks (identical in v0.5 and v0.6)."""
 
-import warnings
 from typing import Annotated
 
 from annotated_types import MinLen
@@ -8,8 +7,8 @@ from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._rules import rule_error, warn_rule
 from yaozarrs._types import UniqueList
-from yaozarrs._validation_warning import ValidationWarning
 
 # ------------------------------------------------------------------------------
 # Acquisition model
@@ -157,24 +156,27 @@ class PlateDef(_BaseModel):
     def _validate_well_indices(self) -> Self:
         for well in self.wells:
             if well.rowIndex >= len(self.rows):
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-PL-004",
                     f"Well {well.path} has rowIndex {well.rowIndex} "
-                    f"but only {len(self.rows)} rows exist"
+                    f"but only {len(self.rows)} rows exist",
                 )
             if well.columnIndex >= len(self.columns):
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-PL-005",
                     f"Well {well.path} has columnIndex {well.columnIndex} "
-                    f"but only {len(self.columns)} columns exist"
+                    f"but only {len(self.columns)} columns exist",
                 )
             # The `rowIndex`, `columnIndex`, and `path` MUST all refer to the same
             # row/column pair.
             row = self.rows[well.rowIndex].name
             col = self.columns[well.columnIndex].name
             if well.path != f"{row}/{col}":
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-PL-006",
                     f"Well path {well.path!r} does not match its rowIndex "
                     f"({well.rowIndex}) and columnIndex ({well.columnIndex}), "
-                    f"which refer to '{row}/{col}'"
+                    f"which refer to '{row}/{col}'",
                 )
         return self
 
@@ -182,13 +184,16 @@ class PlateDef(_BaseModel):
     def _warn_case_collisions(self) -> Self:
         # Care SHOULD be taken to avoid collisions on case-insensitive filesystems
         # (e.g. avoid using both `Aa` and `aA`).
-        for kind, items in (("row", self.rows), ("column", self.columns)):
+        for kind, code, items in (
+            ("row", "NGFF-PL-003", self.rows),
+            ("column", "NGFF-PL-002", self.columns),
+        ):
             lowered = [x.name.lower() for x in items]
             if clashes := [x.name for x in items if lowered.count(x.name.lower()) > 1]:
-                warnings.warn(
+                warn_rule(
+                    code,
                     f"Plate {kind} names {clashes} differ only by case, which will "
                     "collide on case-insensitive filesystems.",
-                    ValidationWarning,
                     stacklevel=2,
                 )
         return self
@@ -200,7 +205,8 @@ class PlateDef(_BaseModel):
         # of the plate
         ids = [acq.id for acq in self.acquisitions or ()]
         if dupes := sorted({i for i in ids if ids.count(i) > 1}):
-            raise ValueError(
-                f"Acquisition ids must be unique within a plate. Duplicates: {dupes}"
+            raise rule_error(
+                "NGFF-PL-001",
+                f"Acquisition ids must be unique within a plate. Duplicates: {dupes}",
             )
         return self

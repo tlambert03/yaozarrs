@@ -4,6 +4,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AfterValidator, ConfigDict, Field
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._rules import rule_error
 
 
 class OmeroWindow(_BaseModel):
@@ -25,7 +26,7 @@ def _valid_hex(value: str) -> str:
     if len(value) == 3:
         value = "".join(2 * c for c in value)
     if len(value) != 6 or not re.fullmatch(r"[0-9A-F]{6}", value):
-        raise ValueError(f"Invalid hex color code: {value}")
+        raise rule_error("NGFF-OM-001", f"Invalid hex color code: {value}")
     return value
 
 

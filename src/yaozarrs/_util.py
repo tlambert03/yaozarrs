@@ -1,10 +1,11 @@
 import os
 import re
-import warnings
 from functools import partial
 from typing import Annotated, Any, TypeAlias
 
 from pydantic import AfterValidator, BeforeValidator
+
+from yaozarrs._rules import rule_error, warn_rule
 
 BAD_NODE_RE = re.compile(r"^(?:|\.+|__.*|.*\/.*)$")
 """Regular expression matching invalid Zarr node names.
@@ -44,9 +45,8 @@ def validate_node_name(
         parts = [path]
     for part in parts:
         if BAD_NODE_RE.match(part):
-            raise ValueError(
-                f"The name {path!r} is not a valid Zarr node name. See "
-                "https://zarr-specs.readthedocs.io/en/latest/v3/core/index.html#node-names"
+            raise rule_error(
+                "YZ-001", f"The name {path!r} is not a valid Zarr node name."
             )
 
         # note, we allow '/' here to support nested paths within a Zarr store
@@ -54,13 +54,13 @@ def validate_node_name(
         risky_chars = re.findall(r"[^A-Za-z0-9._-]", part)
         if risky_chars and not os.getenv("YAOZARRS_ALLOW_RISKY_NODE_NAMES"):
             for_field = f" on field '{field_name}'" if field_name else ""
-            warnings.warn(
+            warn_rule(
+                "YZ-002",
                 f"The name {part!r}{for_field} contains potentially risky characters "
                 f"when used as a zarr node: {set(risky_chars)}.\nConsider using only "
                 "alphanumeric characters, dots (.), underscores (_), or hyphens (-) to "
                 "avoid issues on some filesystems or when used in URLs. "
                 "Set YAOZARRS_ALLOW_RISKY_NODE_NAMES=1 to suppress this warning.",
-                UserWarning,
                 stacklevel=3,
             )
     return path
@@ -85,21 +85,25 @@ def _warn_non_spec_fov_name(path: Any) -> str:
     if os.getenv("YAOZARRS_STRICT_FOV_NAMES"):
         strict_pattern = r"^[A-Za-z0-9]+$"
         if not re.match(strict_pattern, _path):
-            raise ValueError(f"String should match pattern {strict_pattern}.")
+            raise rule_error(
+                "NGFF-WL-001", f"String should match pattern {strict_pattern}."
+            )
 
     relaxed_pattern = r"^[A-Za-z0-9._-]+$"
     if not re.match(relaxed_pattern, _path):
-        raise ValueError(f"String should match pattern {relaxed_pattern}.")
+        raise rule_error(
+            "NGFF-WL-001", f"String should match pattern {relaxed_pattern}."
+        )
 
     risky_chars = re.findall(r"[^A-Za-z0-9]", _path)
     if risky_chars and not os.getenv("YAOZARRS_IGNORE_RISKY_FOV_NAMES"):
-        warnings.warn(
+        warn_rule(
+            "NGFF-WL-001",
             f"The FieldOfView.path {_path!r} contains characters outside of the NGFF "
             f"spec ([A-Za-z0-9]): {set(risky_chars)}.\nWhile yaozarrs DOES allow these "
             "characters, they are not strictly spec-compliant and may cause "
             "compatibility issues with strict NGFF-compliant tools or libraries.\n"
             "See https://github.com/ome/ngff-spec/pull/71.",
-            UserWarning,
             stacklevel=3,
         )
 

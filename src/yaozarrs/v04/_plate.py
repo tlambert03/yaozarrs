@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import ZarrGroupModel, _BaseModel
+from yaozarrs._rules import rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import RelaxedFOVPathName
 
@@ -168,14 +169,16 @@ class PlateDef(_BaseModel):
     def _validate_well_indices(self) -> Self:
         for well in self.wells:
             if well.rowIndex >= len(self.rows):
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-PL-004",
                     f"Well {well.path} has rowIndex {well.rowIndex} "
-                    f"but only {len(self.rows)} rows exist"
+                    f"but only {len(self.rows)} rows exist",
                 )
             if well.columnIndex >= len(self.columns):
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-PL-005",
                     f"Well {well.path} has columnIndex {well.columnIndex} "
-                    f"but only {len(self.columns)} columns exist"
+                    f"but only {len(self.columns)} columns exist",
                 )
         return self
 

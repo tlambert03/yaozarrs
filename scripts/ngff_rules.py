@@ -1,0 +1,351 @@
+"""Maintenance tool for the rule registry in `src/yaozarrs/_rules/rules.toml`.
+
+Usage (from the repo root):
+
+    uv run python scripts/ngff_rules.py fetch          # vendor pinned spec sources
+    uv run python scripts/ngff_rules.py check [--fix]  # verify quotes are at `lines`
+    uv run python scripts/ngff_rules.py relocate <repo> <ref> <path>
+    uv run python scripts/ngff_rules.py coverage       # where each example fires
+    uv run python scripts/ngff_rules.py docs           # generate docs/rules/
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+import urllib.request
+import warnings
+from contextlib import contextmanager
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from pydantic import ValidationError
+
+from yaozarrs import v04, v05
+from yaozarrs._rules import RULES, Rule, RuleWarning, SpecDoc
+from yaozarrs._rules._registry import REGISTRY_FILE, SPEC_DOCS, TRACKED_VERSIONS
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from types import ModuleType
+
+ROOT = Path(__file__).resolve().parent.parent
+SPEC_SOURCES = ROOT / "tests" / "spec_sources"
+DOCS_DIR = ROOT / "docs" / "rules"
+
+# yaozarrs model module for each spec version it implements
+MODULES: dict[str, ModuleType] = {"0.4": v04, "0.5": v05}
+# env vars that change which rules fire; coverage is computed without them
+BEHAVIOR_ENV_VARS = (
+    "YAOZARRS_ALLOW_RISKY_NODE_NAMES",
+    "YAOZARRS_IGNORE_RISKY_FOV_NAMES",
+    "YAOZARRS_STRICT_FOV_NAMES",
+)
+
+
+# ---------------------------------------------------------------------------
+# quote lookup
+# ---------------------------------------------------------------------------
+
+
+def find_quote(text: str, quote: str) -> list[tuple[int, int]]:
+    """Return the (start, end) line spans where `quote` occurs, ignoring whitespace."""
+    chars: list[str] = []
+    line_of: list[int] = []
+    prev_space = True
+    for lineno, line in enumerate(text.splitlines(), 1):
+        for ch in line + "\n":
+            if ch.isspace():
+                if prev_space:
+                    continue
+                ch, prev_space = " ", True
+            else:
+                prev_space = False
+            chars.append(ch)
+            line_of.append(lineno)
+    norm = "".join(chars)
+    needle = " ".join(quote.split())
+    spans = []
+    idx = norm.find(needle)
+    while idx != -1:
+        spans.append((line_of[idx], line_of[idx + len(needle) - 1]))
+        idx = norm.find(needle, idx + 1)
+    return spans
+
+
+def spec_text(doc: SpecDoc) -> str:
+    """Return the vendored text of `doc`."""
+    path = SPEC_SOURCES / doc.cache_name
+    if not path.exists():
+        raise FileNotFoundError(f"{path} missing; run `scripts/ngff_rules.py fetch`")
+    return path.read_text(encoding="utf-8")
+
+
+def check_quote(doc: SpecDoc, quote: str, lines: tuple[int, int]) -> str | None:
+    """Return a problem description, or None if `quote` is at `lines` of `doc`."""
+    spans = find_quote(spec_text(doc), quote)
+    if lines in spans:
+        return None
+    if not spans:
+        return "quote not found"
+    return f"quote found at {spans}, not at {lines}"
+
+
+# ---------------------------------------------------------------------------
+# coverage: run each rule's example against every version module
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def _default_behavior() -> Generator[None]:
+    saved = {k: os.environ.pop(k) for k in BEHAVIOR_ENV_VARS if k in os.environ}
+    try:
+        yield
+    finally:
+        os.environ.update(saved)
+
+
+def emitted_codes(rule: Rule, version: str) -> set[str]:
+    """Codes emitted when validating `rule.example` with the `version` module."""
+    if rule.example is None:
+        return set()
+    model = getattr(MODULES[version], rule.example.model, None)
+    if model is None:
+        return set()
+    codes: set[str] = set()
+    with _default_behavior(), warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        try:
+            model.model_validate(rule.example.data)
+        except ValidationError as e:
+            codes.update(err["type"] for err in e.errors())
+    codes.update(x.message.code for x in w if isinstance(x.message, RuleWarning))
+    return codes
+
+
+def coverage(rule: Rule) -> list[str]:
+    """Spec versions in which yaozarrs emits `rule.code` for its example."""
+    return [v for v in MODULES if rule.code in emitted_codes(rule, v)]
+
+
+# ---------------------------------------------------------------------------
+# commands
+# ---------------------------------------------------------------------------
+
+
+def _download(url: str) -> str:
+    with urllib.request.urlopen(url) as resp:
+        return resp.read().decode("utf-8")
+
+
+def cmd_fetch(_: argparse.Namespace) -> int:
+    """Download the pinned spec sources into `tests/spec_sources/`."""
+    SPEC_SOURCES.mkdir(parents=True, exist_ok=True)
+    for doc in SPEC_DOCS.values():
+        dest = SPEC_SOURCES / doc.cache_name
+        if dest.exists():
+            print(f"exists: {dest.relative_to(ROOT)}")
+            continue
+        dest.write_text(_download(doc.raw_url), encoding="utf-8")
+        print(f"fetched: {dest.relative_to(ROOT)}")
+    return 0
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    """Verify every quote is at its recorded lines (optionally fix the lines)."""
+    problems = 0
+    for rule in RULES.values():
+        for src in rule.sources:
+            if msg := check_quote(src.doc, src.quote, src.lines):
+                problems += 1
+                print(f"{rule.code} [{src.doc.version}]: {msg}")
+    if not (args.fix and problems):
+        return 1 if problems else 0
+
+    # tomlkit preserves comments and formatting; it is only in the `dev` group
+    import tomlkit
+
+    doc = tomlkit.parse(REGISTRY_FILE.read_text(encoding="utf-8"))
+    for code, entry in doc["rules"].items():  # type: ignore[union-attr]
+        for src in entry.get("sources", []):
+            for version in list(src["lines"]):
+                spans = find_quote(spec_text(SPEC_DOCS[version]), src["quote"])
+                if len(spans) == 1:
+                    src["lines"][version] = list(spans[0])
+                else:
+                    print(f"{code} [{version}]: cannot fix, quote found at {spans}")
+    REGISTRY_FILE.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    print("updated line numbers where the quote was found exactly once")
+    return 0
+
+
+def cmd_relocate(args: argparse.Namespace) -> int:
+    """Look for the latest quote of every rule in a new version of the spec."""
+    text = _download(
+        f"https://raw.githubusercontent.com/{args.repo}/{args.ref}/{args.path}"
+    )
+    for rule in RULES.values():
+        if not rule.sources or rule.removed:
+            continue
+        src = rule.sources[-1]
+        spans = find_quote(text, src.quote)
+        status = f"found at {spans}" if spans else "NOT FOUND (changed or removed?)"
+        print(f"{rule.code} ({src.doc.version} quote): {status}")
+    return 0
+
+
+def cmd_coverage(_: argparse.Namespace) -> int:
+    """Print the versions in which each rule's example fires."""
+    for rule in RULES.values():
+        checked = ", ".join(coverage(rule)) or "-"
+        print(f"{rule.code:<12} {checked}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# docs
+# ---------------------------------------------------------------------------
+
+
+def _versions(rule: Rule) -> str:
+    if rule.introduced is None:
+        return "—"
+    if rule.removed:
+        return f"{rule.introduced} to {rule.removed}"
+    return f"{rule.introduced}+"
+
+
+def render_rule(rule: Rule, checked: list[str]) -> str:
+    """Markdown page for one rule."""
+    lines = [f"# {rule.code}: `{rule.slug}`", ""]
+    lines += [f"> {rule.summary}", ""]
+    meta = [
+        ("Spec keyword", rule.level or "— (not from the NGFF spec)"),
+        ("yaozarrs severity", rule.default_severity),
+        ("Status", rule.status),
+        ("Spec versions", _versions(rule)),
+        ("Checked by yaozarrs in", ", ".join(checked) or "not checked yet"),
+    ]
+    if rule.supersedes:
+        meta.append(
+            ("Supersedes", ", ".join(f"[{c}]({c}.md)" for c in rule.supersedes))
+        )
+    superseded_by = [r.code for r in RULES.values() if rule.code in r.supersedes]
+    if superseded_by:
+        meta.append(
+            ("Superseded by", ", ".join(f"[{c}]({c}.md)" for c in superseded_by))
+        )
+    if rule.aliases:
+        meta.append(("Aliases", ", ".join(f"`{a}`" for a in rule.aliases)))
+    lines += ["| | |", "|---|---|"]
+    lines += [f"| **{k}** | {v} |" for k, v in meta]
+    lines.append("")
+    if rule.notes:
+        lines += ["## Notes", "", rule.notes, ""]
+    if ex := rule.example:
+        models = " or ".join(f"`{MODULES[v].__name__}.{ex.model}`" for v in checked)
+        lines += [
+            "## Example",
+            "",
+            f"This document fails validation as {models or ex.model}:",
+            "",
+            "```json",
+            ex.json.strip(),
+            "```",
+            "",
+        ]
+    if rule.sources:
+        lines += ["## Spec text", ""]
+        for src in reversed(rule.sources):
+            start, end = src.lines
+            where = f"L{start}" if start == end else f"L{start}-L{end}"
+            lines += [
+                f"### {src.doc.version}",
+                "",
+                f"> {' '.join(src.quote.split())}",
+                "",
+                f"[`{src.doc.repo}@{src.doc.tag}` · `{src.doc.path}` {where}]"
+                f"({src.permalink})",
+                "",
+            ]
+    return "\n".join(lines)
+
+
+def render_index(checked: dict[str, list[str]]) -> str:
+    """Markdown table of all rules."""
+    tracked = ", ".join(TRACKED_VERSIONS)
+    lines = [
+        "# Rule codes",
+        "",
+        "Every error or warning that yaozarrs raises for a spec violation carries a "
+        "code that identifies one normative statement in the "
+        "[NGFF specification](https://ngff.openmicroscopy.org/). Each code links to "
+        "the exact text in the spec that supports it, for each spec version.",
+        "",
+        "- `NGFF-<AREA>-<NNN>` codes refer to statements in the NGFF spec.",
+        "- `YZ-<NNN>` codes are checks that yaozarrs adds beyond the spec.",
+        "",
+        "Codes are permanent: a code is never renumbered or reused. If a statement "
+        "changes meaning in a later spec version, its code is retired and a new one "
+        "supersedes it.",
+        "",
+        "!!! note",
+        "    These codes are assigned by yaozarrs; they are not (yet) part of the NGFF "
+        f"specification itself. Spec versions audited so far: {tracked}. The "
+        "registry does not yet cover every normative statement in those versions.",
+        "",
+        "| Code | Name | Keyword | Severity | Versions | Checked in | Summary |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in RULES.values():
+        lines.append(
+            f"| [{r.code}]({r.code}.md) | `{r.slug}` | {r.level or '—'} | "
+            f"{r.default_severity} | {_versions(r)} | "
+            f"{', '.join(checked[r.code]) or '—'} | {r.summary} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def expected_docs() -> dict[str, str]:
+    """Map of file name -> content for `docs/rules/`."""
+    checked = {code: coverage(rule) for code, rule in RULES.items()}
+    files = {"index.md": render_index(checked)}
+    files.update({f"{c}.md": render_rule(r, checked[c]) for c, r in RULES.items()})
+    return files
+
+
+def cmd_docs(_: argparse.Namespace) -> int:
+    """Write the generated docs to `docs/rules/` (gitignored)."""
+    expected = expected_docs()
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    for stale in {p.name for p in DOCS_DIR.glob("*.md")} - set(expected):
+        (DOCS_DIR / stale).unlink()
+    for name, content in expected.items():
+        (DOCS_DIR / name).write_text(content, encoding="utf-8")
+    print(f"wrote {len(expected)} files to {DOCS_DIR.relative_to(ROOT)}")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Command line entry point."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = parser.add_subparsers(required=True)
+    sub.add_parser("fetch").set_defaults(func=cmd_fetch)
+    p = sub.add_parser("check")
+    p.add_argument("--fix", action="store_true", help="rewrite line numbers")
+    p.set_defaults(func=cmd_check)
+    p = sub.add_parser("relocate")
+    p.add_argument("repo", help="e.g. ome/ngff-spec")
+    p.add_argument("ref", help="tag or commit sha")
+    p.add_argument("path", help="spec file path in the repo, e.g. index.md")
+    p.set_defaults(func=cmd_relocate)
+    sub.add_parser("coverage").set_defaults(func=cmd_coverage)
+    sub.add_parser("docs").set_defaults(func=cmd_docs)
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

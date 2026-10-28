@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import ValidationError
 from typing_extensions import NotRequired, TypedDict
 
+from yaozarrs._rules import RuleWarning
 from yaozarrs._validation_warning import ValidationWarning
 from yaozarrs._zarr import ZarrGroup, open_group
 
@@ -81,6 +82,9 @@ def validate_zarr_store(obj: ZarrGroup | str | Path | Any) -> ZarrGroup:
             "loc": (),
             "msg": str(w.message),
         }
+        if isinstance(w.message, RuleWarning):
+            details["code"] = w.message.code
+            details["url"] = w.message.url
         result.warnings.insert(0, details)
 
     # Emit warnings for SHOULD directives from structural validation
@@ -132,6 +136,8 @@ class ErrorDetails(TypedDict):
     - *_ndim, *_count: Specific numeric mismatches
     - error: Exception object
     """
+    code: NotRequired[str]
+    """The rule code (e.g. `NGFF-DS-004`) of the spec statement that was violated."""
     url: NotRequired[str]
     """A URL giving information about the error."""
 
@@ -241,6 +247,9 @@ class _ValidationMessageMixin:
             }
             if include_context and "ctx" in detail:
                 filtered_detail["ctx"] = detail["ctx"]
+            for key in ("code", "url"):
+                if key in detail:
+                    filtered_detail[key] = detail[key]  # type: ignore[literal-required]
             filtered_details.append(filtered_detail)
         return filtered_details
 
