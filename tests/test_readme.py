@@ -11,9 +11,7 @@ import pytest
 README = Path(__file__).parent.parent / "README.md"
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11) or sys.platform == "win32", reason="requires python3.11+"
-)
+@pytest.mark.skipif(sys.platform == "win32", reason="skipped on windows")
 def test_readme_python_blocks(tmp_path: Path) -> None:
     """Extract and execute all Python code blocks from README.md."""
     pytest.importorskip("tensorstore")
