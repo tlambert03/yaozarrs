@@ -139,6 +139,8 @@ def _expected(rule: Rule, version: str) -> bool:
     ],
 )
 def test_example_coverage(rule: Rule, version: str) -> None:
+    if rule.example and rule.example.store is not None:
+        pytest.importorskip("fsspec")
     emitted = rule.code in ngff_rules.emitted_codes(rule, version)
     assert emitted == _expected(rule, version)
 
@@ -171,5 +173,6 @@ def test_rule_error_message() -> None:
 
 
 def test_docs_render() -> None:
+    pytest.importorskip("fsspec")  # coverage of store examples
     docs = ngff_rules.expected_docs()
     assert set(docs) == {"index.md"} | {f"{c}.md" for c in RULES}
