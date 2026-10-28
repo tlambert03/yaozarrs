@@ -222,6 +222,7 @@ class StorageValidatorV04:
             if label_path not in labels_group:
                 result.add_error(
                     StorageErrorType.label_path_not_found,
+                    "NGFF-LB-002",
                     label_loc,
                     f"Label path '{label_path}' not found in labels group",
                     ctx={
@@ -235,6 +236,7 @@ class StorageValidatorV04:
             if not isinstance(label_group, ZarrGroup):
                 result.add_error(
                     StorageErrorType.label_path_not_group,
+                    "NGFF-LB-002",
                     label_loc,
                     f"Label path '{label_path}' is not a zarr group",
                     ctx={
@@ -258,6 +260,7 @@ class StorageValidatorV04:
                     ctx["type"] = type(label_image_model).__name__
                 result.add_error(
                     StorageErrorType.label_image_invalid,
+                    "NGFF-IL-001",
                     label_loc,
                     f"Label path '{label_path}' does not contain "
                     "valid Image ('multiscales') metadata",
@@ -275,6 +278,7 @@ class StorageValidatorV04:
                 if n_lbl_ms != n_img_ms:
                     result.add_error(
                         StorageErrorType.label_multiscale_count_mismatch,
+                        "YZ-003",
                         label_loc,
                         f"Label image '{label_path}' has {n_lbl_ms} "
                         f"multiscales, but parent image has {n_img_ms}",
@@ -293,6 +297,7 @@ class StorageValidatorV04:
                     if n_lbl_ds < n_img_ds:
                         result.add_error(
                             StorageErrorType.label_dataset_count_mismatch,
+                            "NGFF-IL-002",
                             (*label_loc, "multiscales", ms_idx),
                             f"Label image '{label_path}' multiscale index {ms_idx} "
                             f"has {n_lbl_ds} datasets, but parent image multiscale "
@@ -313,6 +318,7 @@ class StorageValidatorV04:
             else:
                 result.add_warning(
                     StorageErrorType.label_image_invalid,
+                    "NGFF-IL-003",
                     label_loc,
                     f"Label path '{label_path}' contains Image metadata, "
                     "but is not a LabelImage (SHOULD contain 'image-label' metadata)",
@@ -334,6 +340,7 @@ class StorageValidatorV04:
             if (arr := zarr_group.get(dataset.path)) is None:
                 result.add_error(
                     StorageErrorType.dataset_path_not_found,
+                    "NGFF-DS-004",
                     ds_loc,
                     f"Dataset path '{dataset.path}' not found in zarr group",
                     ctx={
@@ -346,6 +353,7 @@ class StorageValidatorV04:
             if not isinstance(arr, ZarrArray):
                 result.add_error(
                     StorageErrorType.dataset_not_array,
+                    "NGFF-DS-004",
                     ds_loc,
                     f"Dataset path '{dataset.path}' exists but is not a zarr array",
                     ctx={
@@ -361,6 +369,7 @@ class StorageValidatorV04:
             if arr.ndim != expected_ndim:
                 result.add_error(
                     StorageErrorType.dataset_dimension_mismatch,
+                    "NGFF-DS-005",
                     ds_loc,
                     f"Dataset '{dataset.path}' has {arr.ndim} dimensions "
                     f"but axes specify {expected_ndim}",
@@ -378,6 +387,7 @@ class StorageValidatorV04:
                 if dim_names != expected_names:
                     result.add_error(
                         StorageErrorType.dimension_names_mismatch,
+                        "NGFF-AX-008",
                         (*ds_loc, "dimension_names"),
                         f"Array dimension_names {dim_names} don't match "
                         f"axes names {expected_names}",
@@ -404,6 +414,7 @@ class StorageValidatorV04:
             if (well_group := zarr_group.get(well.path)) is None:
                 result.add_error(
                     StorageErrorType.well_path_not_found,
+                    "NGFF-PL-007",
                     (*well_loc, "path"),
                     f"Well path '{well.path}' not found in plate group",
                     ctx={
@@ -416,6 +427,7 @@ class StorageValidatorV04:
             if not isinstance(well_group, ZarrGroup):
                 result.add_error(
                     StorageErrorType.well_path_not_group,
+                    "NGFF-PL-007",
                     (*well_loc, "path"),
                     f"Well path '{well.path}' is not a zarr group",
                     ctx={
@@ -441,6 +453,7 @@ class StorageValidatorV04:
                     ctx["type"] = type(well_model).__name__
                 result.add_error(
                     StorageErrorType.well_invalid,
+                    "NGFF-PL-007",
                     well_loc,
                     f"Well path '{well.path}' does not contain valid Well metadata",
                     ctx=ctx,
@@ -466,6 +479,7 @@ class StorageValidatorV04:
             if (field_group := zarr_group.get(field_image.path)) is None:
                 result.add_error(
                     StorageErrorType.field_path_not_found,
+                    "NGFF-WL-003",
                     (*field_loc, "path"),
                     f"Field path '{field_image.path}' not found in well group",
                     ctx={
@@ -478,6 +492,7 @@ class StorageValidatorV04:
             if not isinstance(field_group, ZarrGroup):
                 result.add_error(
                     StorageErrorType.field_path_not_group,
+                    "NGFF-WL-003",
                     (*field_loc, "path"),
                     f"Field path '{field_image.path}' is not a zarr group",
                     ctx={
@@ -505,6 +520,7 @@ class StorageValidatorV04:
                     ctx["type"] = type(field_group_model).__name__
                 result.add_error(
                     StorageErrorType.field_image_invalid,
+                    "NGFF-WL-003",
                     field_loc,
                     f"Field path '{field_image.path}' does not contain "
                     "valid Image metadata",
@@ -561,6 +577,7 @@ class StorageValidatorV04:
         if not numbered_paths:
             result.add_error(
                 StorageErrorType.bf2raw_no_images,
+                "NGFF-BF-001",
                 loc_prefix,
                 "Bioformats2raw group contains no numbered image directories",
             )
@@ -577,6 +594,7 @@ class StorageValidatorV04:
             if not isinstance(image_group, ZarrGroup):
                 result.add_error(
                     StorageErrorType.bf2raw_path_not_group,
+                    "NGFF-BF-001",
                     image_loc,
                     f"Bioformats2raw path '{path}' is not a zarr group",
                     ctx={"path": path, "expected": "group", "found": "array"},
@@ -600,6 +618,7 @@ class StorageValidatorV04:
                     ctx["type"] = type(image_group_meta).__name__
                 result.add_error(
                     StorageErrorType.bf2raw_invalid_image,
+                    "NGFF-BF-001",
                     image_loc,
                     f"Bioformats2raw path '{path}' does not contain "
                     "valid Image metadata",
@@ -641,6 +660,7 @@ class StorageValidatorV04:
             if series_group is None:
                 result.add_error(
                     StorageErrorType.series_path_not_found,
+                    "NGFF-BF-002",
                     series_loc,
                     f"Series path '{series_path}' not found in series group",
                     ctx={"path": series_path, "expected": "zarr group"},
@@ -650,6 +670,7 @@ class StorageValidatorV04:
             if not isinstance(series_group, ZarrGroup):
                 result.add_error(
                     StorageErrorType.series_path_not_group,
+                    "NGFF-BF-002",
                     series_loc,
                     f"Series path '{series_path}' is not a zarr group",
                     ctx={"path": series_path, "expected": "group", "found": "array"},
@@ -673,6 +694,7 @@ class StorageValidatorV04:
                     ctx["type"] = type(series_group_meta).__name__
                 result.add_error(
                     StorageErrorType.series_invalid_image,
+                    "NGFF-BF-002",
                     series_loc,
                     f"Series path '{series_path}' does not contain "
                     "valid Image metadata",
@@ -775,6 +797,7 @@ class StorageValidatorV04:
         if not isinstance(labels_group, ZarrGroup):
             result.add_error(
                 StorageErrorType.labels_not_group,
+                "NGFF-LB-001",
                 labels_loc,
                 f"Found 'labels' path but it is a {type(labels_group)}, "
                 "not a zarr group",
@@ -793,6 +816,7 @@ class StorageValidatorV04:
         except Exception as e:
             result.add_error(
                 StorageErrorType.labels_metadata_invalid,
+                "NGFF-LB-001",
                 labels_loc,
                 f"Found a 'labels' subg-group inside of ome-zarr group {zarr_group}, "
                 f"but metadata not valid LabelsGroup metadata: {e!s}",
@@ -824,6 +848,7 @@ class StorageValidatorV04:
             if not isinstance(img_metadata, Image):
                 result.add_error(
                     StorageErrorType.label_image_source_invalid,
+                    "NGFF-IL-004",
                     (*loc_prefix, "image_label", "source", "image"),
                     f"Label image source '{image_source}' does not contain "
                     "valid Image ('multiscales') metadata",
@@ -832,6 +857,7 @@ class StorageValidatorV04:
         except Exception as e:
             result.add_error(
                 StorageErrorType.label_image_source_not_found,
+                "NGFF-IL-004",
                 (*loc_prefix, "image_label", "source", "image"),
                 f"Label image source '{image_source}' could not be opened: {e!s}",
                 ctx={"source": image_source, "error": str(e)},
@@ -863,6 +889,7 @@ class StorageValidatorV04:
                     if not _is_integer_dtype(dt):
                         result.add_error(
                             StorageErrorType.label_non_integer_dtype,
+                            "NGFF-LB-003",
                             ds_loc,
                             f"Label array '{dataset.path}' has non-integer dtype "
                             f"'{dt}'. Labels must use integer types.",

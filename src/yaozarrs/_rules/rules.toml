@@ -177,6 +177,101 @@ model = 'SpaceAxis'
 json = '''
 {"name": "x", "type": "space", "unit": "lightyear"}
 '''
+
+
+[rules.NGFF-AX-007]
+slug = 'dimension-names-present'
+level = 'MUST'
+summary = "Each multiscale array's `zarr.json` must include `dimension_names`."
+introduced = '0.5'
+severity = 'warning'
+notes = 'yaozarrs only warns, because zarr-python omits `dimension_names` unless it is passed explicitly.'
+
+[[rules.NGFF-AX-007.sources]]
+quote = 'The "dimension_names" attribute MUST be included in the `zarr.json` of the Zarr array of a multiscale level'
+lines = { "0.5" = [191, 191] }
+
+[rules.NGFF-AX-007.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[rules.NGFF-AX-008]
+slug = 'dimension-names-match-axes'
+level = 'MUST'
+summary = "An array's `dimension_names` must match the names in `axes`."
+introduced = '0.5'
+notes = 'For 0.4 stores, yaozarrs checks a non-standard `dimension_names` array attribute if it is present.'
+
+[[rules.NGFF-AX-008.sources]]
+quote = 'and MUST match the names in the "axes" metadata.'
+lines = { "0.5" = [191, 191] }
+
+[rules.NGFF-AX-008.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["a", "b"]
+  }
+}
+'''
 # ------------------------------------------------------------------------------
 # NGFF-MS
 # ------------------------------------------------------------------------------
@@ -274,6 +369,91 @@ json = '''
       "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1, 1, 1, 1]}]
     }
   ]
+}
+'''
+
+
+[rules.NGFF-DS-004]
+slug = 'dataset-path-is-array'
+level = 'MUST'
+summary = 'Each `datasets` "path" must point to a Zarr array, relative to the image group.'
+introduced = '0.4'
+
+[[rules.NGFF-DS-004.sources]]
+quote = 'Each dictionary in "datasets" MUST contain the field "path", whose value contains the path to the array for this resolution relative'
+lines = { "0.4" = [365, 365], "0.5" = [309, 309] }
+
+[rules.NGFF-DS-004.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+'''
+
+[rules.NGFF-DS-005]
+slug = 'array-ndim-matches-axes'
+level = 'MUST'
+summary = 'Each multiscale array must have one dimension per axis.'
+introduced = '0.4'
+
+[[rules.NGFF-DS-005.sources]]
+quote = 'MUST be equal to the dimensionality of the zarr arrays storing the image data (see "datasets:path").'
+lines = { "0.4" = [359, 359], "0.5" = [303, 303] }
+
+[rules.NGFF-DS-005.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [2, 4, 4],
+    "data_type": "uint8"
+  }
 }
 '''
 # ------------------------------------------------------------------------------
@@ -524,6 +704,37 @@ json = '''
   "wells": [{"path": "A/1", "rowIndex": 1, "columnIndex": 0}]
 }
 '''
+
+
+[rules.NGFF-PL-007]
+slug = 'well-path-is-well-group'
+level = 'MUST'
+summary = 'Each plate well `path` must point to a well group.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-007.sources]]
+quote = 'Each well object MUST contain a `path` key whose value MUST be a string specifying the path to the well subgroup.'
+lines = { "0.4" = [570, 571], "0.5" = [505, 506] }
+
+[rules.NGFF-PL-007.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "rows": [{"name": "A"}],
+          "columns": [{"name": "1"}],
+          "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+        }
+      }
+    }
+  }
+}
+'''
 # ------------------------------------------------------------------------------
 # NGFF-WL
 # ------------------------------------------------------------------------------
@@ -560,6 +771,594 @@ model = 'WellDef'
 json = '''
 {"images": [{"path": "0"}, {"path": "0", "acquisition": 1}]}
 '''
+
+
+[rules.NGFF-WL-003]
+slug = 'field-path-is-image-group'
+level = 'MUST'
+summary = 'Each well image `path` must point to an image (field of view) group.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-003.sources]]
+quote = 'Each image object MUST contain a `path` key whose value MUST be a string specifying the path to the field of view.'
+lines = { "0.4" = [603, 604], "0.5" = [538, 539] }
+
+[rules.NGFF-WL-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "well": {"images": [{"path": "0"}]}}}
+  }
+}
+'''
+# ------------------------------------------------------------------------------
+# NGFF-BF
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-BF-001]
+slug = 'bf2raw-numbered-image-groups'
+level = 'MUST'
+summary = 'Without `series` metadata, bioformats2raw images must be groups numbered consecutively from 0.'
+introduced = '0.4'
+notes = 'yaozarrs discovers images by probing `0/`, `1/`, ... and stops at the first missing number.'
+
+[[rules.NGFF-BF-001.sources]]
+quote = 'separate "multiscales" images MUST be stored in consecutively numbered groups starting from 0'
+lines = { "0.4" = [322, 322], "0.5" = [263, 263] }
+
+[rules.NGFF-BF-001.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "bioformats2raw.layout": 3}}
+  },
+  "0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "0/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[rules.NGFF-BF-002]
+slug = 'bf2raw-series-paths'
+level = 'MUST'
+summary = "Each path in the OME group's \"series\" must point to an image group."
+introduced = '0.4'
+
+[[rules.NGFF-BF-002.sources]]
+quote = '"series" MUST be a list of string objects, each of which is a path to an image group.'
+lines = { "0.4" = [319, 319], "0.5" = [260, 260] }
+
+[rules.NGFF-BF-002.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "bioformats2raw.layout": 3}}
+  },
+  "0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "0/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "OME/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "series": ["0", "1"]}}
+  }
+}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-LB
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-LB-001]
+slug = 'labels-group-metadata'
+level = 'MUST'
+summary = 'A "labels" group must be a group whose metadata contains the key `labels`.'
+introduced = '0.5'
+notes = '0.4 only says that the "labels" group "contains the key `labels`", with no RFC 2119 keyword.'
+
+[[rules.NGFF-LB-001.sources]]
+quote = 'The OME-Zarr Metadata in the `zarr.json` file associated with the "labels" group MUST contain a JSON object with the key `labels`'
+lines = { "0.5" = [404, 404] }
+
+[rules.NGFF-LB-001.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[rules.NGFF-LB-002]
+slug = 'labels-paths-exist'
+level = 'MUST'
+summary = 'Each path listed in `labels` must point to a label image group.'
+introduced = '0.5'
+
+[[rules.NGFF-LB-002.sources]]
+quote = 'MUST contain a JSON object with the key `labels`, whose value is a JSON array of paths to the labeled multiscale image(s).'
+lines = { "0.5" = [404, 405] }
+
+[rules.NGFF-LB-002.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  }
+}
+'''
+
+[rules.NGFF-LB-003]
+slug = 'label-pixels-integer'
+level = 'MUST'
+summary = 'Label image arrays must have an integer data type.'
+introduced = '0.5'
+
+[[rules.NGFF-LB-003.sources]]
+quote = 'The pixels of the label images MUST be integer data types'
+lines = { "0.5" = [400, 400] }
+
+[rules.NGFF-LB-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {}
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "float32",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-IL
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-IL-001]
+slug = 'label-image-multiscales'
+level = 'MUST'
+summary = 'A label image must implement the multiscales specification.'
+introduced = '0.4'
+
+[[rules.NGFF-IL-001.sources]]
+quote = '`image-label` groups MUST also contain `multiscales` metadata'
+lines = { "0.4" = [462, 462] }
+
+[[rules.NGFF-IL-001.sources]]
+quote = 'The `zarr.json` file for the label image MUST implement the multiscales specification.'
+lines = { "0.5" = [421, 421] }
+
+[rules.NGFF-IL-001.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5"}}
+  }
+}
+'''
+
+[rules.NGFF-IL-002]
+slug = 'label-datasets-count-matches-image'
+level = 'MUST'
+summary = 'A label image must have the same number of `datasets` (scale levels) as its image.'
+introduced = '0.4'
+notes = 'yaozarrs only reports label images with *fewer* datasets than the image.'
+
+[[rules.NGFF-IL-002.sources]]
+quote = 'the two "datasets" series MUST have the same number of entries.'
+lines = { "0.4" = [462, 463] }
+
+[[rules.NGFF-IL-002.sources]]
+quote = 'associated with the `datasets` key MUST have the same number of entries (scale levels) as the original unlabeled image.'
+lines = { "0.5" = [422, 422] }
+
+[rules.NGFF-IL-002.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              },
+              {
+                "path": "s1",
+                "coordinateTransformations": [{"type": "scale", "scale": [2, 2]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "s1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {}
+      }
+    }
+  },
+  "labels/annotations/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[rules.NGFF-IL-003]
+slug = 'label-image-has-image-label'
+level = 'SHOULD'
+summary = 'A label image should contain `image-label` metadata.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-003.sources]]
+quote = 'SHOULD contain another key, `image-label`'
+lines = { "0.5" = [424, 424] }
+
+[rules.NGFF-IL-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "labels/annotations/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[rules.NGFF-IL-004]
+slug = 'label-source-image-is-image-group'
+level = 'MUST'
+summary = 'An `image-label` `source.image` path must point to an image group.'
+introduced = '0.5'
+notes = '0.4 only says that `image` MAY be included; it states no requirement on the path.'
+
+[[rules.NGFF-IL-004.sources]]
+quote = 'This object MAY include a key `image`, whose value MUST be a string specifying the relative path to a Zarr image group.'
+lines = { "0.5" = [445, 445] }
+
+[rules.NGFF-IL-004.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {"source": {"image": "../missing"}}
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
 # ------------------------------------------------------------------------------
 # YZ
 # ------------------------------------------------------------------------------
@@ -591,5 +1390,96 @@ json = '''
 {
   "path": "a b",
   "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+}
+'''
+
+[rules.YZ-003]
+slug = 'label-multiscales-count-matches-image'
+summary = 'A label image must have the same number of `multiscales` as its image.'
+severity = 'error'
+notes = "The spec doesn't state this directly, but it is needed to pair each label multiscale with an image multiscale for NGFF-IL-002."
+
+[rules.YZ-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          },
+          {
+            "name": "second",
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {}
+      }
+    }
+  },
+  "labels/annotations/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
 }
 '''

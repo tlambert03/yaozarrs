@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import ValidationError
 from typing_extensions import NotRequired, TypedDict
 
-from yaozarrs._rules import RuleWarning
+from yaozarrs._rules import RuleWarning, rule_url
 from yaozarrs._validation_warning import ValidationWarning
 from yaozarrs._zarr import ZarrGroup, open_group
 
@@ -167,6 +167,8 @@ class _ValidationMessageMixin:
 
             # Build the context bracket content
             ctx_parts = [f"type={detail['type']}"]
+            if "code" in detail:
+                ctx_parts.append(f"code={detail['code']}")
 
             # Add context fields if present
             if ctx := detail.get("ctx", {}):
@@ -197,6 +199,8 @@ class _ValidationMessageMixin:
             # Message line with 2-space indent
             # Use textwrap.indent to handle multi-line messages
             msg = detail["msg"]
+            if "url" in detail and detail["url"] not in msg:
+                msg = f"{msg}\nSee {detail['url']}"
             msg_with_context = f"{msg} [{ctx_str}]"
             indented_msg = textwrap.indent(msg_with_context, "  ")
             if "error" in ctx:
@@ -377,6 +381,7 @@ class ValidationResult:
     def add_error(
         self,
         error_type: StorageErrorType,
+        code: str,
         loc: tuple[int | str, ...],
         msg: str,
         *,
@@ -388,6 +393,8 @@ class ValidationResult:
         ----------
         error_type : StorageErrorType
             The type of error that occurred.
+        code : str
+            The rule code of the violated spec statement (see `yaozarrs._rules`).
         loc : tuple[int | str, ...]
             Location tuple identifying where in the metadata the error occurred.
         msg : str
@@ -399,7 +406,13 @@ class ValidationResult:
             - found/actual: What was actually found
             - missing: What required element is missing
         """
-        error: ErrorDetails = {"type": str(error_type), "loc": loc, "msg": msg}
+        error: ErrorDetails = {
+            "type": str(error_type),
+            "code": code,
+            "url": rule_url(code),
+            "loc": loc,
+            "msg": msg,
+        }
         if ctx is not None:
             error["ctx"] = ctx
         self.errors.append(error)
@@ -408,6 +421,7 @@ class ValidationResult:
     def add_warning(
         self,
         error_type: StorageErrorType,
+        code: str,
         loc: tuple[int | str, ...],
         msg: str,
         *,
@@ -422,6 +436,8 @@ class ValidationResult:
         ----------
         error_type : StorageErrorType
             The type of warning that occurred.
+        code : str
+            The rule code of the violated spec statement (see `yaozarrs._rules`).
         loc : tuple[int | str, ...]
             Location tuple identifying where in the metadata the warning occurred.
         msg : str
@@ -432,7 +448,13 @@ class ValidationResult:
             - expected: What was expected
             - found/actual: What was actually found
         """
-        warning: ErrorDetails = {"type": str(error_type), "loc": loc, "msg": msg}
+        warning: ErrorDetails = {
+            "type": str(error_type),
+            "code": code,
+            "url": rule_url(code),
+            "loc": loc,
+            "msg": msg,
+        }
         if ctx is not None:
             warning["ctx"] = ctx
         self.warnings.append(warning)

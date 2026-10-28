@@ -54,14 +54,24 @@ class SpecSource:
 
 @dataclass(frozen=True)
 class Example:
-    """A minimal document that violates a rule, when validated as `model`."""
+    """A minimal input that violates a rule.
 
-    model: str  # name of a model class in a version module, e.g. `Multiscale`
-    json: str
+    Either a JSON document validated as `model`, or a `store`: a JSON object mapping
+    v0.5 metadata file paths (`zarr.json`, `s0/zarr.json`, ...) to their contents,
+    validated with `validate_zarr_store`.
+    """
+
+    model: str | None = None  # name of a model class in a version module
+    json: str | None = None
+    store: str | None = None
 
     @property
     def data(self) -> object:
-        return json.loads(self.json)
+        return json.loads(self.json or "null")
+
+    @property
+    def files(self) -> dict[str, dict]:
+        return json.loads(self.store or "{}")
 
 
 @dataclass(frozen=True)

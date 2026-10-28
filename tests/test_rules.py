@@ -40,6 +40,12 @@ KNOWN_GAPS = {
 # yaozarrs checks the rule in a version whose spec doesn't state it.
 KNOWN_OVERREACH = {
     ("NGFF-OM-001", "0.4"),  # shared omero model; 0.4 has no hex-color statement
+    # the v0.4 storage validator mirrors v0.5, but 0.4 states these without keywords
+    ("NGFF-LB-001", "0.4"),
+    ("NGFF-LB-002", "0.4"),
+    ("NGFF-LB-003", "0.4"),
+    ("NGFF-IL-003", "0.4"),
+    ("NGFF-IL-004", "0.4"),
 }
 
 

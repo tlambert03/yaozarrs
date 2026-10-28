@@ -12,8 +12,10 @@ Usage (from the repo root):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+import tempfile
 import urllib.request
 import warnings
 from contextlib import contextmanager
@@ -22,9 +24,10 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
-from yaozarrs import v04, v05
+from yaozarrs import v04, v05, validate_zarr_store
 from yaozarrs._rules import RULES, Rule, RuleWarning, SpecDoc
 from yaozarrs._rules._registry import REGISTRY_FILE, SPEC_DOCS, TRACKED_VERSIONS
+from yaozarrs._storage import StorageValidationError, StorageValidationWarning
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -106,20 +109,92 @@ def _default_behavior() -> Generator[None]:
         os.environ.update(saved)
 
 
+# numpy-style dtype strings for zarr v2 `.zarray` files
+_V2_DTYPES = {
+    "bool": "|b1",
+    "int8": "|i1",
+    "uint8": "|u1",
+    **{f"{k}{n}": f"<{k[0]}{n // 8}" for k in ("int", "uint") for n in (16, 32, 64)},
+    "float32": "<f4",
+    "float64": "<f8",
+}
+
+
+def to_v04_store(files: dict[str, dict]) -> dict[str, dict]:
+    """Convert a v0.5 (zarr v3) store example into the equivalent v0.4 (zarr v2)."""
+    out: dict[str, dict] = {}
+    for path, meta in files.items():
+        prefix = path.removesuffix("zarr.json")
+        if meta["node_type"] == "array":
+            shape = meta["shape"]
+            out[f"{prefix}.zarray"] = {
+                "zarr_format": 2,
+                "shape": shape,
+                "chunks": shape,
+                "dtype": _V2_DTYPES[meta["data_type"]],
+                "compressor": None,
+                "fill_value": 0,
+                "order": "C",
+                "filters": None,
+            }
+            continue
+        attrs = dict(meta.get("attributes", {}))
+        ome = dict(attrs.pop("ome", {}))
+        ome.pop("version", None)
+        # in v0.4 the version lives on each of these objects instead
+        if "multiscales" in ome:
+            ome["multiscales"] = [{**ms, "version": "0.4"} for ms in ome["multiscales"]]
+        for key in ("plate", "well", "image-label"):
+            if key in ome:
+                ome[key] = {**ome[key], "version": "0.4"}
+        out[f"{prefix}.zgroup"] = {"zarr_format": 2}
+        out[f"{prefix}.zattrs"] = {**attrs, **ome}
+    return out
+
+
+def _store_codes(files: dict[str, dict]) -> set[str]:
+    """Write `files` to a temporary store, validate it, and return emitted codes."""
+    with tempfile.TemporaryDirectory(suffix=".zarr") as tmp:
+        for path, content in files.items():
+            dest = Path(tmp, path)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(json.dumps(content), encoding="utf-8")
+        codes: set[str] = set()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            try:
+                validate_zarr_store(tmp)
+            except StorageValidationError as e:
+                codes.update(c for d in e.errors() if (c := d.get("code")))
+            except ValidationError as e:
+                codes.update(err["type"] for err in e.errors())
+            except ValueError:
+                pass  # e.g. the OME-Zarr version could not be determined
+        for x in w:
+            if isinstance(x.message, StorageValidationWarning):
+                codes.update(c for d in x.message.warnings() if (c := d.get("code")))
+            elif isinstance(x.message, RuleWarning):
+                codes.add(x.message.code)
+        return codes
+
+
 def emitted_codes(rule: Rule, version: str) -> set[str]:
-    """Codes emitted when validating `rule.example` with the `version` module."""
-    if rule.example is None:
+    """Codes emitted when validating `rule.example` as spec `version`."""
+    if (ex := rule.example) is None:
         return set()
-    model = getattr(MODULES[version], rule.example.model, None)
-    if model is None:
-        return set()
-    codes: set[str] = set()
-    with _default_behavior(), warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        try:
-            model.model_validate(rule.example.data)
-        except ValidationError as e:
-            codes.update(err["type"] for err in e.errors())
+    with _default_behavior():
+        if ex.store is not None:
+            files = ex.files if version == "0.5" else to_v04_store(ex.files)
+            return _store_codes(files)
+        if (model := getattr(MODULES[version], ex.model or "", None)) is None:
+            return set()
+        codes: set[str] = set()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            try:
+                model.model_validate(ex.data)
+            except ValidationError as e:
+                codes.update(err["type"] for err in e.errors())
     codes.update(x.message.code for x in w if isinstance(x.message, RuleWarning))
     return codes
 
@@ -243,7 +318,19 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
     lines.append("")
     if rule.notes:
         lines += ["## Notes", "", rule.notes, ""]
-    if ex := rule.example:
+    if (ex := rule.example) and ex.store is not None:
+        lines += [
+            "## Example",
+            "",
+            "This v0.5 store (metadata files only) fails "
+            "`yaozarrs.validate_zarr_store`:",
+            "",
+            "```json",
+            ex.store.strip(),
+            "```",
+            "",
+        ]
+    elif ex and ex.json is not None:
         models = " or ".join(f"`{MODULES[v].__name__}.{ex.model}`" for v in checked)
         lines += [
             "## Example",
