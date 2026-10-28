@@ -13,7 +13,9 @@ points at one normative statement in the NGFF spec. The pieces are:
   and every rule (`[rules.<CODE>]`), with its quotes, line numbers, and a minimal
   failing `example`.
 - `src/yaozarrs/_rules/__init__.py`: `rule_error(code, msg)` (raise it inside a pydantic
-  validator) and `warn_rule(code, msg, stacklevel)`.
+  validator), `warn_rule(code, msg, stacklevel)`, and `RuleCodes` (field metadata that
+  gives pydantic's own errors, such as a missing field or a wrong type, a rule code;
+  see "Field-shape rules" below).
 - `scripts/ngff_rules.py`: `fetch`, `check [--fix]`, `relocate`, `coverage`, and
   `docs`.
 - `tests/spec_sources/`: vendored spec files at the pinned commits.
@@ -57,6 +59,42 @@ statement.
 Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error`),
 `status` (`stable` by default), `removed`, `supersedes`, `aliases`, and
 `checkable = false`.
+
+## Field-shape rules
+
+Statements about a field's presence or value type ("MUST contain the field X", "whose
+value MUST be a string") are enforced by the pydantic model itself. To give those errors
+a code, add one `RuleCodes` to the field's `Annotated` metadata, mapping pydantic error
+types to codes:
+
+```python
+id: Annotated[
+    NonNegativeInt,
+    RuleCodes(
+        missing="NGFF-PL-009", int="NGFF-PL-010", greater_than_equal="NGFF-PL-010"
+    ),
+] = Field(...)
+```
+
+- Keys are pydantic error types (`missing`, `string_pattern_mismatch`, `too_short`,
+  `literal_error`, `listItemsNotUnique`, ...), or the shorthands `int`, `str`, `list`,
+  `object`. Only map the errors the statement covers: if yaozarrs is stricter than the
+  spec (e.g. `MinLen(1)` from the JSON schema), leave that error untagged and say so in
+  `notes`.
+- Use exactly one `RuleCodes` per field, at the top level of the type
+  (`Annotated[X | None, RuleCodes(...)]`, not `Annotated[X, RuleCodes(...)] | None`).
+  pydantic < 2.6 keeps only one metadata object of each type.
+- Only errors on the field itself or on its items are tagged; errors inside a nested
+  model are tagged by that model. Don't tag fields of models used as members of a
+  non-discriminated union (e.g. a transformation's `type`): pydantic reports errors from
+  every member, so a valid `translation` would be reported as breaking the `scale`
+  member's rule.
+- Presence and value type are separate statements, so separate codes
+  (`well-path-present`, `well-path-string`). If a statement has no RFC 2119 keyword in a
+  version (e.g. 0.4's "whose value is a string"), don't tag that version's model.
+  `src/yaozarrs/_axis.py` and `src/yaozarrs/_common/` are shared by several versions, so
+  a tag there applies to all of them (record any overreach in `KNOWN_OVERREACH`).
+- Don't tag `version` fields: their `Literal` selects the model for a version.
 
 ## Invariants (never break these)
 
@@ -107,6 +145,11 @@ before adding a new area.
    avoided. Report gaps and overreach rather than fixing them silently.
 4. Report what you found. Don't change validation behavior without asking.
 
+yaozarrs is deliberately lenient when input is not strictly correct but can be
+interpreted unambiguously: lax type coercion (`"1"` or `1.0` for an integer), defaults
+(a transformation without `type`), or `str()` on a path. That isn't a gap, so don't
+propose errors or warnings for it, and don't mint codes for those statements.
+
 ## Workflow: a new spec version is tagged
 
 1. Find the immutable commit: `git ls-remote --tags https://github.com/<repo>` (use the
@@ -144,7 +187,8 @@ before adding a new area.
    run `check --fix`.
 3. In the validator, `raise rule_error("<code>", msg)` or
    `warn_rule("<code>", msg, stacklevel=...)`. Keep existing message text, because
-   tests and users match on it.
+   tests and users match on it. For an error that pydantic raises itself, add the code
+   to the field's `RuleCodes` instead (see "Field-shape rules").
 4. Add an `example`: the model class name plus a minimal failing JSON document, or a
    `store` for storage checks. Then run `scripts/ngff_rules.py coverage` to confirm where
    it fires. An example should trigger only its own rule, apart from errors that can't

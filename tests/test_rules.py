@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 from packaging.version import Version
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from yaozarrs import v05
-from yaozarrs._rules import RULES, Rule, SpecSource, get_rule
+from yaozarrs._rules import RULES, Rule, RuleCodes, SpecSource, get_rule
 from yaozarrs._rules._registry import TRACKED_VERSIONS
 
 ROOT = Path(__file__).parent.parent
@@ -39,7 +39,13 @@ KNOWN_GAPS = {
 }
 # yaozarrs checks the rule in a version whose spec doesn't state it.
 KNOWN_OVERREACH = {
-    ("NGFF-OM-001", "0.4"),  # shared omero model; 0.4 has no hex-color statement
+    # shared omero model; 0.4 describes omero without RFC 2119 keywords
+    ("NGFF-OM-001", "0.4"),
+    ("NGFF-OM-002", "0.4"),
+    ("NGFF-OM-003", "0.4"),
+    ("NGFF-OM-004", "0.4"),
+    ("NGFF-OM-005", "0.4"),
+    ("NGFF-OM-006", "0.4"),
     # the v0.4 storage validator mirrors v0.5, but 0.4 states these without keywords
     ("NGFF-LB-001", "0.4"),
     ("NGFF-LB-002", "0.4"),
@@ -170,6 +176,60 @@ def test_rule_error_message() -> None:
         v05.Multiscale.model_validate(rule.example.data)
     err = next(x for x in e.value.errors() if x["type"] == rule.code)
     assert rule.url in err["msg"]
+
+
+def test_field_error_codes() -> None:
+    with pytest.raises(ValidationError) as e:
+        v05.PlateWell.model_validate({"path": "A1", "rowIndex": -1})
+    errs = {x["loc"]: x for x in e.value.errors()}
+    assert errs[("path",)]["type"] == "NGFF-PL-032"
+    assert errs[("rowIndex",)]["type"] == "NGFF-PL-004"
+    assert errs[("columnIndex",)]["type"] == "NGFF-PL-033"
+    # the original pydantic error is kept in ctx and in the message
+    missing = errs[("columnIndex",)]
+    assert missing["ctx"]["pydantic_type"] == "missing"
+    assert missing["msg"].startswith("Field required")
+    assert get_rule("NGFF-PL-033").url in missing["msg"]
+
+
+def test_field_error_codes_nested() -> None:
+    # codes survive nesting; locations and non-rule errors are unchanged
+    plate = {"plate": {"rows": [{"name": "A_"}], "columns": [{"name": "1"}]}}
+    with pytest.raises(ValidationError) as e:
+        v05.Plate.model_validate(plate)
+    errs = {x["loc"]: x["type"] for x in e.value.errors()}
+    assert errs == {
+        ("plate", "rows", 0, "name"): "NGFF-PL-026",
+        ("plate", "wells"): "NGFF-PL-028",
+    }
+    with pytest.raises(ValidationError) as e:
+        v05.Omero.model_validate({"channels": [{"color": "FF0000", "window": 1}]})
+    (err,) = e.value.errors()
+    assert err["loc"] == ("channels", 0, "window") and err["type"] == "model_type"
+
+
+def test_field_error_codes_on_assignment() -> None:
+    well = v05.PlateWell(path="A/1", rowIndex=0, columnIndex=0)
+    with pytest.raises(ValidationError) as e:
+        well.rowIndex = -1
+    assert e.value.errors()[0]["type"] == "NGFF-PL-004"
+
+
+def test_field_error_codes_keep_union_labels() -> None:
+    # tagging must not change how pydantic names models in union errors
+    with pytest.raises(ValidationError) as e:
+        adapter = TypeAdapter(v05.ScaleTransformation | v05.TranslationTransformation)
+        adapter.validate_python({"type": "scale"})
+    assert e.value.title == "union[ScaleTransformation,TranslationTransformation]"
+    assert {x["loc"][0] for x in e.value.errors()} == {
+        "ScaleTransformation",
+        "TranslationTransformation",
+    }
+
+
+def test_rule_codes_unknown_code() -> None:
+    with pytest.raises(KeyError):
+        RuleCodes(missing="NGFF-XX-999")
 
 
 def test_docs_render() -> None:

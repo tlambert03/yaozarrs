@@ -4,6 +4,12 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import VERSION, BaseModel, ConfigDict, Field
 
+from yaozarrs._rules._fields import with_field_rules
+
+if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler
+    from pydantic_core import CoreSchema
+
 __all__ = ["_BaseModel"]
 
 # populate_by_name is deprecated in pydantic v2.11+ (removed in v3).
@@ -24,6 +30,14 @@ class _BaseModel(BaseModel):
         serialize_by_alias=True,
         **_by_name_cfg,
     )
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source: type[BaseModel], handler: GetCoreSchemaHandler, /
+    ) -> CoreSchema:
+        # give pydantic's own errors on fields (missing, wrong type, ...) the rule
+        # codes declared with `RuleCodes` (see `yaozarrs._rules`)
+        return with_field_rules(cls, handler(source))
 
     if not TYPE_CHECKING:
         # "by_alias" is required for round-tripping on pydantic <2.10.0

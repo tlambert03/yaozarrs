@@ -4,6 +4,7 @@ from annotated_types import Interval, Len, MinLen
 from pydantic import Field
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._rules import RuleCodes
 from yaozarrs._types import UniqueList
 
 from ._image import Image
@@ -33,7 +34,7 @@ class LabelColor(_BaseModel):
     visualization purposes.
     """
 
-    label_value: float = Field(
+    label_value: Annotated[float, RuleCodes(missing="NGFF-IL-006")] = Field(
         description="Label value from the segmentation image",
         alias="label-value",
     )
@@ -61,7 +62,7 @@ class LabelProperty(_BaseModel):
         ```
     """
 
-    label_value: int = Field(
+    label_value: Annotated[int, RuleCodes(missing="NGFF-IL-010")] = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
@@ -141,7 +142,7 @@ class LabelsGroup(_BaseModel):
         ```
     """
 
-    labels: Annotated[list[str], MinLen(1)] = Field(
+    labels: Annotated[list[str], MinLen(1), RuleCodes(missing="NGFF-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

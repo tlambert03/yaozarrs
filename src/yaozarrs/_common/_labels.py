@@ -6,6 +6,7 @@ from annotated_types import Interval, Len
 from pydantic import ConfigDict, Field
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._rules import RuleCodes
 
 # ------------------------------------------------------------------------------
 # Color model
@@ -26,11 +27,24 @@ class LabelColor(_BaseModel):
 
     # "MUST contain the `label-value` key, whose value MUST be the integer
     # corresponding to a particular label"
-    label_value: int = Field(
+    label_value: Annotated[
+        int,
+        RuleCodes(missing="NGFF-IL-006", int="NGFF-IL-007"),
+    ] = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
-    rgba: Annotated[list[Int8bit], Len(min_length=4, max_length=4)] | None = Field(
+    rgba: Annotated[
+        Annotated[list[Int8bit], Len(min_length=4, max_length=4)] | None,
+        RuleCodes(
+            list="NGFF-IL-008",
+            too_short="NGFF-IL-008",
+            too_long="NGFF-IL-008",
+            int="NGFF-IL-008",
+            greater_than_equal="NGFF-IL-008",
+            less_than_equal="NGFF-IL-008",
+        ),
+    ] = Field(
         default=None,
         description="RGBA color as [red, green, blue, alpha], each 0-255",
     )
@@ -58,7 +72,10 @@ class LabelProperty(_BaseModel):
     # "an arbitrary number of key-value pairs MAY be present for each label value"
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
-    label_value: int = Field(
+    label_value: Annotated[
+        int,
+        RuleCodes(missing="NGFF-IL-010", int="NGFF-IL-011"),
+    ] = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
@@ -76,7 +93,7 @@ class LabelSource(_BaseModel):
     image was derived.
     """
 
-    image: str | None = Field(
+    image: Annotated[str | None, RuleCodes(str="NGFF-IL-013")] = Field(
         default=None,
         description=(
             "Relative path to the source image group (default: '../../', "

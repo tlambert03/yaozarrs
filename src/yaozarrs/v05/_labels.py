@@ -5,6 +5,7 @@ from pydantic import Field
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._common._labels import LabelColor, LabelProperty, LabelSource
+from yaozarrs._rules import RuleCodes
 from yaozarrs._types import UniqueList
 
 from ._image import Image
@@ -33,15 +34,21 @@ class ImageLabel(_BaseModel):
     arrays where each unique value represents a distinct object or region.
     """
 
-    colors: Annotated[UniqueList[LabelColor], MinLen(1)] | None = Field(
+    colors: Annotated[
+        Annotated[UniqueList[LabelColor], MinLen(1)] | None,
+        RuleCodes(list="NGFF-IL-005"),
+    ] = Field(
         default=None,
         description="Color mappings for label values, used for visualization",
     )
-    properties: Annotated[UniqueList[LabelProperty], MinLen(1)] | None = Field(
+    properties: Annotated[
+        Annotated[UniqueList[LabelProperty], MinLen(1)] | None,
+        RuleCodes(list="NGFF-IL-009", object="NGFF-IL-009"),
+    ] = Field(
         default=None,
         description="Arbitrary metadata properties for individual label values",
     )
-    source: LabelSource | None = Field(
+    source: Annotated[LabelSource | None, RuleCodes(object="NGFF-IL-012")] = Field(
         default=None,
         description="Reference to the source intensity image that was segmented",
     )
@@ -79,7 +86,7 @@ class LabelsGroup(_BaseModel):
         default="0.5",
         description="OME-NGFF specification version",
     )
-    labels: Annotated[list[str], MinLen(1)] = Field(
+    labels: Annotated[list[str], MinLen(1), RuleCodes(missing="NGFF-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

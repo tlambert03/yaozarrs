@@ -5,7 +5,7 @@ from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import ZarrGroupModel, _BaseModel
-from yaozarrs._rules import rule_error
+from yaozarrs._rules import RuleCodes, rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import RelaxedFOVPathName
 
@@ -36,30 +36,40 @@ class Acquisition(_BaseModel):
     This class groups related images from a single acquisition session.
     """
 
-    id: NonNegativeInt = Field(
+    id: Annotated[
+        NonNegativeInt,
+        RuleCodes(
+            missing="NGFF-PL-009", int="NGFF-PL-010", greater_than_equal="NGFF-PL-010"
+        ),
+    ] = Field(
         description="Unique identifier within the plate for this acquisition",
     )
-    maximumfieldcount: PositiveInt | None = Field(
+    maximumfieldcount: Annotated[
+        PositiveInt | None, RuleCodes(int="NGFF-PL-012", greater_than="NGFF-PL-012")
+    ] = Field(
         default=None,
         description=(
             "Maximum number of fields-of-view across all wells in this acquisition"
         ),
     )
-    name: str | None = Field(
+    name: Annotated[str | None, RuleCodes(str="NGFF-PL-011")] = Field(
         default=None,
         description="Human-readable name for this acquisition",
     )
-    description: str | None = Field(
+    description: Annotated[str | None, RuleCodes(str="NGFF-PL-013")] = Field(
         default=None,
         description="Detailed description of the acquisition parameters or purpose",
     )
-    starttime: NonNegativeInt | None = Field(
+    starttime: Annotated[
+        NonNegativeInt | None,
+        RuleCodes(int="NGFF-PL-014"),
+    ] = Field(
         default=None,
         description=(
             "Acquisition start time as Unix epoch timestamp (seconds since 1970-01-01)"
         ),
     )
-    endtime: NonNegativeInt | None = Field(
+    endtime: Annotated[NonNegativeInt | None, RuleCodes(int="NGFF-PL-014")] = Field(
         default=None,
         description=(
             "Acquisition end time as Unix epoch timestamp (seconds since 1970-01-01)"
@@ -79,7 +89,10 @@ class Column(_BaseModel):
     alphanumeric identifier.
     """
 
-    name: str = Field(
+    name: Annotated[
+        str,
+        RuleCodes(missing="NGFF-PL-017", string_pattern_mismatch="NGFF-PL-018"),
+    ] = Field(
         description="Column identifier (typically numeric, e.g., '1', '2', '3')",
         pattern=r"^[A-Za-z0-9]+$",
     )
@@ -96,7 +109,14 @@ class Row(_BaseModel):
     Rows are typically lettered (A, B, C, ...) but can use any alphanumeric identifier.
     """
 
-    name: str = Field(
+    name: Annotated[
+        str,
+        RuleCodes(
+            missing="NGFF-PL-024",
+            str="NGFF-PL-025",
+            string_pattern_mismatch="NGFF-PL-026",
+        ),
+    ] = Field(
         description="Row identifier (typically alphabetic, e.g., 'A', 'B', 'C')",
         pattern=r"^[A-Za-z0-9]+$",
     )
@@ -115,16 +135,33 @@ class PlateWell(_BaseModel):
     (see [`Well`][yaozarrs.v04.Well] for the complete well metadata).
     """
 
-    path: str = Field(
+    path: Annotated[
+        str,
+        RuleCodes(
+            missing="NGFF-PL-030",
+            str="NGFF-PL-031",
+            string_pattern_mismatch="NGFF-PL-032",
+        ),
+    ] = Field(
         description=(
             "Relative path to the well's group (format: 'row/column', e.g., 'A/1')"
         ),
         pattern=r"^[A-Za-z0-9]+/[A-Za-z0-9]+$",
     )
-    rowIndex: NonNegativeInt = Field(
+    rowIndex: Annotated[
+        NonNegativeInt,
+        RuleCodes(
+            missing="NGFF-PL-033", int="NGFF-PL-034", greater_than_equal="NGFF-PL-004"
+        ),
+    ] = Field(
         description="Zero-based index into the plate's rows list",
     )
-    columnIndex: NonNegativeInt = Field(
+    columnIndex: Annotated[
+        NonNegativeInt,
+        RuleCodes(
+            missing="NGFF-PL-033", int="NGFF-PL-035", greater_than_equal="NGFF-PL-005"
+        ),
+    ] = Field(
         description="Zero-based index into the plate's columns list",
     )
 
@@ -141,25 +178,47 @@ class PlateDef(_BaseModel):
     This is the core content of the `plate` metadata field.
     """
 
-    columns: Annotated[UniqueList[Column], MinLen(1)] = Field(
-        description="Column definitions for the plate grid"
-    )
-    rows: Annotated[UniqueList[Row], MinLen(1)] = Field(
-        description="Row definitions for the plate grid"
-    )
-    wells: Annotated[UniqueList[PlateWell], MinLen(1)] = Field(
+    columns: Annotated[
+        UniqueList[Column],
+        MinLen(1),
+        RuleCodes(
+            missing="NGFF-PL-015",
+            list="NGFF-PL-016",
+            object="NGFF-PL-016",
+            listItemsNotUnique="NGFF-PL-019",
+        ),
+    ] = Field(description="Column definitions for the plate grid")
+    rows: Annotated[
+        UniqueList[Row],
+        MinLen(1),
+        RuleCodes(
+            missing="NGFF-PL-022",
+            list="NGFF-PL-023",
+            object="NGFF-PL-023",
+            listItemsNotUnique="NGFF-PL-027",
+        ),
+    ] = Field(description="Row definitions for the plate grid")
+    wells: Annotated[
+        UniqueList[PlateWell],
+        MinLen(1),
+        RuleCodes(missing="NGFF-PL-028", list="NGFF-PL-029", object="NGFF-PL-029"),
+    ] = Field(
         description="List of all wells present in this plate with their grid positions"
     )
 
-    acquisitions: list[Acquisition] | None = Field(
+    acquisitions: Annotated[
+        list[Acquisition] | None, RuleCodes(list="NGFF-PL-008", object="NGFF-PL-008")
+    ] = Field(
         default=None,
         description="Imaging acquisition runs performed on this plate",
     )
-    field_count: PositiveInt | None = Field(
+    field_count: Annotated[
+        PositiveInt | None, RuleCodes(int="NGFF-PL-020", greater_than="NGFF-PL-020")
+    ] = Field(
         default=None,
         description="Maximum number of fields-of-view per well across the entire plate",
     )
-    name: str | None = Field(
+    name: Annotated[str | None, RuleCodes(str="NGFF-PL-021")] = Field(
         default=None,
         description="Human-readable name for this plate",
     )
@@ -192,14 +251,14 @@ class FieldOfView(_BaseModel):
     This class appears within the `images` list of a [`WellDef`][yaozarrs.v04.WellDef].
     """
 
-    path: RelaxedFOVPathName = Field(
+    path: Annotated[RelaxedFOVPathName, RuleCodes(missing="NGFF-WL-006")] = Field(
         description=(
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
         ),
         # pattern=r"^[A-Za-z0-9]+$",
     )
-    acquisition: int | None = Field(
+    acquisition: Annotated[int | None, RuleCodes(int="NGFF-WL-007")] = Field(
         default=None,
         description=(
             "Acquisition ID linking this field to a specific acquisition run. "
@@ -215,7 +274,11 @@ class WellDef(_BaseModel):
     imaging positions captured for this well.
     """
 
-    images: Annotated[UniqueList[FieldOfView], MinLen(1)] = Field(
+    images: Annotated[
+        UniqueList[FieldOfView],
+        MinLen(1),
+        RuleCodes(missing="NGFF-WL-004", list="NGFF-WL-005", object="NGFF-WL-005"),
+    ] = Field(
         description="List of all fields-of-view imaged in this well",
     )
     version: Literal["0.4"] = "0.4"

@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AfterValidator, ConfigDict, Field
 
 from yaozarrs._base import _BaseModel
-from yaozarrs._rules import rule_error
+from yaozarrs._rules import RuleCodes, rule_error
 
 
 class OmeroWindow(_BaseModel):
@@ -14,10 +14,18 @@ class OmeroWindow(_BaseModel):
     sets both the current display range (start/end) and the allowed range (min/max).
     """
 
-    start: float = Field(description="Lower bound of the current display window")
-    min: float = Field(description="Minimum allowed intensity value for this channel")
-    end: float = Field(description="Upper bound of the current display window")
-    max: float = Field(description="Maximum allowed intensity value for this channel")
+    start: Annotated[float, RuleCodes(missing="NGFF-OM-006")] = Field(
+        description="Lower bound of the current display window"
+    )
+    min: Annotated[float, RuleCodes(missing="NGFF-OM-005")] = Field(
+        description="Minimum allowed intensity value for this channel"
+    )
+    end: Annotated[float, RuleCodes(missing="NGFF-OM-006")] = Field(
+        description="Upper bound of the current display window"
+    )
+    max: Annotated[float, RuleCodes(missing="NGFF-OM-005")] = Field(
+        description="Maximum allowed intensity value for this channel"
+    )
 
 
 def _valid_hex(value: str) -> str:
@@ -37,7 +45,7 @@ class OmeroChannel(_BaseModel):
     color mapping, intensity windowing, and visibility.
     """
 
-    window: OmeroWindow = Field(
+    window: Annotated[OmeroWindow, RuleCodes(missing="NGFF-OM-004")] = Field(
         description="Intensity window for this channel",
     )
     label: str | None = Field(
@@ -48,7 +56,9 @@ class OmeroChannel(_BaseModel):
         default=None,
         description="Colormap family (typically 'linear' for fluorescence)",
     )
-    color: Annotated[str, AfterValidator(_valid_hex)] = Field(
+    color: Annotated[
+        str, AfterValidator(_valid_hex), RuleCodes(missing="NGFF-OM-003")
+    ] = Field(
         description="Display color as hex string without # (e.g., 'FF0000' for red)",
     )
     active: bool | None = Field(
@@ -116,9 +126,10 @@ class Omero(_BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
-    channels: list[OmeroChannel] = Field(
-        description="Rendering settings for each channel in the image",
-    )
+    channels: Annotated[
+        list[OmeroChannel],
+        RuleCodes(missing="NGFF-OM-002"),
+    ] = Field(description="Rendering settings for each channel in the image")
     id: int | None = Field(
         default=None,
         description="OMERO image ID (if from an OMERO server)",

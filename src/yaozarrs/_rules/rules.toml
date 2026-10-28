@@ -272,6 +272,25 @@ store = '''
   }
 }
 '''
+[rules.NGFF-AX-009]
+slug = 'axis-name-present'
+level = 'MUST'
+summary = 'Each axis must have a `name`.'
+introduced = '0.4'
+
+[[rules.NGFF-AX-009.sources]]
+quote = 'MUST contain the field "name" that gives the name for this dimension.'
+lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
+
+[rules.NGFF-AX-009.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
+}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-MS
 # ------------------------------------------------------------------------------
@@ -285,6 +304,40 @@ introduced = '0.4'
 [[rules.NGFF-MS-001.sources]]
 quote = 'Each "multiscales" dictionary SHOULD contain the field "name".'
 lines = { "0.4" = [380, 380], "0.5" = [324, 324] }
+
+[rules.NGFF-MS-002]
+slug = 'multiscales-axes-present'
+level = 'MUST'
+summary = 'Each "multiscales" entry must contain `axes`.'
+introduced = '0.4'
+
+[[rules.NGFF-MS-002.sources]]
+quote = 'Each "multiscales" dictionary MUST contain the field "axes"'
+lines = { "0.4" = [358, 358], "0.5" = [302, 302] }
+
+[rules.NGFF-MS-002.example]
+model = 'Multiscale'
+json = '''
+{
+  "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
+}
+'''
+
+[rules.NGFF-MS-003]
+slug = 'multiscales-datasets-present'
+level = 'MUST'
+summary = 'Each "multiscales" entry must contain `datasets`.'
+introduced = '0.4'
+
+[[rules.NGFF-MS-003.sources]]
+quote = 'Each "multiscales" dictionary MUST contain the field "datasets"'
+lines = { "0.4" = [364, 364], "0.5" = [308, 308] }
+
+[rules.NGFF-MS-003.example]
+model = 'Multiscale'
+json = '''
+{"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
 
 # ------------------------------------------------------------------------------
 # NGFF-DS
@@ -456,6 +509,38 @@ store = '''
   }
 }
 '''
+[rules.NGFF-DS-006]
+slug = 'dataset-path-present'
+level = 'MUST'
+summary = 'Each entry in `datasets` must contain `path`.'
+introduced = '0.4'
+
+[[rules.NGFF-DS-006.sources]]
+quote = 'Each dictionary in "datasets" MUST contain the field "path"'
+lines = { "0.4" = [365, 365], "0.5" = [309, 309] }
+
+[rules.NGFF-DS-006.example]
+model = 'Dataset'
+json = '''
+{"coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}
+'''
+
+[rules.NGFF-DS-007]
+slug = 'dataset-transforms-present'
+level = 'MUST'
+summary = 'Each entry in `datasets` must contain `coordinateTransformations`.'
+introduced = '0.4'
+
+[[rules.NGFF-DS-007.sources]]
+quote = 'Each dictionary in "datasets" MUST contain the field "coordinateTransformations"'
+lines = { "0.4" = [369, 369], "0.5" = [313, 313] }
+
+[rules.NGFF-DS-007.example]
+model = 'Dataset'
+json = '''
+{"path": "0"}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-CT
 # ------------------------------------------------------------------------------
@@ -573,6 +658,91 @@ json = '''
   "color": "GGGGGG",
   "window": {"start": 0, "end": 1, "min": 0, "max": 1}
 }
+'''
+
+[rules.NGFF-OM-002]
+slug = 'omero-channels-present'
+level = 'MUST'
+summary = '`omero` metadata, if present, must contain `channels`.'
+introduced = '0.5'
+notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+
+[[rules.NGFF-OM-002.sources]]
+quote = 'The "omero" metadata is optional, but if present it MUST contain the field "channels"'
+lines = { "0.5" = [384, 384] }
+
+[rules.NGFF-OM-002.example]
+model = 'Omero'
+json = '''
+{"name": "image"}
+'''
+
+[rules.NGFF-OM-003]
+slug = 'omero-channel-color-present'
+level = 'MUST'
+summary = 'Each omero channel must contain `color`.'
+introduced = '0.5'
+notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+
+[[rules.NGFF-OM-003.sources]]
+quote = 'Each dictionary in "channels" MUST contain the field "color"'
+lines = { "0.5" = [385, 385] }
+
+[rules.NGFF-OM-003.example]
+model = 'OmeroChannel'
+json = '''
+{"window": {"start": 0, "end": 1, "min": 0, "max": 1}}
+'''
+
+[rules.NGFF-OM-004]
+slug = 'omero-channel-window-present'
+level = 'MUST'
+summary = 'Each omero channel must contain `window`.'
+introduced = '0.5'
+notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+
+[[rules.NGFF-OM-004.sources]]
+quote = 'Each dictionary in "channels" MUST contain the field "window"'
+lines = { "0.5" = [386, 386] }
+
+[rules.NGFF-OM-004.example]
+model = 'OmeroChannel'
+json = '''
+{"color": "FF0000"}
+'''
+
+[rules.NGFF-OM-005]
+slug = 'omero-window-min-max-present'
+level = 'MUST'
+summary = 'An omero channel `window` must contain `min` and `max`.'
+introduced = '0.5'
+notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+
+[[rules.NGFF-OM-005.sources]]
+quote = 'The field "window" MUST contain the fields "min" and "max"'
+lines = { "0.5" = [387, 387] }
+
+[rules.NGFF-OM-005.example]
+model = 'OmeroWindow'
+json = '''
+{"start": 0, "end": 1}
+'''
+
+[rules.NGFF-OM-006]
+slug = 'omero-window-start-end-present'
+level = 'MUST'
+summary = 'An omero channel `window` must contain `start` and `end`.'
+introduced = '0.5'
+notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+
+[[rules.NGFF-OM-006.sources]]
+quote = 'It MUST also contain the fields "start" and "end"'
+lines = { "0.5" = [388, 388] }
+
+[rules.NGFF-OM-006.example]
+model = 'OmeroWindow'
+json = '''
+{"min": 0, "max": 1}
 '''
 
 # ------------------------------------------------------------------------------
@@ -735,6 +905,506 @@ store = '''
   }
 }
 '''
+[rules.NGFF-PL-008]
+slug = 'plate-acquisitions-array'
+level = 'MUST'
+summary = 'Plate `acquisitions`, if present, must be a list of objects.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-008.sources]]
+quote = 'The `plate` dictionary MAY contain an `acquisitions` key whose value MUST be a list of JSON objects'
+lines = { "0.4" = [529, 530], "0.5" = [464, 465] }
+
+[rules.NGFF-PL-008.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "acquisitions": {"id": 0}
+}
+'''
+
+[rules.NGFF-PL-009]
+slug = 'acquisition-id-present'
+level = 'MUST'
+summary = 'Each acquisition must contain `id`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-009.sources]]
+quote = 'acquisition object MUST contain an `id` key'
+lines = { "0.4" = [531, 531], "0.5" = [466, 466] }
+
+[rules.NGFF-PL-009.example]
+model = 'Acquisition'
+json = '''
+{"name": "first"}
+'''
+
+[rules.NGFF-PL-010]
+slug = 'acquisition-id-nonnegative-integer'
+level = 'MUST'
+summary = 'An acquisition `id` must be an integer greater than or equal to 0.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-010.sources]]
+quote = 'whose value MUST be an unique integer identifier greater than or equal to 0'
+lines = { "0.4" = [531, 532], "0.5" = [466, 467] }
+
+[rules.NGFF-PL-010.example]
+model = 'Acquisition'
+json = '''
+{"id": -1}
+'''
+
+[rules.NGFF-PL-011]
+slug = 'acquisition-name-string'
+level = 'MUST'
+summary = 'An acquisition `name`, if present, must be a string.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-011.sources]]
+quote = 'Each acquisition object SHOULD contain a `name` key whose value MUST be a string'
+lines = { "0.4" = [534, 534], "0.5" = [469, 469] }
+
+[rules.NGFF-PL-011.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "name": 1}
+'''
+
+[rules.NGFF-PL-012]
+slug = 'acquisition-maximumfieldcount-positive'
+level = 'MUST'
+summary = 'An acquisition `maximumfieldcount`, if present, must be a positive integer.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-012.sources]]
+quote = 'key whose value MUST be a positive integer indicating the maximum number of fields of view'
+lines = { "0.4" = [536, 536], "0.5" = [471, 471] }
+
+[rules.NGFF-PL-012.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "maximumfieldcount": 0}
+'''
+
+[rules.NGFF-PL-013]
+slug = 'acquisition-description-string'
+level = 'MUST'
+summary = 'An acquisition `description`, if present, must be a string.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-013.sources]]
+quote = 'Each acquisition object MAY contain a `description` key whose value MUST be a string'
+lines = { "0.4" = [537, 538], "0.5" = [472, 473] }
+
+[rules.NGFF-PL-013.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "description": 1}
+'''
+
+[rules.NGFF-PL-014]
+slug = 'acquisition-times-integer'
+level = 'MUST'
+summary = 'An acquisition `starttime` or `endtime`, if present, must be an integer epoch timestamp.'
+introduced = '0.4'
+notes = "yaozarrs also requires them to be greater than or equal to 0, which the spec doesn't state; that error doesn't carry this code."
+
+[[rules.NGFF-PL-014.sources]]
+quote = 'a `starttime` and/or `endtime` key whose values MUST be integer epoch timestamps'
+lines = { "0.4" = [539, 539], "0.5" = [474, 474] }
+
+[rules.NGFF-PL-014.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "starttime": 1.5}
+'''
+
+[rules.NGFF-PL-015]
+slug = 'plate-columns-present'
+level = 'MUST'
+summary = 'A plate must contain `columns`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-015.sources]]
+quote = 'The `plate` dictionary MUST contain a `columns` key'
+lines = { "0.4" = [542, 542], "0.5" = [477, 477] }
+
+[rules.NGFF-PL-015.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-016]
+slug = 'plate-columns-array'
+level = 'MUST'
+summary = 'Plate `columns` must be a list of objects.'
+introduced = '0.4'
+notes = "yaozarrs also requires at least one entry (from the JSON schema); those errors don't carry this code."
+
+[[rules.NGFF-PL-016.sources]]
+quote = '`columns` key whose value MUST be a list of JSON objects defining the columns of the plate'
+lines = { "0.4" = [542, 543], "0.5" = [477, 478] }
+
+[rules.NGFF-PL-016.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": {"name": "1"},
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-017]
+slug = 'column-name-present'
+level = 'MUST'
+summary = 'Each plate column must contain `name`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-017.sources]]
+quote = 'Each column object MUST contain a `name` key'
+lines = { "0.4" = [545, 546], "0.5" = [480, 481] }
+
+[rules.NGFF-PL-017.example]
+model = 'Column'
+json = '''
+{}
+'''
+
+[rules.NGFF-PL-018]
+slug = 'column-name-alphanumeric'
+level = 'MUST'
+summary = 'A plate column `name` must contain only alphanumeric characters.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-018.sources]]
+quote = 'specifying the column name. The `name` MUST contain only alphanumeric characters'
+lines = { "0.4" = [546, 547], "0.5" = [481, 482] }
+
+[rules.NGFF-PL-018.example]
+model = 'Column'
+json = '''
+{"name": "1-a"}
+'''
+
+[rules.NGFF-PL-019]
+slug = 'column-name-unique'
+level = 'MUST NOT'
+summary = 'Plate column names must be unique.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-019.sources]]
+quote = 'MUST NOT be a duplicate of any other `name` in the `columns` list'
+lines = { "0.4" = [547, 548], "0.5" = [482, 483] }
+
+[rules.NGFF-PL-019.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}, {"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-020]
+slug = 'plate-field-count-positive'
+level = 'MUST'
+summary = 'Plate `field_count`, if present, must be a positive integer.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-020.sources]]
+quote = 'The `plate` dictionary SHOULD contain a `field_count` key whose value MUST be a positive integer'
+lines = { "0.4" = [551, 551], "0.5" = [486, 486] }
+
+[rules.NGFF-PL-020.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "field_count": 0
+}
+'''
+
+[rules.NGFF-PL-021]
+slug = 'plate-name-string'
+level = 'MUST'
+summary = 'Plate `name`, if present, must be a string.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-021.sources]]
+quote = 'The `plate` dictionary SHOULD contain a `name` key whose value MUST be a string'
+lines = { "0.4" = [554, 554], "0.5" = [489, 489] }
+
+[rules.NGFF-PL-021.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "name": 1
+}
+'''
+
+[rules.NGFF-PL-022]
+slug = 'plate-rows-present'
+level = 'MUST'
+summary = 'A plate must contain `rows`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-022.sources]]
+quote = 'The `plate` dictionary MUST contain a `rows` key'
+lines = { "0.4" = [557, 557], "0.5" = [492, 492] }
+
+[rules.NGFF-PL-022.example]
+model = 'PlateDef'
+json = '''
+{
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-023]
+slug = 'plate-rows-array'
+level = 'MUST'
+summary = 'Plate `rows` must be a list of objects.'
+introduced = '0.4'
+notes = "yaozarrs also requires at least one entry (from the JSON schema); those errors don't carry this code."
+
+[[rules.NGFF-PL-023.sources]]
+quote = '`rows` key whose value MUST be a list of JSON objects defining the rows of the plate'
+lines = { "0.4" = [557, 558], "0.5" = [492, 493] }
+
+[rules.NGFF-PL-023.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": {"name": "A"},
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-024]
+slug = 'row-name-present'
+level = 'MUST'
+summary = 'Each plate row must contain `name`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-024.sources]]
+quote = 'Each defined row MUST contain a `name` key'
+lines = { "0.4" = [560, 561], "0.5" = [495, 496] }
+
+[rules.NGFF-PL-024.example]
+model = 'Row'
+json = '''
+{}
+'''
+
+[rules.NGFF-PL-025]
+slug = 'row-name-string'
+level = 'MUST'
+summary = 'A plate row `name` must be a string.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-025.sources]]
+quote = 'whose value MUST be a string defining the row name'
+lines = { "0.4" = [561, 561], "0.5" = [496, 496] }
+
+[rules.NGFF-PL-025.example]
+model = 'Row'
+json = '''
+{"name": 1}
+'''
+
+[rules.NGFF-PL-026]
+slug = 'row-name-alphanumeric'
+level = 'MUST'
+summary = 'A plate row `name` must contain only alphanumeric characters.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-026.sources]]
+quote = 'defining the row name. The `name` MUST contain only alphanumeric characters'
+lines = { "0.4" = [561, 562], "0.5" = [496, 497] }
+
+[rules.NGFF-PL-026.example]
+model = 'Row'
+json = '''
+{"name": "A_1"}
+'''
+
+[rules.NGFF-PL-027]
+slug = 'row-name-unique'
+level = 'MUST NOT'
+summary = 'Plate row names must be unique.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-027.sources]]
+quote = 'MUST NOT be a duplicate of any other `name` in the `rows` list'
+lines = { "0.4" = [562, 563], "0.5" = [497, 498] }
+
+[rules.NGFF-PL-027.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}, {"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[rules.NGFF-PL-028]
+slug = 'plate-wells-present'
+level = 'MUST'
+summary = 'A plate must contain `wells`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-028.sources]]
+quote = 'The `plate` dictionary MUST contain a `wells` key'
+lines = { "0.4" = [569, 569], "0.5" = [504, 504] }
+
+[rules.NGFF-PL-028.example]
+model = 'PlateDef'
+json = '''
+{"rows": [{"name": "A"}], "columns": [{"name": "1"}]}
+'''
+
+[rules.NGFF-PL-029]
+slug = 'plate-wells-array'
+level = 'MUST'
+summary = 'Plate `wells` must be a list of objects.'
+introduced = '0.4'
+notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+
+[[rules.NGFF-PL-029.sources]]
+quote = '`wells` key whose value MUST be a list of JSON objects defining the wells of the plate'
+lines = { "0.4" = [569, 570], "0.5" = [504, 505] }
+
+[rules.NGFF-PL-029.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": {"path": "A/1", "rowIndex": 0, "columnIndex": 0}
+}
+'''
+
+[rules.NGFF-PL-030]
+slug = 'well-path-present'
+level = 'MUST'
+summary = 'Each plate well must contain `path`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-030.sources]]
+quote = 'Each well object MUST contain a `path` key'
+lines = { "0.4" = [570, 570], "0.5" = [505, 505] }
+
+[rules.NGFF-PL-030.example]
+model = 'PlateWell'
+json = '''
+{"rowIndex": 0, "columnIndex": 0}
+'''
+
+[rules.NGFF-PL-031]
+slug = 'well-path-string'
+level = 'MUST'
+summary = 'A plate well `path` must be a string.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-031.sources]]
+quote = 'whose value MUST be a string specifying the path to the well subgroup'
+lines = { "0.4" = [570, 571], "0.5" = [505, 506] }
+
+[rules.NGFF-PL-031.example]
+model = 'PlateWell'
+json = '''
+{"path": 1, "rowIndex": 0, "columnIndex": 0}
+'''
+
+[rules.NGFF-PL-032]
+slug = 'well-path-row-column'
+level = 'MUST'
+summary = 'A plate well `path` must have the form `<row name>/<column name>`.'
+introduced = '0.4'
+notes = "yaozarrs checks the form with the pattern `^[A-Za-z0-9]+/[A-Za-z0-9]+$`, which also rules out leading or trailing directories. That the names match the well's row and column is [NGFF-PL-006](NGFF-PL-006.md)."
+
+[[rules.NGFF-PL-032.sources]]
+quote = 'The `path` MUST consist of a `name` in the `rows` list, a file separator (`/`), and a `name` from the `columns` list, in that order.'
+lines = { "0.4" = [571, 572], "0.5" = [506, 507] }
+
+[rules.NGFF-PL-032.example]
+model = 'PlateWell'
+json = '''
+{"path": "A1", "rowIndex": 0, "columnIndex": 0}
+'''
+
+[rules.NGFF-PL-033]
+slug = 'well-indices-present'
+level = 'MUST'
+summary = 'Each plate well must contain `rowIndex` and `columnIndex`.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-033.sources]]
+quote = 'Each well object MUST contain both a `rowIndex` key'
+lines = { "0.4" = [574, 574], "0.5" = [509, 509] }
+
+[rules.NGFF-PL-033.example]
+model = 'PlateWell'
+json = '''
+{"path": "A/1", "columnIndex": 0}
+'''
+
+[rules.NGFF-PL-034]
+slug = 'well-row-index-integer'
+level = 'MUST'
+summary = 'A plate well `rowIndex` must be an integer.'
+introduced = '0.4'
+notes = 'A negative `rowIndex` is reported as [NGFF-PL-004](NGFF-PL-004.md).'
+
+[[rules.NGFF-PL-034.sources]]
+quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` list'
+lines = { "0.4" = [574, 575], "0.5" = [509, 510] }
+
+[rules.NGFF-PL-034.example]
+model = 'PlateWell'
+json = '''
+{"path": "A/1", "rowIndex": "A", "columnIndex": 0}
+'''
+
+[rules.NGFF-PL-035]
+slug = 'well-column-index-integer'
+level = 'MUST'
+summary = 'A plate well `columnIndex` must be an integer.'
+introduced = '0.4'
+notes = 'A negative `columnIndex` is reported as [NGFF-PL-005](NGFF-PL-005.md).'
+
+[[rules.NGFF-PL-035.sources]]
+quote = 'a `columnIndex` key whose value MUST be an integer indentifying the index into the `columns` list'
+lines = { "0.4" = [575, 576] }
+
+[[rules.NGFF-PL-035.sources]]
+quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` list'
+lines = { "0.5" = [510, 511] }
+
+[rules.NGFF-PL-035.example]
+model = 'PlateWell'
+json = '''
+{"path": "A/1", "rowIndex": 0, "columnIndex": "A"}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-WL
 # ------------------------------------------------------------------------------
@@ -793,6 +1463,71 @@ store = '''
   }
 }
 '''
+[rules.NGFF-WL-004]
+slug = 'well-images-present'
+level = 'MUST'
+summary = 'A well must contain `images`.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-004.sources]]
+quote = 'The `well` dictionary MUST contain an `images` key'
+lines = { "0.4" = [602, 602], "0.5" = [537, 537] }
+
+[rules.NGFF-WL-004.example]
+model = 'WellDef'
+json = '''
+{}
+'''
+
+[rules.NGFF-WL-005]
+slug = 'well-images-array'
+level = 'MUST'
+summary = 'Well `images` must be a list of objects.'
+introduced = '0.4'
+notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+
+[[rules.NGFF-WL-005.sources]]
+quote = '`images` key whose value MUST be a list of JSON objects specifying all fields of views for a given well'
+lines = { "0.4" = [602, 603], "0.5" = [537, 538] }
+
+[rules.NGFF-WL-005.example]
+model = 'WellDef'
+json = '''
+{"images": {"path": "0"}}
+'''
+
+[rules.NGFF-WL-006]
+slug = 'field-path-present'
+level = 'MUST'
+summary = 'Each well image (field of view) must contain `path`.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-006.sources]]
+quote = 'Each image object MUST contain a `path` key'
+lines = { "0.4" = [603, 604], "0.5" = [538, 539] }
+
+[rules.NGFF-WL-006.example]
+model = 'FieldOfView'
+json = '''
+{"acquisition": 0}
+'''
+
+[rules.NGFF-WL-007]
+slug = 'field-acquisition-integer'
+level = 'MUST'
+summary = 'A field of view `acquisition`, if present, must be an integer.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-007.sources]]
+quote = 'it MUST contain an `acquisition` key whose value MUST be an integer identifying the acquisition'
+lines = { "0.4" = [607, 607], "0.5" = [542, 542] }
+
+[rules.NGFF-WL-007.example]
+model = 'FieldOfView'
+json = '''
+{"path": "0", "acquisition": "first"}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-BF
 # ------------------------------------------------------------------------------
@@ -910,6 +1645,39 @@ store = '''
     "attributes": {"ome": {"version": "0.5", "series": ["0", "1"]}}
   }
 }
+'''
+
+[rules.NGFF-BF-003]
+slug = 'bf2raw-layout-3'
+level = 'MUST'
+summary = 'The top of a bioformats2raw hierarchy must have `"bioformats2raw.layout": 3`.'
+introduced = '0.4'
+
+[[rules.NGFF-BF-003.sources]]
+quote = 'MUST have the value "3" for the "bioformats2raw.layout" key'
+lines = { "0.4" = [307, 307], "0.5" = [248, 248] }
+
+[rules.NGFF-BF-003.example]
+model = 'Bf2Raw'
+json = '''
+{"bioformats2raw.layout": 2}
+'''
+
+[rules.NGFF-BF-004]
+slug = 'bf2raw-series-strings'
+level = 'MUST'
+summary = '"series" must be a list of strings.'
+introduced = '0.4'
+notes = "yaozarrs also requires at least one entry; that error doesn't carry this code."
+
+[[rules.NGFF-BF-004.sources]]
+quote = '"series" MUST be a list of string objects'
+lines = { "0.4" = [319, 319], "0.5" = [260, 260] }
+
+[rules.NGFF-BF-004.example]
+model = 'Series'
+json = '''
+{"series": [0]}
 '''
 
 # ------------------------------------------------------------------------------
@@ -1357,6 +2125,160 @@ store = '''
     "dimension_names": ["y", "x"]
   }
 }
+'''
+
+[rules.NGFF-IL-005]
+slug = 'image-label-colors-array'
+level = 'MUST'
+summary = '`image-label` `colors` must be an array.'
+introduced = '0.5'
+notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+
+[[rules.NGFF-IL-005.sources]]
+quote = 'a `colors` key, whose value MUST be a JSON array'
+lines = { "0.5" = [426, 427] }
+
+[rules.NGFF-IL-005.example]
+model = 'ImageLabel'
+json = '''
+{"colors": {"label-value": 1}}
+'''
+
+[rules.NGFF-IL-006]
+slug = 'label-color-value-present'
+level = 'MUST'
+summary = 'Each entry in `colors` must contain `label-value`.'
+introduced = '0.4'
+
+[[rules.NGFF-IL-006.sources]]
+quote = 'Each entry in the list MUST contain the key "label-value" with the pixel value for that label. Additionally, the "rgba" key MAY be present'
+lines = { "0.4" = [466, 467] }
+
+[[rules.NGFF-IL-006.sources]]
+quote = 'Each of these objects MUST contain the `label-value` key'
+lines = { "0.5" = [431, 431] }
+
+[rules.NGFF-IL-006.example]
+model = 'LabelColor'
+json = '''
+{"rgba": [255, 0, 0, 255]}
+'''
+
+[rules.NGFF-IL-007]
+slug = 'label-color-value-integer'
+level = 'MUST'
+summary = "A `colors` entry's `label-value` must be an integer."
+introduced = '0.5'
+
+[[rules.NGFF-IL-007.sources]]
+quote = 'whose value MUST be the integer corresponding to a particular label'
+lines = { "0.5" = [431, 432] }
+
+[rules.NGFF-IL-007.example]
+model = 'LabelColor'
+json = '''
+{"label-value": 1.5}
+'''
+
+[rules.NGFF-IL-008]
+slug = 'label-color-rgba'
+level = 'MUST'
+summary = "A `colors` entry's `rgba`, if present, must be an array of four integers from 0 to 255."
+introduced = '0.5'
+
+[[rules.NGFF-IL-008.sources]]
+quote = 'the objects in this array MAY contain an `rgba` key whose value MUST be an array of four integers between 0 and 255, inclusive.'
+lines = { "0.5" = [432, 433] }
+
+[rules.NGFF-IL-008.example]
+model = 'LabelColor'
+json = '''
+{"label-value": 1, "rgba": [255, 0, 300, 255]}
+'''
+
+[rules.NGFF-IL-009]
+slug = 'image-label-properties-array'
+level = 'MUST'
+summary = '`image-label` `properties` must be an array of objects.'
+introduced = '0.5'
+notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+
+[[rules.NGFF-IL-009.sources]]
+quote = 'the value of the `properties` key MUST be an array of JSON objects'
+lines = { "0.5" = [439, 439] }
+
+[rules.NGFF-IL-009.example]
+model = 'ImageLabel'
+json = '''
+{"properties": {"label-value": 1}}
+'''
+
+[rules.NGFF-IL-010]
+slug = 'label-property-value-present'
+level = 'MUST'
+summary = 'Each entry in `properties` must contain `label-value`.'
+introduced = '0.4'
+
+[[rules.NGFF-IL-010.sources]]
+quote = 'Each entry in the list MUST contain the key "label-value" with the pixel value for that label. Additionally, an arbitrary number of key-value pairs'
+lines = { "0.4" = [476, 477] }
+
+[[rules.NGFF-IL-010.sources]]
+quote = 'Each object in the `properties` array MUST contain the `label-value` key'
+lines = { "0.5" = [440, 440] }
+
+[rules.NGFF-IL-010.example]
+model = 'LabelProperty'
+json = '''
+{"class": "cell"}
+'''
+
+[rules.NGFF-IL-011]
+slug = 'label-property-value-integer'
+level = 'MUST'
+summary = "A `properties` entry's `label-value` must be an integer."
+introduced = '0.5'
+
+[[rules.NGFF-IL-011.sources]]
+quote = 'whose value again MUST be an integer specifying the pixel value for that label'
+lines = { "0.5" = [440, 440] }
+
+[rules.NGFF-IL-011.example]
+model = 'LabelProperty'
+json = '''
+{"label-value": "one"}
+'''
+
+[rules.NGFF-IL-012]
+slug = 'image-label-source-object'
+level = 'MUST'
+summary = '`image-label` `source` must be an object.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-012.sources]]
+quote = 'The value of the `source` key MUST be a JSON object'
+lines = { "0.5" = [444, 444] }
+
+[rules.NGFF-IL-012.example]
+model = 'ImageLabel'
+json = '''
+{"source": "../../"}
+'''
+
+[rules.NGFF-IL-013]
+slug = 'image-label-source-image-string'
+level = 'MUST'
+summary = '`image-label` `source.image`, if present, must be a string.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-013.sources]]
+quote = 'This object MAY include a key `image`, whose value MUST be a string'
+lines = { "0.5" = [445, 445] }
+
+[rules.NGFF-IL-013.example]
+model = 'LabelSource'
+json = '''
+{"image": 1}
 '''
 
 # ------------------------------------------------------------------------------

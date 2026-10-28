@@ -6,7 +6,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._common._plate import Acquisition, Column, PlateDef, PlateWell, Row
-from yaozarrs._rules import rule_error
+from yaozarrs._rules import RuleCodes, rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import RelaxedFOVPathName
 
@@ -74,7 +74,9 @@ class Plate(_BaseModel):
         description="Plate layout and well organization",
     )
 
-    bioformats2raw_layout: Literal[3] | None = Field(
+    bioformats2raw_layout: Annotated[
+        Literal[3] | None, RuleCodes(literal_error="NGFF-BF-003")
+    ] = Field(
         default=None,
         alias="bioformats2raw.layout",
         description=(
@@ -92,14 +94,14 @@ class FieldOfView(_BaseModel):
     This class appears within the `images` list of a [`WellDef`][yaozarrs.v05.WellDef].
     """
 
-    path: RelaxedFOVPathName = Field(
+    path: Annotated[RelaxedFOVPathName, RuleCodes(missing="NGFF-WL-006")] = Field(
         description=(
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
         ),
         # pattern=r"^[A-Za-z0-9]+$",
     )
-    acquisition: int | None = Field(
+    acquisition: Annotated[int | None, RuleCodes(int="NGFF-WL-007")] = Field(
         default=None,
         description=(
             "Acquisition ID linking this field to a specific acquisition run. "
@@ -115,7 +117,11 @@ class WellDef(_BaseModel):
     imaging positions captured for this well.
     """
 
-    images: Annotated[UniqueList[FieldOfView], MinLen(1)] = Field(
+    images: Annotated[
+        UniqueList[FieldOfView],
+        MinLen(1),
+        RuleCodes(missing="NGFF-WL-004", list="NGFF-WL-005", object="NGFF-WL-005"),
+    ] = Field(
         description="List of all fields-of-view imaged in this well",
     )
 

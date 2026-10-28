@@ -11,12 +11,14 @@ from pydantic import (
 
 from ._base import _BaseModel
 from ._common._units import SpaceUnits, TimeUnits
-from ._rules import rule_error
+from ._rules import RuleCodes, rule_error
 from ._types import UniqueList
 
 
 class _AxisBase(_BaseModel):
-    name: str = Field(description="The name of the axis.")
+    name: Annotated[str, RuleCodes(missing="NGFF-AX-009")] = Field(
+        description="The name of the axis."
+    )
 
 
 # these three classes allow us to:

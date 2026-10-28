@@ -9,7 +9,7 @@ from yaozarrs._axis import AxesList
 from yaozarrs._base import _BaseModel
 from yaozarrs._common._omero import Omero
 from yaozarrs._dim_spec import DimSpec
-from yaozarrs._rules import rule_error
+from yaozarrs._rules import RuleCodes, rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import SuggestDatasetPath
 
@@ -138,7 +138,7 @@ class Dataset(_BaseModel):
     where each level represents the same physical region at different sampling rates.
     """
 
-    path: Annotated[str, SuggestDatasetPath] = Field(
+    path: Annotated[str, SuggestDatasetPath, RuleCodes(missing="NGFF-DS-006")] = Field(
         description=(
             "Path to the Zarr array for this resolution level, "
             "relative to the parent multiscale group. All strings are allowed "
@@ -148,7 +148,9 @@ class Dataset(_BaseModel):
         )
     )
 
-    coordinateTransformations: CoordinateTransformsList = Field(
+    coordinateTransformations: Annotated[
+        CoordinateTransformsList, RuleCodes(missing="NGFF-DS-007")
+    ] = Field(
         description=(
             "Transformations mapping array indices to physical coordinates. "
             "Must include exactly one scale transformation, "
@@ -236,10 +238,10 @@ class Multiscale(_BaseModel):
         default=None,
         description="Optional identifier for this multiscale image",
     )
-    axes: AxesList = Field(
+    axes: Annotated[AxesList, RuleCodes(missing="NGFF-MS-002")] = Field(
         description="Ordered list of dimension axes defining the coordinate system"
     )
-    datasets: DatasetsList = Field(
+    datasets: Annotated[DatasetsList, RuleCodes(missing="NGFF-MS-003")] = Field(
         description=(
             "Resolution pyramid levels, ordered from highest to lowest resolution"
         )
