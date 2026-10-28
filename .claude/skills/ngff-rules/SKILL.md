@@ -1,0 +1,161 @@
+---
+name: ngff-rules
+description: Audit, add, change, or retire NGFF rule codes (NGFF-XX-NNN / YZ-NNN) in yaozarrs. Use when a new NGFF spec version (release, patch, or dev tag) comes out, when adding or changing a validation check, or when asked to verify that existing rule codes, quotes, line numbers, examples, or coverage are correct.
+---
+
+# NGFF rule codes
+
+Every spec-violation error or warning in yaozarrs carries a permanent code that
+points at one normative statement in the NGFF spec. The pieces are:
+
+- `src/yaozarrs/_rules/rules.toml`: the registry and single source of truth. It holds
+  the pinned spec files (`[spec."<version>"]`, whose keys are the tracked versions)
+  and every rule (`[rules.<CODE>]`), with its quotes, line numbers, and a minimal
+  failing `example`.
+- `src/yaozarrs/_rules/__init__.py`: `rule_error(code, msg)` (raise it inside a pydantic
+  validator) and `warn_rule(code, msg, stacklevel)`.
+- `scripts/ngff_rules.py`: `fetch`, `check [--fix]`, `relocate`, `coverage`, and
+  `docs`.
+- `tests/spec_sources/`: vendored spec files at the pinned commits.
+- `tests/test_rules.py`: integrity tests, and the coverage test. The coverage test runs
+  every example against every version module and expects it to fire exactly in the
+  versions whose spec states the rule, except for the `KNOWN_GAPS` and
+  `KNOWN_OVERREACH` entries (which are also verified, so stale entries fail).
+- `docs/rules/`: generated at docs-build time and gitignored. Never edit them.
+
+A rule entry looks like this. A quote shared by several versions has one `lines`
+entry per version. If the wording differs between versions, add another
+`[[rules.<CODE>.sources]]` block.
+
+```toml
+[rules.NGFF-AX-001]
+slug = 'axis-name-unique'
+level = 'MUST'
+summary = 'Axis names must be unique within `axes`.'
+introduced = '0.4'
+
+[[rules.NGFF-AX-001.sources]]
+quote = 'The values MUST be unique across all "name" fields.'
+lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
+
+[rules.NGFF-AX-001.example]
+model = 'Multiscale'   # class name in yaozarrs.v04 / yaozarrs.v05
+json = '''
+{"axes": [...], "datasets": [...]}
+'''
+```
+
+Rules checked by the storage validator (`validate_zarr_store`) use a `store` example
+instead of `model`/`json`. It is a JSON object that maps v0.5 metadata file paths to
+their contents (`{"zarr.json": {...}, "s0/zarr.json": {...}}`); no chunk data is
+needed. `to_v04_store` in `scripts/ngff_rules.py` derives the v0.4 layout
+automatically. In code, storage checks pass the code to
+`result.add_error(StorageErrorType.<type>, "<code>", loc, msg)`. Several storage
+`type`s can share one code: `type` is the specific failure, `code` is the spec
+statement.
+
+Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error`),
+`status` (`stable` by default), `removed`, `supersedes`, `aliases`, and
+`checkable = false`.
+
+## Invariants (never break these)
+
+1. **Codes are permanent.** Never renumber, reuse, or delete a code. A new code takes
+   the next unused number in its area (look at the highest existing number in
+   `rules.toml`, including withdrawn rules).
+2. **One rule = one (subject, constraint, RFC 2119 level).** A sentence with two
+   keywords is two rules. If a later version changes any of the three, the old rule
+   gets `removed="<version>"` and a new code is minted with `supersedes=("<old>",)`.
+   If only the wording changes, keep the code and add a source for the new version.
+3. **Quotes are verbatim** (whitespace-insensitive) and must contain the rule's
+   `level` keyword. Never type line numbers by hand. Write `[0, 0]` and run
+   `uv run python scripts/ngff_rules.py check --fix`, which fills them in when a quote
+   occurs exactly once and leaves the rest of the file untouched. If a quote is
+   ambiguous, extend it until it is unique.
+4. **`NGFF-` codes only cite spec text.** Checks that yaozarrs adds go in `YZ-NNN`
+   (no `level`, `introduced`, or `sources`, and `severity` must be set).
+5. **Coverage is computed, never declared.** Every code that yaozarrs emits has an
+   `example`, and `scripts/ngff_rules.py coverage` shows where each one fires. If the
+   coverage test fails, find out why before touching `KNOWN_GAPS` or
+   `KNOWN_OVERREACH`. A new entry in either set is a behavior decision, so ask the
+   user.
+6. **Drafts:** a rule first seen in a dev version (e.g. `0.9.dev2`, PEP 440 form;
+   normalize upstream tags like `0.6dev1` to `0.6.dev1`) gets a permanent code with
+   `status="draft"`. A draft may be edited in place. When the version is released,
+   switch it to `status="stable"`, point its sources at the release `SpecDoc`, and set
+   `introduced` to the release version. If it is dropped before release, use
+   `status="withdrawn"` and `removed="<dev version where it disappeared>"`. Only mint
+   codes for dev-version rules that yaozarrs actually checks.
+
+Area prefixes: `AX` axes, `MS` multiscales, `DS` datasets, `CT`
+coordinateTransformations, `LB` labels, `IL` image-label, `PL` plate, `WL` well,
+`BF` bioformats2raw, `OM` omero, `ZR` zarr/storage layout, `GN` general. Ask the user
+before adding a new area.
+
+## Workflow: audit existing rules
+
+1. `uv run python scripts/ngff_rules.py check`: every quote must be at its lines.
+2. For each rule, read the quote **in context**: open the vendored spec file in
+   `tests/spec_sources/` about 10 lines around `lines`. Confirm that:
+   - the `level` matches the keyword that governs the constraint;
+   - the `summary` says what the spec says, no more and no less;
+   - the yaozarrs check (grep `src/` for the code) enforces that statement. Record any
+     deliberate divergence (relaxed, stricter, partial) in `notes`.
+3. Run `scripts/ngff_rules.py coverage`, and review `KNOWN_GAPS` and
+   `KNOWN_OVERREACH` in `tests/test_rules.py`. Check that each example is minimal: it
+   should violate only the rule it illustrates, apart from errors that can't be
+   avoided. Report gaps and overreach rather than fixing them silently.
+4. Report what you found. Don't change validation behavior without asking.
+
+## Workflow: a new spec version is tagged
+
+1. Find the immutable commit: `git ls-remote --tags https://github.com/<repo>` (use the
+   `^{}` peeled sha). Versions ≥ 0.6 live in `ome/ngff-spec` (`index.md`, MyST); 0.4
+   and 0.5 live in `ome/ngff` (`<v>/index.bs`, Bikeshed).
+2. Patch release of a tracked version (e.g. 0.5.3): update that version's `SpecDoc`
+   tag and sha, run `fetch` (delete the old vendored file), then `check --fix`.
+   Investigate every quote that is no longer found.
+3. New minor or dev version:
+   1. Add a `[spec."<version>"]` table to `rules.toml`, then run `fetch`.
+      If yaozarrs gains a module for the version, add it to `MODULES` in
+      `scripts/ngff_rules.py`.
+   2. `uv run python scripts/ngff_rules.py relocate <repo> <sha> <path>` lists which
+      current quotes still appear verbatim. A format change (Bikeshed → MyST,
+      changed quoting or backticks) makes many quotes come up NOT FOUND even when the
+      statement is unchanged, so search for each missing statement by hand.
+   3. For each existing rule, decide one of the following. Read the surrounding text,
+      because a sentence can stay identical while its meaning shifts.
+      - **unchanged**: add `"<version>" = [0, 0]` to the `lines` of the matching
+        quote, or add a new `sources` block if the wording differs;
+      - **removed**: set `removed="<new version>"`;
+      - **changed meaning**: set `removed`, and mint a new code with `supersedes`.
+      Ask the user when it's unclear whether the meaning changed.
+   4. Grep the new spec for `MUST|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL` and list
+      the statements the registry doesn't cover yet. Propose codes only for ones
+      yaozarrs checks (or that the user wants checked). Unchecked ones can be added
+      without an `example`, or with `checkable = false` for statements about reader or
+      writer behavior.
+   5. `check --fix`, then the closing steps below.
+
+## Workflow: add or change a check in code
+
+1. Find the governing statement in the spec. If none exists, use a `YZ-` code.
+2. Add the rule to `rules.toml` (next free number in the area; `[0, 0]` lines), then
+   run `check --fix`.
+3. In the validator, `raise rule_error("<code>", msg)` or
+   `warn_rule("<code>", msg, stacklevel=...)`. Keep existing message text, because
+   tests and users match on it.
+4. Add an `example`: the model class name plus a minimal failing JSON document, or a
+   `store` for storage checks. Then run `scripts/ngff_rules.py coverage` to confirm where
+   it fires. An example should trigger only its own rule, apart from errors that can't
+   be avoided; check what it emits with `emitted_codes()`.
+
+## Closing steps (always)
+
+```sh
+uv run python scripts/ngff_rules.py check
+uv run pytest tests/test_rules.py
+just docs                # optional: render docs/rules/ and build the site
+uv run pytest            # message changes can affect other tests
+uv run ruff format && uv run ruff check --fix
+```
