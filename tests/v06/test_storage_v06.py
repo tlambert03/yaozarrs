@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from yaozarrs import validate_zarr_store
-from yaozarrs._storage import StorageErrorType, StorageValidationError
+from yaozarrs._storage import (
+    StorageErrorType,
+    StorageValidationError,
+    StorageValidationWarning,
+)
 
 pytest.importorskip("fsspec")
 
@@ -17,15 +21,18 @@ if TYPE_CHECKING:
 
 DATA = Path(__file__).parent.parent / "data" / "v06"
 STORES = ["bf2raw", "image_2d", "image_tczyx", "image_transforms", "image_with_labels"]
-STORES += ["image_zyx_oriented", "plate"]
+STORES += ["image_zyx_oriented", "plate", "scene", "scene_registration"]
+SPACE = [{"name": n, "type": "space"} for n in "zyx"]
 
 
-def _write_array(path: Path, ndim: int, dtype: str) -> None:
+def _write_array(
+    path: Path, ndim: int, dtype: str, shape: list[int] | None = None
+) -> None:
     path.mkdir(parents=True, exist_ok=True)
     meta = {
         "zarr_format": 3,
         "node_type": "array",
-        "shape": [8] * ndim,
+        "shape": shape or [8] * ndim,
         "data_type": dtype,
         "chunk_grid": {"name": "regular", "configuration": {"chunk_shape": [8] * ndim}},
         "chunk_key_encoding": {"name": "default"},
@@ -68,18 +75,202 @@ def _label_ref(data: dict) -> dict:
     return _ms(data)["coordinateTransformations"][0]["output"]
 
 
-def _drop_label_channel_axis(root: Path) -> None:
-    # a valid 3D label image, referenced from a 4D image by an identity
-    def _drop(data: dict) -> None:
-        ms = _ms(data)
-        ms["coordinateSystems"][0]["axes"].pop(0)
-        for ds in ms["datasets"]:
-            t = ds["coordinateTransformations"][0]
-            for step in t.get("transformations", [t]):  # (scale, or a sequence)
-                step.get("scale", step.get("translation")).pop(0)
-            _write_array(root / "labels" / "nuclei" / ds["path"], 3, "uint8")
+def _scene(data: dict) -> dict:
+    return data["attributes"]["ome"]["scene"]
 
-    edit("labels/nuclei", _drop)(root)
+
+def _drop_first_axis(subpath: str, dtype: str = "uint16") -> Callable[[Path], None]:
+    """Return a mutator that makes the image at `subpath` one dimension smaller."""
+
+    def _drop(root: Path) -> None:
+        def _edit(data: dict) -> None:
+            ms = _ms(data)
+            ms["coordinateSystems"][0]["axes"].pop(0)
+            ndim = len(ms["coordinateSystems"][0]["axes"])
+            for ds in ms["datasets"]:
+                t = ds["coordinateTransformations"][0]
+                for step in t.get("transformations", [t]):  # (scale, or a sequence)
+                    step.get("scale", step.get("translation")).pop(0)
+                _write_array(root / subpath / ds["path"], ndim, dtype)
+
+        edit(subpath, _edit)(root)
+
+    return _drop
+
+
+def _write_group(path: Path, ome: dict | None = None) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    attrs = {"ome": {"version": "0.6", **ome}} if ome else {}
+    meta = {"zarr_format": 3, "node_type": "group", "attributes": attrs}
+    (path / "zarr.json").write_text(json.dumps(meta))
+
+
+def _write_field(
+    path: Path, *, length: int = 2, axis: dict | None = None, ndim: int = 2
+) -> None:
+    """Write a displacement field: a multiscale image with a displacement axis."""
+    vector = axis or {"name": "d", "type": "displacement", "discrete": True}
+    axes = [vector, *SPACE[-ndim:]]
+    scale = {"type": "scale", "scale": [1.0] * len(axes)}
+    ms = {
+        "coordinateSystems": [{"name": "physical", "axes": axes}],
+        "datasets": [
+            {
+                "path": "s0",
+                "coordinateTransformations": [
+                    {**scale, "input": {"path": "s0"}, "output": {"name": "physical"}}
+                ],
+            }
+        ],
+    }
+    _write_group(path, {"multiscales": [ms]})
+    _write_array(path / "s0", len(axes), "float32", [length] + [8] * ndim)
+
+
+DFIELD_PATH = "coordinateTransformations/dfield"
+DFIELD = {
+    "type": "displacements",
+    "path": DFIELD_PATH,
+    "input": {"path": "tile_0", "name": "intrinsic"},
+    "output": {"path": "tile_1", "name": "intrinsic"},
+}
+
+
+def _with_field(path: str = DFIELD_PATH, **field_kwargs: Any) -> Callable[[Path], None]:
+    """Mutator: add a displacements transformation (field at `path`) to `scene`."""
+
+    def _add(root: Path) -> None:
+        edit(
+            "",
+            lambda d: _scene(d)["coordinateTransformations"].append(
+                {**DFIELD, "path": path}
+            ),
+        )(root)
+        if field_kwargs.get("as_array"):
+            _write_array(root / DFIELD_PATH, 3, "float32")
+        elif not field_kwargs.get("missing"):
+            _write_field(root / path.lstrip("/"), **field_kwargs)
+
+    return _add
+
+
+def _with_matrix(shape: list[int] | None, path: str = "coordinateTransformations/aff"):
+    """Mutator: store the first affine of `image_transforms` in a Zarr array."""
+
+    def _move(root: Path) -> None:
+        def _edit(data: dict) -> None:
+            t = _ms(data)["coordinateTransformations"][0]
+            del t["affine"]
+            t["path"] = path
+
+        edit("", _edit)(root)
+        if shape is not None:
+            _write_array(root / path.lstrip("/"), 2, "float64", shape)
+
+    return _move
+
+
+def _with_rotation(shape: list[int]) -> Callable[[Path], None]:
+    """Mutator: store the rotation in `scene_registration`'s sequence in an array."""
+
+    def _move(root: Path) -> None:
+        def _edit(data: dict) -> None:
+            step = _scene(data)["coordinateTransformations"][0]["transformations"][0]
+            del step["rotation"]
+            step["path"] = "coordinateTransformations/rot"
+
+        edit("", _edit)(root)
+        _write_array(root / "coordinateTransformations" / "rot", 2, "float64", shape)
+
+    return _move
+
+
+def _with_bijection(root: Path) -> None:
+    # registration fields both ways, as in the spec's scene example
+    def _edit(data: dict) -> None:
+        fields = {
+            name: {"type": "displacements", "path": f"coordinateTransformations/{name}"}
+            for name in ("fwd", "inv")
+        }
+        bijection = {
+            **{k: DFIELD[k] for k in ("input", "output")},
+            "type": "bijection",
+            "forward": fields["fwd"],
+            "inverse": fields["inv"],
+        }
+        _scene(data)["coordinateTransformations"].append(bijection)
+
+    edit("", _edit)(root)
+    for name in ("fwd", "inv"):
+        _write_field(root / "coordinateTransformations" / name)
+
+
+def _then_group(mutate: Callable[[Path], None], path: str) -> Callable[[Path], None]:
+    """Run `mutate`, then put a plain group (no OME metadata) at `path`."""
+
+    def _run(root: Path) -> None:
+        mutate(root)
+        shutil.rmtree(root / path, ignore_errors=True)
+        _write_group(root / path)
+
+    return _run
+
+
+def _self_field(path: str) -> Callable[[Path], None]:
+    """Mutator: give `image_2d` a displacements transformation with field at `path`."""
+
+    def _edit(data: dict) -> None:
+        ms = _ms(data)
+        ms["coordinateSystems"].append({"name": "out", "axes": SPACE[-2:]})
+        ms["coordinateTransformations"] = [
+            {
+                "type": "displacements",
+                "path": path,
+                "input": {"name": "intrinsic"},
+                "output": {"name": "out"},
+            }
+        ]
+
+    return edit("", _edit)
+
+
+def _scene_with_label_image(tmp_path: Path) -> Path:
+    """A scene referencing an image and, directly, one of its label images."""
+    root = tmp_path / "scene.ome.zarr"
+    shutil.copytree(make_store(tmp_path / "src", "image_with_labels"), root / "img")
+    axes = [{"name": "c", "type": "channel", "discrete": True}, *SPACE]
+    to_world = [
+        {
+            "type": "identity",
+            "input": {"path": path, "name": "physical"},
+            "output": {"name": world},
+        }
+        for path, world in (("img", "world"), ("img/labels/nuclei", "lbl_world"))
+    ]
+    systems = [{"name": n, "axes": axes} for n in ("world", "lbl_world")]
+    _write_group(
+        root,
+        {
+            "scene": {
+                "coordinateTransformations": to_world,
+                "coordinateSystems": systems,
+            }
+        },
+    )
+    return root
+
+
+def _add_orphan_cs(subpath: str = "") -> Callable[[Path], None]:
+    """Mutator: add a coordinate system that no transformation links to."""
+
+    def _edit(data: dict) -> None:
+        orphan = {"name": "orphan", "axes": SPACE[-2:]}
+        if subpath == "scene":
+            _scene(data)["coordinateSystems"].append(orphan)
+        else:
+            _ms(data)["coordinateSystems"].append(orphan)
+
+    return edit("" if subpath == "scene" else subpath, _edit)
 
 
 def _rename_labels_group(root: Path) -> None:
@@ -112,6 +303,134 @@ def test_labels_group_found_via_transformation(tmp_path: Path) -> None:
         validate_zarr_store(root)
 
 
+@pytest.mark.parametrize(
+    "name, mutate",
+    [
+        ("scene", _with_field()),
+        ("image_transforms", _with_matrix([4, 5])),
+        ("scene_registration", _with_rotation([3, 3])),
+        ("scene", _with_bijection),
+    ],
+    ids=["displacements-field", "affine-array", "rotation-array", "bijection"],
+)
+def test_valid_parameter_arrays(
+    tmp_path: Path, name: str, mutate: Callable[[Path], None]
+) -> None:
+    root = make_store(tmp_path, name)
+    mutate(root)
+    validate_zarr_store(root)
+
+
+WARNINGS = [
+    # outside of a scene, an unlinked coordinate system only warns
+    ("image_2d", _add_orphan_cs(), StorageErrorType.graph_not_connected),
+    # a leading "/" isn't defined by the spec
+    (
+        "image_transforms",
+        _with_matrix(None, path="/missing"),
+        StorageErrorType.transform_parameters_not_found,
+    ),
+    # ... SHOULD be stored in a Zarr group ... called "coordinateTransformations"
+    (
+        "scene",
+        _with_field(path="fields/dfield"),
+        StorageErrorType.transform_parameters_location,
+    ),
+    (
+        "scene",
+        _with_field(path="/fields/dfield"),
+        StorageErrorType.transform_parameters_location,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "name, mutate, warn_type", WARNINGS, ids=[str(c[2]) for c in WARNINGS]
+)
+def test_warnings(
+    tmp_path: Path, name: str, mutate: Callable[[Path], None], warn_type: Any
+) -> None:
+    root = make_store(tmp_path, name)
+    mutate(root)
+    with pytest.warns(StorageValidationWarning, match=str(warn_type)):
+        validate_zarr_store(root)
+
+
+def test_scene_referencing_a_label_image(tmp_path: Path) -> None:
+    # the image's identity to its label image links the two parts of the graph
+    validate_zarr_store(_scene_with_label_image(tmp_path))
+
+
+def test_scene_image_with_two_multiscales(tmp_path: Path) -> None:
+    # only the multiscales entry the scene references is part of its graph
+    root = make_store(tmp_path, "scene")
+
+    def _second_entry(data: dict) -> None:
+        ms = data["attributes"]["ome"]["multiscales"]
+        ms.append({**ms[0], "name": "alternative"})
+
+    edit("tile_0", _second_entry)(root)
+    validate_zarr_store(root)
+
+
+def test_field_error_has_reason(tmp_path: Path) -> None:
+    # a vector axis after the spatial axes isn't a valid multiscale image
+    root = make_store(tmp_path, "scene")
+    _with_field()(root)
+
+    def _vector_last(data: dict) -> None:
+        axes = _ms(data)["coordinateSystems"][0]["axes"]
+        axes.append(axes.pop(0))
+
+    edit(DFIELD_PATH, _vector_last)(root)
+    with pytest.raises(StorageValidationError) as exc:
+        validate_zarr_store(root)
+    (error,) = exc.value.errors()
+    assert error["type"] == str(StorageErrorType.transform_parameters_invalid)
+    assert "order" in str(error["ctx"]["error"])
+
+
+def test_same_field_checked_once(tmp_path: Path) -> None:
+    # one (wrong) field used for both directions of a bijection: reported once
+    root = make_store(tmp_path, "scene")
+    _with_bijection(root)
+
+    def _same(data: dict) -> None:
+        bijection = _scene(data)["coordinateTransformations"][-1]
+        bijection["inverse"]["path"] = bijection["forward"]["path"]
+
+    edit("", _same)(root)
+    _write_field(root / "coordinateTransformations" / "fwd", length=3)
+    with pytest.raises(StorageValidationError) as exc:
+        validate_zarr_store(root)
+    assert len(exc.value.errors()) == 1
+
+
+def test_label_reference_outside_image(tmp_path: Path) -> None:
+    # `..` is not a child labels group, even when it happens to be one
+    root = make_store(tmp_path, "image_with_labels")
+
+    def _edit(data: dict) -> None:
+        del data["attributes"]["ome"]["image-label"]
+        _ms(data)["coordinateTransformations"] = [
+            {
+                "type": "identity",
+                "input": {"name": "physical"},
+                "output": {"name": "physical", "path": "../nuclei"},
+            }
+        ]
+
+    edit("labels/cells", _edit)(root)
+    with pytest.raises(StorageValidationError, match="coordinate_system_path_invalid"):
+        validate_zarr_store(root / "labels" / "cells")
+
+
+def test_leading_slash_found_at_store_root(tmp_path: Path) -> None:
+    root = make_store(tmp_path, "image_transforms")
+    _with_matrix([4, 5], path="/coordinateTransformations/aff")(root)
+    validate_zarr_store(root)
+
+
 def test_dimension_names_not_checked(tmp_path: Path) -> None:
     # (0.6 has no rule about them; 0.5.2 required them to match the axes names)
     root = make_store(tmp_path, "image_2d")
@@ -138,8 +457,18 @@ INVALID = [
     ),
     (
         "image_with_labels",
-        edit("labels/cells/s0", lambda d: d.update(data_type="float32")),
+        lambda root: [
+            edit(f"labels/cells/{ds}", lambda d: d.update(data_type="float32"))(root)
+            for ds in ("s0", "s1", "s2")
+        ],
         StorageErrorType.label_non_integer_dtype,
+    ),
+    # The `zarr.json` file for the label image MUST implement the multiscales
+    # specification.
+    (
+        "image_with_labels",
+        lambda root: shutil.rmtree(root / "labels" / "cells" / "s1"),
+        StorageErrorType.dataset_path_not_found,
     ),
     # transformations to a coordinate system in a child labels group
     (
@@ -169,13 +498,124 @@ INVALID = [
     ),
     (
         "image_with_labels",
+        edit("", lambda d: _label_ref(d).update(path="/labels/nuclei")),
+        StorageErrorType.coordinate_system_path_invalid,
+    ),
+    (
+        "image_with_labels",
         edit("", lambda d: _label_ref(d).update(name="missing")),
         StorageErrorType.coordinate_system_not_found,
     ),
     (
         "image_with_labels",
-        _drop_label_channel_axis,
+        _drop_first_axis("labels/nuclei", "uint8"),
         StorageErrorType.transform_dimension_mismatch,
+    ),
+    # scenes: references into image subgroups
+    (
+        "scene",
+        edit(
+            "",
+            lambda d: _scene(d)["coordinateTransformations"][1]["input"].update(
+                path="tile_9"
+            ),
+        ),
+        StorageErrorType.coordinate_system_path_not_found,
+    ),
+    (
+        "scene",
+        edit(
+            "",
+            lambda d: _scene(d)["coordinateTransformations"][1]["input"].update(
+                path="tile_1/scale0/image"
+            ),
+        ),
+        StorageErrorType.coordinate_system_path_invalid,
+    ),
+    (
+        "scene",
+        edit(
+            "",
+            lambda d: _scene(d)["coordinateTransformations"][1]["input"].update(
+                path="../tile_1"
+            ),
+        ),
+        StorageErrorType.coordinate_system_path_invalid,
+    ),
+    (
+        "scene",
+        edit(
+            "",
+            lambda d: _scene(d)["coordinateTransformations"][1]["input"].update(
+                name="missing"
+            ),
+        ),
+        StorageErrorType.coordinate_system_not_found,
+    ),
+    (
+        "scene_registration",
+        _drop_first_axis("highres"),
+        StorageErrorType.transform_dimension_mismatch,
+    ),
+    # The graph MUST be connected
+    ("scene", _add_orphan_cs("scene"), StorageErrorType.graph_not_connected),
+    ("scene", _add_orphan_cs("tile_0"), StorageErrorType.graph_not_connected),
+    # parameters stored in Zarr arrays
+    (
+        "image_transforms",
+        _with_matrix(None),
+        StorageErrorType.transform_parameters_not_found,
+    ),
+    (
+        "image_transforms",
+        _with_matrix([4, 4]),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    (
+        "image_transforms",
+        _with_matrix([4, 5, 1]),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    (
+        "scene_registration",
+        _with_rotation([3, 2]),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    (
+        "image_transforms",
+        _then_group(_with_matrix(None), "coordinateTransformations/aff"),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    # a field that is the image itself (not a field), or outside the store
+    ("image_2d", _self_field("."), StorageErrorType.transform_parameters_invalid),
+    ("image_2d", _self_field("../x"), StorageErrorType.transform_parameters_not_found),
+    # displacement fields are multiscale images
+    (
+        "scene",
+        _with_field(missing=True),
+        StorageErrorType.transform_parameters_not_found,
+    ),
+    (
+        "scene",
+        _with_field(as_array=True),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    (
+        "scene",
+        _then_group(_with_field(), "coordinateTransformations/dfield"),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    ("scene", _with_field(length=3), StorageErrorType.transform_parameters_invalid),
+    ("scene", _with_field(ndim=3), StorageErrorType.transform_parameters_invalid),
+    (
+        "scene",
+        _with_field(axis={"name": "d", "type": "displacement", "discrete": False}),
+        StorageErrorType.transform_parameters_invalid,
+    ),
+    (
+        "scene",
+        _with_field(axis={"name": "d", "type": "channel"}),
+        StorageErrorType.transform_parameters_invalid,
     ),
     (
         "plate",
