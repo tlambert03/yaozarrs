@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from yaozarrs import v04, v05
+from yaozarrs import DimSpec, v04, v05, v06
 from yaozarrs.write import v05 as write_v05
+from yaozarrs.write import v06 as write_v06
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -77,8 +78,20 @@ def _v05_image() -> v05.Image:
 
 # (writer module, a valid image for it, an image from another version, the
 # other version's plate, and the name the error should give the expected type)
-CASES = [(write_v05, _v05_image, V04_IMAGE, V04_PLATE, "v05")]
-IDS = ["v05"]
+def _v06_image() -> v06.Image:
+    dims = [DimSpec(name="y"), DimSpec(name="x")]
+    return v06.Image(multiscales=[v06.Multiscale.from_dims(dims)])
+
+
+V05_PLATE = v05.Plate.model_validate(
+    V04_PLATE.model_dump(exclude={"plate": {"version"}})
+)
+
+CASES = [
+    (write_v05, _v05_image, V04_IMAGE, V04_PLATE, "v05"),
+    (write_v06, _v06_image, _v05_image(), V05_PLATE, "v06"),
+]
+IDS = ["v05", "v06"]
 DATA = np.zeros((4, 4), dtype=np.uint8)
 SPEC = ((4, 4), "uint8")
 
@@ -165,7 +178,8 @@ def test_other_version_model_rejected(
 ) -> None:
     dest = tmp_path / "out.zarr"
     kind, func = _calls(mod, good, bad, plate)[call]
-    match = f"expected a {version}.{kind}, got v04.{kind}"
+    other = type(bad).__module__.split(".")[1]
+    match = f"expected a {version}.{kind}, got {other}.{kind}"
     with pytest.raises(TypeError, match=re.escape(match)):
         func(dest)
     # nothing was written before the check
