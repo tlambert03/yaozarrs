@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeGuard, TypeVar, ca
 
 from ._arrays import _get_create_func, _resolve_chunks, _write_to_array
 from ._groups import _create_zarr3_group, _update_zarr3_group
+from ._models import _check_model
 from ._plate import _merge_plate_metadata
 
 # The builders are generic over each version's Image/LabelImage models.  (Named like
@@ -21,6 +22,7 @@ LabelImage = TypeVar("LabelImage")
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from os import PathLike
 
     from pydantic import BaseModel
     from typing_extensions import Literal, Self, TypeAlias
@@ -86,6 +88,7 @@ def _prepare_image(
     image: Any,
     datasets: ShapeAndDTypeOrPyramid,
     *,
+    image_type: type,
     extra_attributes: dict[str, Any] | None = None,
     chunks: tuple[int, ...] | Literal["auto"] | None = "auto",
     shards: tuple[int, ...] | None = None,
@@ -94,6 +97,7 @@ def _prepare_image(
     compression: CompressionName = "blosc-zstd",
 ) -> tuple[Path, dict[str, Any]]:
     """Create the Image group and its (empty) arrays; see `vNN.prepare_image`."""
+    _check_model(image, image_type)
     if len(image.multiscales) != 1:
         raise NotImplementedError("Image must have exactly one multiscale")
 
@@ -149,6 +153,7 @@ def _write_image(
     image: Any,
     datasets: ArrayOrPyramid,
     *,
+    image_type: type,
     labels: Mapping[str, tuple[Any, ArrayOrPyramid]] | None = None,
     labels_builder_type: type[LabelsBuilderBase] | None = None,
     extra_attributes: dict[str, Any] | None = None,
@@ -160,6 +165,9 @@ def _write_image(
     progress: bool = False,
 ) -> Path:
     """Write an Image group with data (and labels); see `vNN.write_image`."""
+    _check_model(image, image_type)
+    for label_name, (label_image, _) in (labels or {}).items():
+        _check_model(label_image, image_type, f"Label '{label_name}': ")
     multiscale, datasets_seq = _validate_and_normalize_datasets(image, datasets)
 
     # Extract specs from arrays for prepare_image
@@ -170,6 +178,7 @@ def _write_image(
         dest,
         image,
         specs,
+        image_type=image_type,
         extra_attributes=extra_attributes,
         chunks=chunks,
         shards=shards,
@@ -183,7 +192,9 @@ def _write_image(
         _write_to_array(arrays[dataset_meta.path], data_array, progress=progress)
 
     # Write labels if provided
-    if labels and labels_builder_type is not None:
+    if labels:
+        if labels_builder_type is None:  # pragma: no cover
+            raise TypeError("labels_builder_type is required to write labels")
         labels_builder = labels_builder_type(
             dest_path / "labels",
             writer=writer,
@@ -200,15 +211,98 @@ def _write_image(
     return dest_path
 
 
+def _write_plate(
+    builder_type: type[PlateBuilderBase],
+    dest: str | PathLike,
+    images: Mapping[tuple[str, str, str], ImageWithDatasets[Any]],
+    *,
+    plate: Any = None,
+    extra_attributes: dict[str, Any] | None = None,
+    writer: ZarrWriter = "auto",
+    overwrite: bool = False,
+    chunks: tuple[int, ...] | Literal["auto"] | None = "auto",
+    shards: tuple[int, ...] | None = None,
+    compression: CompressionName = "blosc-zstd",
+    progress: bool = False,
+) -> Path:
+    """Write a Plate group with data; see `vNN.write_plate`."""
+    # Merge user-provided plate metadata with auto-generated
+    plate_obj = _merge_plate_metadata(images, plate, builder_type._plate_type)
+
+    # Use PlateBuilder to handle the writing
+    builder = builder_type(
+        dest,
+        plate=plate_obj,
+        extra_attributes=extra_attributes,
+        writer=writer,
+        chunks=chunks,
+        shards=shards,
+        overwrite=overwrite,
+        compression=compression,
+    )
+
+    # Group images by well: {(row, col): {fov: (Image, datasets)}}
+    wells_data: dict[tuple[str, str], dict[str, ImageWithDatasets[Any]]] = {}
+    for (row, col, fov), image_data in images.items():
+        wells_data.setdefault((row, col), {})[fov] = image_data
+
+    # (check every field first, so a bad one doesn't leave a partial plate behind)
+    for (row, col), fields_data in wells_data.items():
+        builder._check_fields(row, col, fields_data)
+
+    # Write each well with all its fields
+    for (row, col), fields_data in wells_data.items():
+        builder.write_well(row=row, col=col, images=fields_data, progress=progress)
+
+    return builder.root_path
+
+
+def _write_bioformats2raw(
+    builder_type: type[Bf2RawBuilderBase],
+    dest: str | PathLike,
+    images: Mapping[str, ImageWithDatasets[Any]],
+    *,
+    ome_xml: str | None = None,
+    extra_attributes: dict[str, Any] | None = None,
+    writer: ZarrWriter = "auto",
+    overwrite: bool = False,
+    chunks: tuple[int, ...] | Literal["auto"] | None = "auto",
+    shards: tuple[int, ...] | None = None,
+    compression: CompressionName = "blosc-zstd",
+    progress: bool = False,
+) -> Path:
+    """Write a bioformats2raw group with data; see `vNN.write_bioformats2raw`."""
+    # (check every series first, so a bad one doesn't leave a partial store behind)
+    for series_name, (image_model, _) in images.items():
+        _check_model(image_model, builder_type._image_type, f"Series '{series_name}': ")
+
+    builder = builder_type(
+        dest,
+        ome_xml=ome_xml,
+        extra_attributes=extra_attributes,
+        writer=writer,
+        chunks=chunks,
+        shards=shards,
+        overwrite=overwrite,
+        compression=compression,
+    )
+
+    for series_name, (image_model, datasets) in images.items():
+        builder.write_image(series_name, image_model, datasets, progress=progress)
+
+    return builder.root_path
+
+
 class Bf2RawBuilderBase(Generic[Image]):
     """Builder for bioformats2raw layout hierarchies (see `vNN.Bf2RawBuilder`)."""
 
+    _image_type: ClassVar[type[Any]]
     _bf2raw_type: ClassVar[type[Any]]
     _series_type: ClassVar[type[Any]]
 
     def __init__(
         self,
-        dest: str | Path,
+        dest: str | PathLike,
         *,
         ome_xml: str | None = None,
         extra_attributes: dict[str, Any] | None = None,
@@ -279,6 +373,7 @@ class Bf2RawBuilderBase(Generic[Image]):
             If the Image has multiple multiscales.
         """
         self._validate_series_name(name)
+        _check_model(image, self._image_type, f"Series '{name}': ")
 
         # Initialize root structure if needed
         self._ensure_initialized()
@@ -291,6 +386,7 @@ class Bf2RawBuilderBase(Generic[Image]):
             self._dest / name,
             image,
             datasets,
+            image_type=self._image_type,
             writer=self._writer,
             chunks=self._chunks,
             shards=self._shards,
@@ -339,6 +435,7 @@ class Bf2RawBuilderBase(Generic[Image]):
             If the Image has multiple multiscales.
         """
         self._validate_series_name(name)
+        _check_model(image, self._image_type, f"Series '{name}': ")
         _, datasets_seq = _validate_and_normalize_datasets(
             image, datasets, f"Series '{name}': "
         )
@@ -400,6 +497,7 @@ class Bf2RawBuilderBase(Generic[Image]):
                 self._dest / series_name,
                 image_model,
                 dataset_specs,
+                image_type=self._image_type,
                 chunks=self._chunks,
                 shards=self._shards,
                 writer=self._writer,
@@ -474,6 +572,7 @@ class Bf2RawBuilderBase(Generic[Image]):
 class PlateBuilderBase(Generic[Image]):
     """Builder for Plate hierarchies (see `vNN.PlateBuilder`)."""
 
+    _image_type: ClassVar[type[Any]]
     _plate_type: ClassVar[type[Any]]
     _well_type: ClassVar[type[Any]]
     _well_def_type: ClassVar[type[Any]]
@@ -481,7 +580,7 @@ class PlateBuilderBase(Generic[Image]):
 
     def __init__(
         self,
-        dest: str | Path,
+        dest: str | PathLike,
         *,
         plate: Any | None = None,
         extra_attributes: dict[str, Any] | None = None,
@@ -492,6 +591,8 @@ class PlateBuilderBase(Generic[Image]):
         compression: CompressionName = "blosc-zstd",
     ) -> None:
         self._dest = Path(dest)
+        if plate is not None:
+            _check_model(plate, self._plate_type, "plate: ")
         self._user_plate = plate  # Store user-provided plate (if any)
         self._extra_attributes = extra_attributes
         self._writer: ZarrWriter = writer
@@ -561,16 +662,12 @@ class PlateBuilderBase(Generic[Image]):
         # Validate well hasn't been used
         self._validate_well_coordinates(row, col)
 
-        # Initialize plate structure if needed
-        self._ensure_initialized()
+        # Check and normalize fields (convert single arrays to sequences)
+        normalized_fields = self._check_fields(row, col, images)
 
-        # Normalize fields (convert single arrays to sequences)
-        normalized_fields: dict[str, tuple[Image, Sequence[ArrayLike]]] = {}
-        for fov, (image_model, datasets) in images.items():
-            _, datasets_seq = _validate_and_normalize_datasets(
-                image_model, datasets, f"Well '{row}/{col}', field '{fov}': "
-            )
-            normalized_fields[fov] = (image_model, datasets_seq)
+        # Initialize plate structure if needed (after the checks, so nothing is
+        # created for a well that would be rejected)
+        self._ensure_initialized()
 
         # Track this well's data before writing
         self._written_wells_data[(row, col)] = cast(
@@ -590,6 +687,7 @@ class PlateBuilderBase(Generic[Image]):
                 field_path,
                 image_model,
                 datasets_seq,
+                image_type=self._image_type,
                 writer=self._writer,
                 chunks=self._chunks,
                 shards=self._shards,
@@ -643,15 +741,12 @@ class PlateBuilderBase(Generic[Image]):
         # Validate well hasn't been used
         self._validate_well_coordinates(row, col)
 
-        # Validate and normalize all fields before accepting
+        # Check and normalize all fields before accepting
         well_path = f"{row}/{col}"
-        normalized_fields: dict[str, ImageWithShapeSpecs] = {}
-
-        for fov, (image_model, specs) in images.items():
-            _, specs_seq = _validate_and_normalize_datasets(
-                image_model, specs, f"Well '{well_path}', field '{fov}': "
-            )
-            normalized_fields[fov] = (image_model, specs_seq)
+        normalized_fields = cast(
+            "dict[str, ImageWithShapeSpecs[Image]]",
+            self._check_fields(row, col, images),
+        )
 
         self._wells[well_path] = normalized_fields
         return self
@@ -714,6 +809,7 @@ class PlateBuilderBase(Generic[Image]):
                     field_path,
                     image_model,
                     datasets,
+                    image_type=self._image_type,
                     chunks=self._chunks,
                     shards=self._shards,
                     writer=self._writer,
@@ -731,6 +827,22 @@ class PlateBuilderBase(Generic[Image]):
     def __repr__(self) -> str:
         total_wells = len(self._wells) + len(self._written_wells_data)
         return f"<{self.__class__.__name__}: {total_wells} wells>"
+
+    def _check_fields(
+        self, row: str, col: str, images: Mapping[str, ImageWithAny]
+    ) -> dict[str, tuple[Image, Sequence[Any]]]:
+        """Check a well's fields before anything is written; normalize datasets."""
+        normalized: dict[str, tuple[Image, Sequence[Any]]] = {}
+        for fov, (image_model, datasets) in images.items():
+            context = f"Well '{row}/{col}', field '{fov}': "
+            _check_model(image_model, self._image_type, context)
+            _, datasets_seq = _validate_and_normalize_datasets(
+                image_model, datasets, context
+            )
+            normalized[fov] = (image_model, datasets_seq)
+        # (the well metadata validates the field names)
+        self._generate_well_metadata(list(images))
+        return normalized
 
     def _validate_well_coordinates(self, row: str, col: str) -> None:
         """Validate that well coordinates haven't been used yet."""
@@ -860,11 +972,12 @@ class PlateBuilderBase(Generic[Image]):
 class LabelsBuilderBase(Generic[LabelImage]):
     """Builder for labels groups within an Image (see `vNN.LabelsBuilder`)."""
 
+    _image_type: ClassVar[type[Any]]
     _labels_group_type: ClassVar[type[Any]]
 
     def __init__(
         self,
-        dest: str | Path,
+        dest: str | PathLike,
         *,
         writer: ZarrWriter = "auto",
         chunks: ShapeLike | Literal["auto"] | None = "auto",
@@ -933,6 +1046,7 @@ class LabelsBuilderBase(Generic[LabelImage]):
             If the LabelImage has multiple multiscales.
         """
         self._validate_label_name(name)
+        _check_model(label_image, self._image_type, f"Label '{name}': ")
 
         # Initialize labels group structure if needed
         self._ensure_initialized()
@@ -946,6 +1060,7 @@ class LabelsBuilderBase(Generic[LabelImage]):
             self._dest / name,
             label_image,
             datasets,
+            image_type=self._image_type,
             writer=self._writer,
             chunks=self._chunks,
             shards=self._shards,
@@ -994,6 +1109,7 @@ class LabelsBuilderBase(Generic[LabelImage]):
             If the LabelImage has multiple multiscales.
         """
         self._validate_label_name(name)
+        _check_model(label_image, self._image_type, f"Label '{name}': ")
         _, specs_seq = _validate_and_normalize_datasets(
             label_image, datasets, f"Label '{name}': "
         )
@@ -1050,6 +1166,7 @@ class LabelsBuilderBase(Generic[LabelImage]):
                 self._dest / label_name,
                 label_image,
                 datasets,
+                image_type=self._image_type,
                 chunks=self._chunks,
                 shards=self._shards,
                 writer=self._writer,

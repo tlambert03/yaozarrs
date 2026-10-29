@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast
 
+from ._models import _check_model
+
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable
 
     from pydantic import BaseModel
 
@@ -102,7 +105,7 @@ def _autogenerate_plate_metadata(
 
 def _merge_plate_metadata(
     images: Mapping[tuple[str, str, str], ImageWithAny],
-    user_plate: BaseModel | dict[str, Any] | None,
+    user_plate: BaseModel | Mapping[str, Any] | None,
     plate_type: type[Any],
 ) -> Any:
     """Merge auto-generated and user-provided plate metadata.
@@ -133,9 +136,11 @@ def _merge_plate_metadata(
     if isinstance(user_plate, plate_type):
         _validate_plate_matches_images(user_plate, images)
         return user_plate
+    if user_plate is not None and not isinstance(user_plate, Mapping):
+        _check_model(user_plate, plate_type, "plate: ")  # (raises)
 
     # If user provided a dict, merge with auto-generated
-    merged = {**auto_metadata, **cast("dict[str, Any]", user_plate or {})}
+    merged = {**auto_metadata, **cast("Mapping[str, Any]", user_plate or {})}
 
     # Construct Plate object from merged metadata
     plate = plate_type.model_validate({"plate": merged})

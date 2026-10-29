@@ -37,9 +37,10 @@ from yaozarrs.write._common._builders import (
     LabelsBuilderBase,
     PlateBuilderBase,
     _prepare_image,
+    _write_bioformats2raw,
     _write_image,
+    _write_plate,
 )
-from yaozarrs.write._common._plate import _merge_plate_metadata
 
 __all__ = [
     "Bf2RawBuilder",
@@ -154,6 +155,8 @@ def write_image(
 
     Raises
     ------
+    TypeError
+        If given a model from another OME-Zarr version (e.g. a v04.Image).
     NotImplementedError
         If the Image model has multiple multiscales (not yet supported).
     ValueError
@@ -220,6 +223,7 @@ def write_image(
         Path(dest),
         image,
         datasets,
+        image_type=Image,
         labels=labels,
         labels_builder_type=LabelsBuilder,
         extra_attributes=extra_attributes,
@@ -310,6 +314,8 @@ def write_plate(
 
     Raises
     ------
+    TypeError
+        If given a model from another OME-Zarr version (e.g. a v04.Image).
     ValueError
         If image keys don't match plate wells, or if datasets don't match metadata.
     FileExistsError
@@ -365,31 +371,19 @@ def write_plate(
     ...     overwrite=True,
     ... )
     """
-    # Merge user-provided plate metadata with auto-generated
-    plate_obj = _merge_plate_metadata(images, plate, Plate)
-
-    # Use PlateBuilder to handle the writing
-    builder = PlateBuilder(
+    return _write_plate(
+        PlateBuilder,
         dest,
-        plate=plate_obj,
+        images,
+        plate=plate,
         extra_attributes=extra_attributes,
         writer=writer,
+        overwrite=overwrite,
         chunks=chunks,
         shards=shards,
-        overwrite=overwrite,
         compression=compression,
+        progress=progress,
     )
-
-    # Group images by well: {(row, col): {fov: (Image, datasets)}}
-    wells_data: dict[tuple[str, str], dict[str, ImageWithDatasets]] = {}
-    for (row, col, fov), image_data in images.items():
-        wells_data.setdefault((row, col), {})[fov] = image_data
-
-    # Write each well with all its fields
-    for (row, col), fields_data in wells_data.items():
-        builder.write_well(row=row, col=col, images=fields_data, progress=progress)
-
-    return builder.root_path
 
 
 def write_bioformats2raw(
@@ -476,6 +470,8 @@ def write_bioformats2raw(
 
     Raises
     ------
+    TypeError
+        If given a model from another OME-Zarr version (e.g. a v04.Image).
     FileExistsError
         If `dest` exists and `overwrite` is False.
     ValueError
@@ -521,21 +517,19 @@ def write_bioformats2raw(
     >>> (result / "0" / "zarr.json").exists()
     True
     """
-    builder = Bf2RawBuilder(
+    return _write_bioformats2raw(
+        Bf2RawBuilder,
         dest,
+        images,
         ome_xml=ome_xml,
         extra_attributes=extra_attributes,
         writer=writer,
+        overwrite=overwrite,
         chunks=chunks,
         shards=shards,
-        overwrite=overwrite,
         compression=compression,
+        progress=progress,
     )
-
-    for series_name, (image_model, datasets) in images.items():
-        builder.write_image(series_name, image_model, datasets, progress=progress)
-
-    return builder.root_path
 
 
 # ------------------------ Lower Level Prepare Functions --------------------------
@@ -650,6 +644,8 @@ def prepare_image(
 
     Raises
     ------
+    TypeError
+        If given a model from another OME-Zarr version (e.g. a v04.Image).
     NotImplementedError
         If the Image model has multiple multiscales.
     ValueError
@@ -693,6 +689,7 @@ def prepare_image(
         Path(dest),
         image,
         datasets,
+        image_type=Image,
         extra_attributes=extra_attributes,
         chunks=chunks,
         shards=shards,
@@ -735,6 +732,8 @@ class Bf2RawBuilder(Bf2RawBuilderBase[Image]):
         Destination path for the root Zarr group.
     ome_xml : str | None, optional
         Original OME-XML string to store as `OME/METADATA.ome.xml`.
+    extra_attributes : dict[str, Any] | None, optional
+        Additional attributes to write alongside "ome" in the root zarr.json.
     writer : "zarr" | "tensorstore" | "auto" | CreateArrayFunc, optional
         Backend to use for writing arrays. Default is "auto".
     chunks : tuple[int, ...] | "auto" | None, optional
@@ -793,6 +792,7 @@ class Bf2RawBuilder(Bf2RawBuilderBase[Image]):
     >>> assert path.exists()
     """
 
+    _image_type = Image
     _bf2raw_type = Bf2Raw
     _series_type = Series
 
@@ -852,6 +852,8 @@ class PlateBuilder(PlateBuilderBase[Image]):
         Optional OME-Zarr Plate metadata model. If None (default), plate
         metadata (rows, columns, wells) is auto-generated from written/added
         wells. If provided, validates that written wells match the metadata.
+    extra_attributes : dict[str, Any] | None, optional
+        Additional attributes to write alongside "ome" in the root zarr.json.
     writer : "zarr" | "tensorstore" | "auto" | CreateArrayFunc, optional
         Backend to use for writing arrays. Default is "auto".
     chunks : tuple[int, ...] | "auto" | None, optional
@@ -926,6 +928,7 @@ class PlateBuilder(PlateBuilderBase[Image]):
     <PlateBuilder: 1 wells>
     """
 
+    _image_type = Image
     _plate_type = Plate
     _well_type = Well
     _well_def_type = WellDef
@@ -1042,6 +1045,7 @@ class LabelsBuilder(LabelsBuilderBase[LabelImage]):
     >>> arrays["cells/0"][:] = np.random.randint(0, 10, (64, 64), dtype=np.uint32)
     """
 
+    _image_type = Image
     _labels_group_type = LabelsGroup
 
     def __init__(
