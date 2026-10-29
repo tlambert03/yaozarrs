@@ -3,14 +3,23 @@ from typing import Annotated, Any, TypeAlias, TypeVar, overload
 
 from pydantic import Discriminator, Tag, TypeAdapter
 
-from . import v04, v05
+from . import v04, v05, v06
+from .v06._version import VERSIONS as V06_VERSIONS
 
-AnyOMEGroup: TypeAlias = v04.OMEZarrGroupJSON | v05.OMEZarrGroupJSON
-AnyOME: TypeAlias = AnyOMEGroup | v05.OMEMetadata | v05.OMEAttributes
+AnyOMEGroup: TypeAlias = (
+    v04.OMEZarrGroupJSON | v05.OMEZarrGroupJSON | v06.OMEZarrGroupJSON
+)
+AnyOME: TypeAlias = (
+    AnyOMEGroup
+    | v05.OMEMetadata
+    | v05.OMEAttributes
+    | v06.OMEMetadata
+    | v06.OMEAttributes
+)
 T = TypeVar("T", bound=AnyOME)
 
 # OME version strings -> the package that models them
-_VERSIONS = {"0.4": "v04", "0.5": "v05"}
+_VERSIONS = {"0.4": "v04", "0.5": "v05", **dict.fromkeys(V06_VERSIONS, "v06")}
 
 
 def _declared_version(obj: Any) -> str | None:
@@ -55,6 +64,7 @@ def _discriminate_any(obj: Any) -> str:
 _AnyOMEGroupByVersion: TypeAlias = Annotated[
     Annotated[v04.OMEZarrGroupJSON, Tag("v04")]
     | Annotated[v05.OMEZarrGroupJSON, Tag("v05")]
+    | Annotated[v06.OMEZarrGroupJSON, Tag("v06")]
     | Annotated[AnyOMEGroup, Tag("unknown")],
     Discriminator(_discriminate_group),
 ]
@@ -63,6 +73,9 @@ _AnyOMEByVersion: TypeAlias = Annotated[
     | Annotated[v05.OMEZarrGroupJSON, Tag("v05-group")]
     | Annotated[v05.OMEAttributes, Tag("v05-attributes")]
     | Annotated[v05.OMEMetadata, Tag("v05-metadata")]
+    | Annotated[v06.OMEZarrGroupJSON, Tag("v06-group")]
+    | Annotated[v06.OMEAttributes, Tag("v06-attributes")]
+    | Annotated[v06.OMEMetadata, Tag("v06-metadata")]
     | Annotated[AnyOME, Tag("unknown")],
     Discriminator(_discriminate_any),
 ]
@@ -108,9 +121,9 @@ def validate_ome_json(
 
     By default, this will validate `data` against all known OME JSON documents.
     This includes ome-zarr group documents for v04 (found at .zattrs in the zarr group)
-    and v05 (found at zarr.json in the zarr group).  For v05 objects, it also detects
-    data that would valid as the value of the `data["attributes"]["ome"]` key inside
-    a v05 zarr.json document.
+    and v05/v06 (found at zarr.json in the zarr group).  For v05 and v06 objects, it
+    also detects data that would be valid as the value of the
+    `data["attributes"]["ome"]` key inside a zarr.json document.
 
     Parameters
     ----------
@@ -167,8 +180,9 @@ def validate_ome_uri(
     Returns
     -------
     AnyOME: T
-        An instance of `v05.OMEZarrGroupJSON`, `v04.OMEZarrGroupJSON`, or another
-        valid OME-Zarr node type, depending on the object detected.
+        An instance of `v06.OMEZarrGroupJSON`, `v05.OMEZarrGroupJSON`,
+        `v04.OMEZarrGroupJSON`, or another valid OME-Zarr node type, depending on the
+        object detected.
 
     Raises
     ------
