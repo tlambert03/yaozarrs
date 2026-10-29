@@ -17,7 +17,12 @@ def _load_rule(code: str, entry: dict[str, Any], docs: dict[str, SpecDoc]) -> Ru
     sources = tuple(
         sorted(
             (
-                SpecSource(doc=docs[version], lines=(start, end), quote=src["quote"])
+                SpecSource(
+                    doc=docs[version],
+                    lines=(start, end),
+                    quote=src["quote"],
+                    implied=src.get("implied", False),
+                )
                 for src in entry.pop("sources", ())
                 for version, (start, end) in src["lines"].items()
             ),

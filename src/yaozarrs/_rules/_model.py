@@ -41,6 +41,9 @@ class SpecSource:
     doc: SpecDoc
     lines: tuple[int, int]
     quote: str
+    # the statement is a requirement, but this version states it without an
+    # RFC 2119 keyword (the rule's `notes` say why it counts)
+    implied: bool = False
 
     @property
     def permalink(self) -> str:

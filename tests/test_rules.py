@@ -46,12 +46,6 @@ KNOWN_OVERREACH = {
     ("NGFF-OM-004", "0.4"),
     ("NGFF-OM-005", "0.4"),
     ("NGFF-OM-006", "0.4"),
-    # the v0.4 storage validator mirrors v0.5, but 0.4 states these without keywords
-    ("NGFF-LB-001", "0.4"),
-    ("NGFF-LB-002", "0.4"),
-    ("NGFF-LB-003", "0.4"),
-    ("NGFF-IL-003", "0.4"),
-    ("NGFF-IL-004", "0.4"),
 }
 
 
@@ -83,9 +77,12 @@ def test_rule_fields(rule: Rule) -> None:
         assert all(v < Version(rule.removed) for v in versions)
     for src in rule.sources:
         assert src.doc.version in TRACKED_VERSIONS
-        assert re.search(rf"\b{rule.level}\b", src.quote), (
-            f"quote for {rule.code} does not contain {rule.level!r}"
-        )
+        if src.implied:
+            assert rule.notes, "explain in `notes` why a keyword-less quote counts"
+        else:
+            assert re.search(rf"\b{rule.level}\b", src.quote), (
+                f"quote for {rule.code} does not contain {rule.level!r}"
+            )
 
 
 def test_unique_slugs() -> None:

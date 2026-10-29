@@ -1688,12 +1688,17 @@ json = '''
 slug = 'labels-group-metadata'
 level = 'MUST'
 summary = 'A "labels" group must be a group whose metadata contains the key `labels`.'
-introduced = '0.5'
-notes = '0.4 only says that the "labels" group "contains the key `labels`", with no RFC 2119 keyword.'
+introduced = '0.4'
+notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from [ome/ngff#165](https://github.com/ome/ngff/pull/165), a labels rewrite that set out to \"keep the actual spec the same, and just improve the language explaining it\", so the requirement is taken to apply to 0.4 too."
 
 [[rules.NGFF-LB-001.sources]]
 quote = 'The OME-Zarr Metadata in the `zarr.json` file associated with the "labels" group MUST contain a JSON object with the key `labels`'
 lines = { "0.5" = [404, 404] }
+
+[[rules.NGFF-LB-001.sources]]
+quote = "The special group \"labels\" found under an image Zarr contains the key `labels`"
+lines = { "0.4" = [444, 444] }
+implied = true
 
 [rules.NGFF-LB-001.example]
 store = '''
@@ -1742,11 +1747,17 @@ store = '''
 slug = 'labels-paths-exist'
 level = 'MUST'
 summary = 'Each path listed in `labels` must point to a label image group.'
-introduced = '0.5'
+introduced = '0.4'
+notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from [ome/ngff#165](https://github.com/ome/ngff/pull/165), a labels rewrite that set out to \"keep the actual spec the same, and just improve the language explaining it\", so the requirement is taken to apply to 0.4 too."
 
 [[rules.NGFF-LB-002.sources]]
 quote = 'MUST contain a JSON object with the key `labels`, whose value is a JSON array of paths to the labeled multiscale image(s).'
 lines = { "0.5" = [404, 405] }
+
+[[rules.NGFF-LB-002.sources]]
+quote = "contains the key `labels` containing the paths to label objects which can be found underneath the group"
+lines = { "0.4" = [444, 445] }
+implied = true
 
 [rules.NGFF-LB-002.example]
 store = '''
@@ -1793,11 +1804,17 @@ store = '''
 slug = 'label-pixels-integer'
 level = 'MUST'
 summary = 'Label image arrays must have an integer data type.'
-introduced = '0.5'
+introduced = '0.4'
+notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from [ome/ngff#165](https://github.com/ome/ngff/pull/165), a labels rewrite that set out to \"keep the actual spec the same, and just improve the language explaining it\", so the requirement is taken to apply to 0.4 too. In 0.4 it appears only in a comment in the example directory layout (\"only integer values are supported\")."
 
 [[rules.NGFF-LB-003.sources]]
 quote = 'The pixels of the label images MUST be integer data types'
 lines = { "0.5" = [400, 400] }
+
+[[rules.NGFF-LB-003.sources]]
+quote = "Each multiscale level is stored as a separate Zarr array, as above, but only integer values"
+lines = { "0.4" = [179, 179] }
+implied = true
 
 [rules.NGFF-LB-003.example]
 store = '''
@@ -2002,11 +2019,17 @@ store = '''
 slug = 'label-image-has-image-label'
 level = 'SHOULD'
 summary = 'A label image should contain `image-label` metadata.'
-introduced = '0.5'
+introduced = '0.4'
+notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from [ome/ngff#165](https://github.com/ome/ngff/pull/165), a labels rewrite that set out to \"keep the actual spec the same, and just improve the language explaining it\", so the requirement is taken to apply to 0.4 too. 0.4 goes further: a label image is defined as a group with `image-label`. #165 made it explicit as SHOULD; a maintainer there noted it \"was previously not explicitly specified\"."
 
 [[rules.NGFF-IL-003.sources]]
 quote = 'SHOULD contain another key, `image-label`'
 lines = { "0.5" = [424, 424] }
+
+[[rules.NGFF-IL-003.sources]]
+quote = "Groups containing the `image-label` dictionary represent an image segmentation"
+lines = { "0.4" = [460, 460] }
+implied = true
 
 [rules.NGFF-IL-003.example]
 store = '''
@@ -2083,12 +2106,17 @@ store = '''
 slug = 'label-source-image-is-image-group'
 level = 'MUST'
 summary = 'An `image-label` `source.image` path must point to an image group.'
-introduced = '0.5'
-notes = '0.4 only says that `image` MAY be included; it states no requirement on the path.'
+introduced = '0.4'
+notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from [ome/ngff#165](https://github.com/ome/ngff/pull/165), a labels rewrite that set out to \"keep the actual spec the same, and just improve the language explaining it\", so the requirement is taken to apply to 0.4 too."
 
 [[rules.NGFF-IL-004.sources]]
 quote = 'This object MAY include a key `image`, whose value MUST be a string specifying the relative path to a Zarr image group.'
 lines = { "0.5" = [445, 445] }
+
+[[rules.NGFF-IL-004.sources]]
+quote = "If included it MAY include a key `image` whose value is the relative path to a Zarr image group"
+lines = { "0.4" = [482, 483] }
+implied = true
 
 [rules.NGFF-IL-004.example]
 store = '''

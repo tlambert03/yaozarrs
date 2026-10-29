@@ -110,6 +110,14 @@ id: Annotated[
    `uv run python scripts/ngff_rules.py check --fix`, which fills them in when a quote
    occurs exactly once and leaves the rest of the file untouched. If a quote is
    ambiguous, extend it until it is unique.
+
+   Exception: some versions state a requirement without a keyword ("contains the key
+   `labels`"), usually through loose writing rather than intent. Cite such a quote with
+   `implied = true` on its `sources` block only when there is evidence the authors
+   meant it as a requirement (e.g. a later version adds the keyword in a change
+   described as a rewording; cite the PR), and explain it in `notes`. Without such
+   evidence, don't cite the version, and list any check yaozarrs does there in
+   `KNOWN_OVERREACH`.
 4. **`NGFF-` codes only cite spec text.** Checks that yaozarrs adds go in `YZ-NNN`
    (no `level`, `introduced`, or `sources`, and `severity` must be set).
 5. **Coverage is computed, never declared.** Every code that yaozarrs emits has an

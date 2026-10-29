@@ -352,6 +352,11 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
                 "",
                 f"> {' '.join(src.quote.split())}",
                 "",
+                *(
+                    ["*Stated without an RFC 2119 keyword; see Notes.*", ""]
+                    if src.implied
+                    else []
+                ),
                 f"[`{src.doc.repo}@{src.doc.tag}` · `{src.doc.path}` {where}]"
                 f"({src.permalink})",
                 "",
