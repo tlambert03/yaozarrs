@@ -74,3 +74,17 @@ def _update_zarr3_group(
         attrs.update(extra_attributes)
     zarr_json["attributes"] = attrs
     zarr_json_path.write_text(json.dumps(zarr_json, indent=indent))
+
+
+def _ensure_parent_groups(root: Path, path: str) -> None:
+    """Create plain groups for each intermediate node of `path` below `root`.
+
+    (Zarr v3 has no implicit groups, so e.g. `root/a/` needs a `zarr.json` of its own
+    for a reader to resolve `root/a/b`.)  Existing groups are left alone.
+    """
+    parent = root
+    for part in path.split("/")[:-1]:
+        parent = parent / part
+        parent.mkdir(parents=True, exist_ok=True)
+        if not (zarr_json := parent / "zarr.json").exists():
+            zarr_json.write_text(json.dumps({"zarr_format": 3, "node_type": "group"}))
