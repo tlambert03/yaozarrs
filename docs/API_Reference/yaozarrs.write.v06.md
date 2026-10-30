@@ -18,7 +18,7 @@ This module provides convenience functions to write OME-Zarr v0.6 stores.
 The general pattern is:
 
 1. Decide what kind of OME **model** best matches your data (see [Guide to
-   OME-Zarr](../ome_zarr_guide.md) if you're new to OME Zarr), and construct your
+   OME-Zarr](../ome_zarr_guide/index.md) if you're new to OME Zarr), and construct your
    OME-Zarr metadata model using
    [yaozarrs.v06](../API_Reference/yaozarrs.v06.md) models:
     - Single Image (<=5D): use [`Image`][yaozarrs.v06.Image].
@@ -80,13 +80,13 @@ The general pattern is:
   `zarr.json` to include `dimension_names` matching the axes.  v0.6 no longer
   requires it, but other Zarr tools find it useful, so yaozarrs still writes them,
   using the axis names of the multiscale's ["intrinsic" coordinate
-  system](../coordinate_systems.md#the-intrinsic-coordinate-system).
+  system](../ome_zarr_guide/coordinate_systems.md#the-intrinsic-coordinate-system).
 - **No transformation is added between an image and its labels.**  Without one, a
   label image is usually understood to share the image's intrinsic coordinate
   system.  If it doesn't (e.g. your labels were written for a crop of the
   image, with the crop's corner as their origin), add a
   transformation to the image's `Multiscale.coordinateTransformations` (see [Lining labels up with the
-  image](../ome_zarr_guide.md#lining-labels-up-with-the-image-v06)).
+  image](../ome_zarr_guide/index.md#lining-labels-up-with-the-image-v06)).
 - **The scene metadata is written as given.**  Unlike plate metadata, which
   `write_plate` can generate for you, a [`Scene`][yaozarrs.v06.Scene] says how
   *your* images relate to each other, so you write it yourself.  `write_scene`

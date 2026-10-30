@@ -12,7 +12,7 @@ title: Coordinate Systems & Transformations
     shows how they appear in the metadata.
 
     If you only need a single image with a pixel size, you can mostly skip
-    this: [`Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims] handles it
+    this: [`Multiscale.from_dims`][yaozarrs.v06._image.Multiscale.from_dims] handles it
     for you.  Read on when you need to place images relative to each other,
     line up labels, register images, or just want to understand what you're
     looking at.
@@ -70,7 +70,7 @@ Coordinate systems are defined in two places:
 
 - **In an image** (required): each multiscale lists its coordinate systems under
   `coordinateSystems`.  This replaces the `axes` field of v0.5.
-- **In a scene** (optional): a [scene](ome_zarr_guide.md#working-with-scenes)
+- **In a scene** (optional): a [scene](index.md#working-with-scenes)
   may define its own, e.g. a shared "stage" or "world" coordinate system that
   several images are placed into.
 
@@ -205,7 +205,7 @@ viewing and processing unless a use case dictates otherwise".
 
 Here, the intrinsic coordinate system is called `physical`, but the name is up
 to you.  (The spec's examples use `physical` or `intrinsic`;
-[`Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims] uses `"intrinsic"`
+[`Multiscale.from_dims`][yaozarrs.v06._image.Multiscale.from_dims] uses `"intrinsic"`
 unless you pass `coordinate_system=...`).
 
 !!! important "Rules for dataset transformations"
@@ -246,7 +246,7 @@ center is, and toggle the translation to see what happens without it.
 <ome-pixel-grid></ome-pixel-grid>
 
 !!! tip "yaozarrs does this for you"
-    [`Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims] adds this
+    [`Multiscale.from_dims`][yaozarrs.v06._image.Multiscale.from_dims] adds this
     translation to every downsampled level, using the `scale_factor` of each
     [`DimSpec`][yaozarrs.DimSpec].  (The spec's wording is that the translation
     "should be" this for "the most common downsampling methods such as
@@ -295,7 +295,7 @@ system for the corrected geometry:
     - The other side **MUST** be either another coordinate system of the same
       multiscale (by `name`), or the coordinate system of a label image in the
       image's `labels` group (by `name` and `path`, see [lining labels up with
-      the image](ome_zarr_guide.md#lining-labels-up-with-the-image-v06)).
+      the image](index.md#lining-labels-up-with-the-image-v06)).
     - A transformation to a label image **MUST** be an `identity`, `scale` or
       `translation`.  (The "labels" section of the spec also allows a
       `sequence` of a scale and a translation; yaozarrs accepts that too.)
@@ -344,7 +344,7 @@ system for the corrected geometry:
 ## Between images: scenes
 
 Transformations between *different* images live in a
-[scene](ome_zarr_guide.md#working-with-scenes): a group whose `zarr.json` has a
+[scene](index.md#working-with-scenes): a group whose `zarr.json` has a
 `scene` object, with the images as subgroups.  Scene transformations refer to
 each image's coordinate systems by `name` *and* `path` (the image's path within
 the scene), and to the scene's own coordinate systems by `name` alone:
@@ -365,7 +365,7 @@ the scene), and to the scene's own coordinate systems by `name` alone:
 }
 ```
 
-See [Working with Scenes](ome_zarr_guide.md#working-with-scenes) for the
+See [Working with Scenes](index.md#working-with-scenes) for the
 details.
 
 ---

@@ -541,7 +541,7 @@ as well as stage positions and spatial offsets for registration.
 
     !!! tip "Use `Multiscale.from_dims`"
         Writing all of this by hand gets tedious.
-        [`v06.Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims] builds
+        [`v06.Multiscale.from_dims`][yaozarrs.v06._image.Multiscale.from_dims] builds
         the coordinate system and every level's transformation for you (see
         [`DimSpec`][yaozarrs.DimSpec]).
 
@@ -1651,7 +1651,7 @@ metadata.
 ## Additional Resources
 
 - [OME-Zarr Specification](https://ngff.openmicroscopy.org/) - Official specification
-- [yaozarrs API Documentation](API_Reference/yaozarrs.md) - Complete API reference
+- [yaozarrs API Documentation](../API_Reference/yaozarrs.md) - Complete API reference
 - [Zarr Format Specification](https://zarr-specs.readthedocs.io/) - Zarr v2 and v3 specs
 - [OME Data Model](https://docs.openmicroscopy.org/ome-model/) - Full OME-XML specification
 - [GitHub Repository](https://github.com/imaging-formats/yaozarrs) - Source code and issues

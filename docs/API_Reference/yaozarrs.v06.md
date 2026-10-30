@@ -8,7 +8,7 @@ Schema: <https://github.com/ome/ngff-spec/tree/89da1da5b0491f83b7cdde7d123aef763
     If you're coming from v0.5, the big change is that axes now live in named
     [coordinate systems](#coordinate-systems), and transformations link them
     together. See [Coordinate Systems &
-    Transformations](../coordinate_systems.md) for a gentle introduction.
+    Transformations](../ome_zarr_guide/coordinate_systems.md) for a gentle introduction.
 
 ## Images
 

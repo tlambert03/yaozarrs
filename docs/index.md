@@ -19,7 +19,7 @@ writing functions added via [optional extras](./installation.md).
 - :material-api: For a quick overview of the API, see the [API Quick Reference](#api-quick-reference)
   below, or the full [API Reference](./API_Reference/yaozarrs.md).
 - :material-book-open-variant: If you're new to OME-Zarr or don't know how to express your data in OME-Zarr
-  format, see the [yaozarrs guide to OME-Zarr](./ome_zarr_guide.md).
+  format, see the [yaozarrs guide to OME-Zarr](./ome_zarr_guide/index.md).
 - :material-application-brackets: If you learn best with examples, check out the interactive
   [OME-Zarr explorer](./ome_zarr_explorer.md) app.
 - :material-brain: To understand *why* yaozarrs exists, see the
@@ -31,7 +31,7 @@ writing functions added via [optional extras](./installation.md).
 
 You can create OME-Zarr metadata objects using the pydantic models in
 `yaozarrs.v04`, `yaozarrs.v05` and `yaozarrs.v06` modules.  Pick a top-level object (e.g.
-[`Image`](./ome_zarr_guide.md#working-with-images), [`Plate`](./ome_zarr_guide.md#working-with-plates), etc..) and create it using standard pydantic model syntax:
+[`Image`](./ome_zarr_guide/index.md#working-with-images), [`Plate`](./ome_zarr_guide/index.md#working-with-plates), etc..) and create it using standard pydantic model syntax:
 
 === "From `yaozarrs` models"
 
@@ -79,7 +79,7 @@ You can create OME-Zarr metadata objects using the pydantic models in
         ```
 
         1. In v0.6, axes belong to a named *coordinate system*.  See
-           [Coordinate Systems & Transformations](./coordinate_systems.md).
+           [Coordinate Systems & Transformations](./ome_zarr_guide/coordinate_systems.md).
         2. Each dataset's transformation says what it maps *from* (its array, by
            `path`) and *to* (a coordinate system, by `name`).
         3. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
@@ -244,7 +244,7 @@ You can create OME-Zarr metadata objects using the pydantic models in
     ```
 
     1. :eyes: [`yaozarrs.DimSpec`][] is a convenience class for use with
-        [`Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims].  It's
+        [`Multiscale.from_dims`][yaozarrs.v06._image.Multiscale.from_dims].  It's
         not part of the OME-Zarr spec.
     2. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
     standard pydantic API for exporting models to JSON.  Just an example of
