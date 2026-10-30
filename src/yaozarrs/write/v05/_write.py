@@ -152,7 +152,8 @@ class CreateArrayFunc(Protocol):
         -------
         Any
             Array object that supports numpy-style indexing for writing
-            (e.g., `zarr.Array` or `tensorstore.TensorStore`).
+            (e.g., `zarr.Array` or `tensorstore.TensorStore`).  Other arrays are
+            written with a single `array[:] = data`, computing dask data in memory.
         """
         ...
 
@@ -2526,8 +2527,14 @@ def _align_dask_chunks(data: da.Array, unit: tuple[int, ...]) -> da.Array:
     return data.rechunk(tuple(new_chunks))
 
 
+def _is_loaded_instance(obj: Any, module: str, cls: str) -> bool:
+    """Return whether `obj` is a `module.cls`, without importing `module`."""
+    mod = sys.modules.get(module)
+    return mod is not None and isinstance(obj, getattr(mod, cls))
+
+
 def _write_to_array(array: Any, data: ArrayLike, *, progress: bool) -> None:
-    """Write data to an already-created array (zarr or tensorstore)."""
+    """Write data to an already-created array (zarr, tensorstore, or custom)."""
     is_dask = "dask" in sys.modules and hasattr(data, "compute")
     if is_dask:
         import dask.array as da
@@ -2542,23 +2549,22 @@ def _write_to_array(array: Any, data: ArrayLike, *, progress: bool) -> None:
             ctx = nullcontext()
 
         with ctx:
-            # Handle both zarr and tensorstore
-            if hasattr(array, "store"):  # zarr.Array
+            if _is_loaded_instance(array, "zarr", "Array"):
                 # With lock=False, dask chunks must not split a zarr write unit
                 # (shard, else chunk): concurrent read-modify-writes of the same
                 # unit would race, and the last writer wins (losing data).
                 write_unit = getattr(array, "shards", None) or array.chunks
                 dask_data = _align_dask_chunks(dask_data, write_unit)
                 da.store(dask_data, array, lock=False)  # ty: ignore[invalid-argument-type]
-            else:  # tensorstore
-                computed = dask_data.compute()
-                array[:].write(computed).result()
+                return
+            # The write unit of any other array is unknown (custom arrays may not
+            # even expose one), so concurrent chunk writes could lose data.
+            data = dask_data.compute()
 
+    if _is_loaded_instance(array, "tensorstore", "TensorStore"):
+        array[:].write(data).result()
     else:
-        if hasattr(array, "store"):  # zarr.Array
-            array[:] = data
-        else:  # tensorstore
-            array[:].write(data).result()
+        array[:] = data
 
 
 # ######################## Array Writing Functions #############################

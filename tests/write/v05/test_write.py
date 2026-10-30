@@ -7,7 +7,9 @@ import importlib.metadata
 import importlib.util
 import json
 import math
-from typing import TYPE_CHECKING
+import sys
+from typing import TYPE_CHECKING, Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -28,7 +30,11 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
-    from yaozarrs.write.v05._write import CompressionName, ZarrWriter
+    from yaozarrs.write.v05._write import (
+        CompressionName,
+        CreateArrayFunc,
+        ZarrWriter,
+    )
 
 
 try:
@@ -215,6 +221,187 @@ def test_write_image_dask_misaligned_chunks(
     )
     zarr = pytest.importorskip("zarr")
     np.testing.assert_array_equal(zarr.open_array(dest / "0")[:], ref)
+
+
+@pytest.mark.parametrize("writer", WRITERS)
+def test_write_image_dask_streams_only_to_zarr(
+    tmp_path: Path, writer: ZarrWriter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real zarr arrays keep writing dask chunks lazily, without computing it all."""
+    da = pytest.importorskip("dask.array")
+    store = Mock(wraps=da.store)
+    monkeypatch.setattr(da, "store", store)
+    dest = tmp_path / "dask.zarr"
+    ref = np.random.randint(1, 1000, size=(8, 16)).astype("uint16")
+    write_image(dest, _make_yx_image(), _as_input("dask", ref), writer=writer)
+    assert store.called == (writer == "zarr")
+    zarr = pytest.importorskip("zarr")
+    np.testing.assert_array_equal(zarr.open_array(dest / "0")[:], ref)
+
+
+class _IndexOnlyArray:
+    """Custom array that honors the `CreateArrayFunc` contract, and nothing more."""
+
+    def __init__(self, shape: tuple[int, ...], dtype: Any) -> None:
+        self._data = np.zeros(shape, dtype=dtype)
+        self.writes: list[tuple[Any, Any]] = []
+
+    def __getitem__(self, key: Any) -> np.ndarray:
+        return self._data[key]
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        self.writes.append((key, value))
+        self._data[key] = value
+
+
+def _index_only_writer(
+    created: dict[Path, _IndexOnlyArray], **attrs: Any
+) -> CreateArrayFunc:
+    """Return a custom writer that records the arrays it creates in `created`."""
+
+    def create(
+        path: Path,
+        shape: tuple[int, ...],
+        dtype: Any,
+        chunks: tuple[int, ...],
+        *,
+        shards: tuple[int, ...] | None,
+        overwrite: bool,
+        compression: CompressionName,
+        dimension_names: list[str] | None,
+    ) -> _IndexOnlyArray:
+        created[path] = _IndexOnlyArray(shape, dtype)
+        vars(created[path]).update(attrs)
+        return created[path]
+
+    return create
+
+
+def _as_input(kind: str, ref: np.ndarray) -> Any:
+    """Return `ref` as numpy, or as dask with one chunk per plane."""
+    if kind == "numpy":
+        return ref
+    da = pytest.importorskip("dask.array")
+    return da.from_array(ref, chunks=(1, *ref.shape[1:]))
+
+
+def _make_yx_image() -> v05.Image:
+    return _make_image("custom", {"y": 0.5, "x": 0.5})
+
+
+@pytest.mark.parametrize("kind", ["numpy", "dask"])
+@pytest.mark.parametrize(
+    ("write", "array_path"),
+    [
+        pytest.param(
+            lambda dest, data, w: write_image(dest, _make_yx_image(), data, writer=w),
+            "0",
+            id="write_image",
+        ),
+        pytest.param(
+            lambda dest, data, w: write_image(
+                dest,
+                _make_yx_image(),
+                data,
+                labels={"cells": (_make_label_image(), data)},
+                writer=w,
+            ),
+            "labels/cells/0",
+            id="write_image-labels",
+        ),
+        pytest.param(
+            lambda dest, data, w: write_bioformats2raw(
+                dest, {"0": (_make_yx_image(), data)}, writer=w
+            ),
+            "0/0",
+            id="write_bioformats2raw",
+        ),
+        pytest.param(
+            lambda dest, data, w: write_plate(
+                dest, {("A", "1", "0"): (_make_yx_image(), data)}, writer=w
+            ),
+            "A/1/0/0",
+            id="write_plate",
+        ),
+        pytest.param(
+            lambda dest, data, w: Bf2RawBuilder(dest, writer=w).write_image(
+                "0", _make_yx_image(), data
+            ),
+            "0/0",
+            id="Bf2RawBuilder.write_image",
+        ),
+        pytest.param(
+            lambda dest, data, w: PlateBuilder(
+                dest, plate=_make_plate(1, 1)[0], writer=w
+            ).write_well("A", "01", {"0": (_make_yx_image(), data)}),
+            "A/01/0/0",
+            id="PlateBuilder.write_well",
+        ),
+        pytest.param(
+            lambda dest, data, w: LabelsBuilder(dest, writer=w).write_label(
+                "cells", _make_label_image(), data
+            ),
+            "cells/0",
+            id="LabelsBuilder.write_label",
+        ),
+    ],
+)
+def test_custom_writer_index_only_array(
+    tmp_path: Path, write: Any, array_path: str, kind: str
+) -> None:
+    """A custom array only needs numpy-style indexing, on every write path."""
+    dest = tmp_path / "custom.zarr"
+    ref = np.random.randint(1, 1000, size=(8, 16)).astype("uint16")
+    created: dict[Path, _IndexOnlyArray] = {}
+    write(dest, _as_input(kind, ref), _index_only_writer(created))
+    np.testing.assert_array_equal(created[dest / array_path][:], ref)
+
+
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        {"store": object()},
+        {"chunks": (8, 16)},
+        {"chunks": (4, 16), "shards": (8, 16)},
+        {"store": object(), "chunks": (2, 16), "shards": None},
+        {"store": object(), "chunks": (1, 16), "shards": (4, 16)},
+    ],
+    ids=["store", "chunks", "shards", "store-chunks", "store-shards"],
+)
+def test_custom_writer_dask_written_in_one_call(tmp_path: Path, attrs: dict) -> None:
+    """Dask chunks can split a custom array's write unit, so they aren't written apart.
+
+    Having zarr-like attributes doesn't make an array a `zarr.Array`.
+    """
+    dest = tmp_path / "custom.zarr"
+    ref = np.random.randint(1, 1000, size=(8, 16)).astype("uint16")
+    created: dict[Path, _IndexOnlyArray] = {}
+    write_image(
+        dest,
+        _make_yx_image(),
+        _as_input("dask", ref),
+        writer=_index_only_writer(created, **attrs),
+    )
+    array = created[dest / "0"]
+    assert len(array.writes) == 1
+    key, value = array.writes[0]
+    assert key == slice(None)
+    assert isinstance(value, np.ndarray)
+    np.testing.assert_array_equal(array[:], ref)
+
+
+@pytest.mark.parametrize("kind", ["numpy", "dask"])
+def test_custom_writer_needs_no_backend(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    """Telling custom arrays from zarr and tensorstore must not import either."""
+    data = _as_input(kind, ref := np.arange(128, dtype="uint16").reshape(8, 16))
+    for backend in ("zarr", "tensorstore"):
+        monkeypatch.setitem(sys.modules, backend, None)  # `import backend` now raises
+    dest = tmp_path / "custom.zarr"
+    created: dict[Path, _IndexOnlyArray] = {}
+    write_image(dest, _make_yx_image(), data, writer=_index_only_writer(created))
+    np.testing.assert_array_equal(created[dest / "0"][:], ref)
 
 
 @pytest.mark.parametrize("writer", WRITERS)
