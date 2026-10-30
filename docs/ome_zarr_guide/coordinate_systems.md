@@ -445,7 +445,8 @@ transformations to points or images is a **SHOULD**.)
 
 ## In yaozarrs
 
-Every transformation type has a model in [`yaozarrs.v06`][], and they validate
+Every transformation type has a model in
+[`yaozarrs.v06`](../API_Reference/yaozarrs.v06.md), and they validate
 what can be checked from the metadata alone (e.g. that a scale has one value per
 axis, a rotation matrix is orthonormal, or that every dataset outputs to the
 same coordinate system):
