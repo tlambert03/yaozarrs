@@ -33,108 +33,201 @@ You can create OME-Zarr metadata objects using the pydantic models in
 `yaozarrs.v04`, `yaozarrs.v05` and `yaozarrs.v06` modules.  Pick a top-level object (e.g.
 [`Image`](./ome_zarr_guide.md#working-with-images), [`Plate`](./ome_zarr_guide.md#working-with-plates), etc..) and create it using standard pydantic model syntax:
 
-!!! tip "Using v0.6?"
-    The examples below use v0.5.  In v0.6, axes live in named *coordinate
-    systems*, and transformations say what they map from and to, so the
-    explicit models look a bit different (see [Coordinate Systems &
-    Transformations](./coordinate_systems.md)).  The `DimSpec` convenience
-    works the same way for both: just swap `v05` for `v06`.
-
 === "From `yaozarrs` models"
 
     For full IDE autocompletion and type checking, you can create OME-Zarr metadata
     using the yaozarrs models:
 
-    ```python
-    from yaozarrs import v04, v05  # import from appropriate version module
+    === "v0.6"
 
-    image = v05.Image(
-        multiscales=[
-            v05.Multiscale(
-                name=None,
-                axes=[
-                    v05.TimeAxis(name="t", unit="second"),
-                    v05.ChannelAxis(name="c"),
-                    v05.SpaceAxis(name="z", unit="micrometer"),
-                    v05.SpaceAxis(name="y", unit="micrometer"),
-                    v05.SpaceAxis(name="x", unit="micrometer"),
-                ],
-                datasets=[
-                    v05.Dataset(
-                        path="0",
-                        coordinateTransformations=[
-                            v05.ScaleTransformation(scale=[1.0, 1.0, 0.3, 0.1, 0.1])
-                        ],
-                    )
-                ],
-            )
-        ],
-    )
+        ```python
+        from yaozarrs import v06
 
-    # Export
-    image.model_dump_json(exclude_unset=True, indent=2)  # (1)!
-    ```
+        image = v06.Image(
+            multiscales=[
+                v06.Multiscale(
+                    coordinateSystems=[
+                        v06.CoordinateSystem(  # (1)!
+                            name="physical",
+                            axes=[
+                                v06.TimeAxis(name="t", unit="second"),
+                                v06.ChannelAxis(name="c"),
+                                v06.SpaceAxis(name="z", unit="micrometer"),
+                                v06.SpaceAxis(name="y", unit="micrometer"),
+                                v06.SpaceAxis(name="x", unit="micrometer"),
+                            ],
+                        )
+                    ],
+                    datasets=[
+                        v06.Dataset(
+                            path="0",
+                            coordinateTransformations=[
+                                v06.ScaleTransformation(
+                                    scale=[1.0, 1.0, 0.3, 0.1, 0.1],
+                                    input={"path": "0"},  # (2)!
+                                    output={"name": "physical"},
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
 
-    1. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
-    standard pydantic API for exporting models to JSON.  Just an example of
-    exporting metadata back to JSON format.
+        # Export
+        image.model_dump_json(exclude_unset=True, indent=2)  # (3)!
+        ```
+
+        1. In v0.6, axes belong to a named *coordinate system*.  See
+           [Coordinate Systems & Transformations](./coordinate_systems.md).
+        2. Each dataset's transformation says what it maps *from* (its array, by
+           `path`) and *to* (a coordinate system, by `name`).
+        3. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
+        standard pydantic API for exporting models to JSON.  Just an example of
+        exporting metadata back to JSON format.
+
+    === "v0.5"
+
+        ```python
+        from yaozarrs import v05
+
+        image = v05.Image(
+            multiscales=[
+                v05.Multiscale(
+                    name=None,
+                    axes=[
+                        v05.TimeAxis(name="t", unit="second"),
+                        v05.ChannelAxis(name="c"),
+                        v05.SpaceAxis(name="z", unit="micrometer"),
+                        v05.SpaceAxis(name="y", unit="micrometer"),
+                        v05.SpaceAxis(name="x", unit="micrometer"),
+                    ],
+                    datasets=[
+                        v05.Dataset(
+                            path="0",
+                            coordinateTransformations=[
+                                v05.ScaleTransformation(scale=[1.0, 1.0, 0.3, 0.1, 0.1])
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        # Export
+        image.model_dump_json(exclude_unset=True, indent=2)  # (1)!
+        ```
+
+        1. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
+        standard pydantic API for exporting models to JSON.  Just an example of
+        exporting metadata back to JSON format.
 
 === "From dictionaries"
 
     If you prefer avoiding explicit model classes, you can create OME-Zarr
     metadata using standard python dictionaries (standard pydantic model parsing):
 
-    ```python
-    import yaozarrs
-    from yaozarrs import v05
+    === "v0.6"
 
-    image = v05.Image.model_validate(  # (1)!
-        {
-            "multiscales": [
-                {
-                    "axes": [
-                        {"name": "t", "type": "time", "unit": "second"},
-                        {"name": "c", "type": "channel"},
-                        {"name": "z", "type": "space", "unit": "micrometer"},
-                        {"name": "y", "type": "space", "unit": "micrometer"},
-                        {"name": "x", "type": "space", "unit": "micrometer"},
-                    ],
-                    "datasets": [
-                        {
-                            "path": "0",
-                            "coordinateTransformations": [
-                                {"type": "scale", "scale": [1.0, 1.0, 0.3, 0.1, 0.1]}
-                            ],
-                        }
-                    ],
-                }
-            ]
-        }
-    )
+        ```python
+        from yaozarrs import v06
 
-    # Export
-    image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
-    ```
+        image = v06.Image.model_validate(  # (1)!
+            {
+                "multiscales": [
+                    {
+                        "coordinateSystems": [
+                            {
+                                "name": "physical",
+                                "axes": [
+                                    {"name": "t", "type": "time", "unit": "second"},
+                                    {"name": "c", "type": "channel"},
+                                    {"name": "z", "type": "space", "unit": "micrometer"},
+                                    {"name": "y", "type": "space", "unit": "micrometer"},
+                                    {"name": "x", "type": "space", "unit": "micrometer"},
+                                ],
+                            }
+                        ],
+                        "datasets": [
+                            {
+                                "path": "0",
+                                "coordinateTransformations": [
+                                    {
+                                        "type": "scale",
+                                        "scale": [1.0, 1.0, 0.3, 0.1, 0.1],
+                                        "input": {"path": "0"},
+                                        "output": {"name": "physical"},
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
 
-    1. [`model_validate`][pydantic.BaseModel.model_validate] is part of the
-       standard pydantic API for creating models from any object, like dictionaries.
-    2. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
-    standard pydantic API for exporting models to JSON.  Just an example of
-    exporting metadata back to JSON format.
+        # Export
+        image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
+        ```
+
+        1. [`model_validate`][pydantic.BaseModel.model_validate] is part of the
+           standard pydantic API for creating models from any object, like dictionaries.
+        2. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
+        standard pydantic API for exporting models to JSON.  Just an example of
+        exporting metadata back to JSON format.
+
+    === "v0.5"
+
+        ```python
+        from yaozarrs import v05
+
+        image = v05.Image.model_validate(  # (1)!
+            {
+                "multiscales": [
+                    {
+                        "axes": [
+                            {"name": "t", "type": "time", "unit": "second"},
+                            {"name": "c", "type": "channel"},
+                            {"name": "z", "type": "space", "unit": "micrometer"},
+                            {"name": "y", "type": "space", "unit": "micrometer"},
+                            {"name": "x", "type": "space", "unit": "micrometer"},
+                        ],
+                        "datasets": [
+                            {
+                                "path": "0",
+                                "coordinateTransformations": [
+                                    {"type": "scale", "scale": [1.0, 1.0, 0.3, 0.1, 0.1]}
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+
+        # Export
+        image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
+        ```
+
+        1. [`model_validate`][pydantic.BaseModel.model_validate] is part of the
+           standard pydantic API for creating models from any object, like dictionaries.
+        2. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
+        standard pydantic API for exporting models to JSON.  Just an example of
+        exporting metadata back to JSON format.
 
 === "`DimSpec` Convenience"
 
     For the common case of creating multiscale images, you can use the
     [`yaozarrs.DimSpec`][] convenience class to simplify axis and transformation
-    creation:
+    creation.  It hides the differences between versions: the same code works
+    for `v04`, `v05` and `v06`.
 
     ```python
-    import yaozarrs
-    from yaozarrs import v04, v05, DimSpec
+    from yaozarrs import DimSpec, v06  # (or v04, v05)
 
-    image = v05.Image(
+    image = v06.Image(
         multiscales=[
-            v05.Multiscale.from_dims(
+            v06.Multiscale.from_dims(
                 dims=[
                     DimSpec(name="t", unit="second"),  # (1)!
                     DimSpec(name="c"),
@@ -149,9 +242,9 @@ You can create OME-Zarr metadata objects using the pydantic models in
     # Export
     image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
     ```
-    
+
     1. :eyes: [`yaozarrs.DimSpec`][] is a convenience class for use with
-        [`Multiscale.from_dims`][yaozarrs.v05._image.Multiscale.from_dims].  It's
+        [`Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims].  It's
         not part of the OME-Zarr spec.
     2. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
     standard pydantic API for exporting models to JSON.  Just an example of
