@@ -142,7 +142,7 @@ more than 5 dimensions**, and may store multiple resolution levels.
 
 ### Directory Structure
 
-=== "OME-Zarr v0.6 (Zarr v3)"
+=== "v0.6"
 
     ```
     image.zarr/
@@ -159,7 +159,7 @@ more than 5 dimensions**, and may store multiple resolution levels.
     *The same layout as v0.5: what changed in v0.6 is the metadata inside
     `zarr.json`.*
 
-=== "OME-Zarr v0.5 (Zarr v3)"
+=== "v0.5"
 
     ```
     image.zarr/
@@ -173,7 +173,7 @@ more than 5 dimensions**, and may store multiple resolution levels.
         └── ...
     ```
 
-=== "OME-Zarr v0.4 (Zarr v2)"
+=== "v0.4"
 
     ```
     image.zarr/
@@ -220,67 +220,6 @@ optional `discrete` and `longName`, and moves axes into named coordinate systems
 
     In practice, this limits valid axis combinations to: `[T][C][Z] Y X`  
     *(though no explicit restriction is placed on naming conventions)*
-
-=== "v0.4"
-
-    **Spec JSON:**
-
-    ```json
-    {
-      // found in a "multiscales" object
-      "axes": [
-        {"name": "c", "type": "channel"},
-        {"name": "z", "type": "space", "unit": "micrometer"},
-        {"name": "y", "type": "space", "unit": "micrometer"},
-        {"name": "x", "type": "space", "unit": "micrometer"}
-      ]
-    }
-    ```
-
-    **yaozarrs Code:**
-
-    ```python
-    from yaozarrs import v04
-
-    axes = [
-        v04.ChannelAxis(name="c"),
-        v04.SpaceAxis(name="z", unit="micrometer"),
-        v04.SpaceAxis(name="y", unit="micrometer"),
-        v04.SpaceAxis(name="x", unit="micrometer"),
-    ]
-    ```
-
-    !!! warning "Breaking change from v0.3"
-        In v0.3, axes were simple strings: `["c", "z", "y", "x"]`. In v0.4+, they must be objects with explicit types.
-
-=== "v0.5"
-
-    **Spec JSON:**
-
-    ```json
-    {
-      // found in a "multiscales" object
-      "axes": [
-        {"name": "c", "type": "channel"},
-        {"name": "z", "type": "space", "unit": "micrometer"},
-        {"name": "y", "type": "space", "unit": "micrometer"},
-        {"name": "x", "type": "space", "unit": "micrometer"}
-      ]
-    }
-    ```
-
-    **yaozarrs Code:**
-
-    ```python
-    from yaozarrs import v05
-
-    axes = [
-        v05.ChannelAxis(name="c"),
-        v05.SpaceAxis(name="z", unit="micrometer"),
-        v05.SpaceAxis(name="y", unit="micrometer"),
-        v05.SpaceAxis(name="x", unit="micrometer"),
-    ]
-    ```
 
 === "v0.6"
 
@@ -337,31 +276,48 @@ optional `discrete` and `longName`, and moves axes into named coordinate systems
         - Axis names **MUST** be non-empty, and unique *within their coordinate
           system*.
 
----
-
-### Coordinate Transformations
-
-Starting in v0.4, **every dataset MUST include coordinate transformations** that
-map data coordinates to physical coordinates.  Coordinate transforms are where
-you would specify physical units (micrometers, seconds), multi-resolution scales,
-as well as stage positions and spatial offsets for registration.
-
-=== "v0.4"
-
-    **Scale Transformation (REQUIRED):**
-
-    Maps array indices to physical coordinates. Scale values represent the physical size per pixel for each dimension.
+=== "v0.5"
 
     **Spec JSON:**
 
     ```json
     {
-      "datasets": [{
-        "path": "0",
-        "coordinateTransformations": [
-          {"type": "scale", "scale": [1.0, 0.5, 0.1, 0.1]}
-        ]
-      }]
+      // found in a "multiscales" object
+      "axes": [
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"}
+      ]
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v05
+
+    axes = [
+        v05.ChannelAxis(name="c"),
+        v05.SpaceAxis(name="z", unit="micrometer"),
+        v05.SpaceAxis(name="y", unit="micrometer"),
+        v05.SpaceAxis(name="x", unit="micrometer"),
+    ]
+    ```
+
+=== "v0.4"
+
+    **Spec JSON:**
+
+    ```json
+    {
+      // found in a "multiscales" object
+      "axes": [
+        {"name": "c", "type": "channel"},
+        {"name": "z", "type": "space", "unit": "micrometer"},
+        {"name": "y", "type": "space", "unit": "micrometer"},
+        {"name": "x", "type": "space", "unit": "micrometer"}
+      ]
     }
     ```
 
@@ -370,71 +326,25 @@ as well as stage positions and spatial offsets for registration.
     ```python
     from yaozarrs import v04
 
-    dataset = v04.Dataset(
-        path="0",
-        coordinateTransformations=[v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1])],
-    )
+    axes = [
+        v04.ChannelAxis(name="c"),
+        v04.SpaceAxis(name="z", unit="micrometer"),
+        v04.SpaceAxis(name="y", unit="micrometer"),
+        v04.SpaceAxis(name="x", unit="micrometer"),
+    ]
     ```
 
-    **Translation Transformation (OPTIONAL):**
+    !!! warning "Breaking change from v0.3"
+        In v0.3, axes were simple strings: `["c", "z", "y", "x"]`. In v0.4+, they must be objects with explicit types.
 
-    Adds a spatial offset. Must come after scale.
+---
 
-    **Spec JSON:**
+### Coordinate Transformations
 
-    ```json
-    {
-      "coordinateTransformations": [
-        {"type": "scale", "scale": [1.0, 0.5, 0.1, 0.1]},
-        {"type": "translation", "translation": [0.0, 0.0, 100.0, 200.0]}
-      ]
-    }
-    ```
-
-    **yaozarrs Code:**
-
-    ```python
-    dataset = v04.Dataset(
-        path="0",
-        coordinateTransformations=[
-            v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
-            v04.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
-        ],
-    )
-    ```
-
-    !!! warning "Transformation Rules"
-        - **MUST** have exactly one scale transformation per dataset
-        - **MAY** have at most one translation transformation
-        - If translation exists, it **MUST** come after scale
-        - Transformation length **MUST** match number of axes
-
-=== "v0.5"
-
-    Identical to v0.4, just stored under `attributes.ome` namespace.
-
-    **yaozarrs Code (same as v0.4):**
-
-    ```python
-    from yaozarrs import v05
-
-    dataset = v05.Dataset(
-        path="0",
-        coordinateTransformations=[
-            v05.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
-            v05.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
-        ],
-    )
-    ```
-
-    !!! info "v0.5 Additional Requirement"
-        In v0.5, each array's `zarr.json` **MUST** include `dimension_names` matching the axes:
-
-        ```json
-        {
-          "dimension_names": ["c", "z", "y", "x"]
-        }
-        ```
+Starting in v0.4, **every dataset MUST include coordinate transformations** that
+map data coordinates to physical coordinates.  Coordinate transforms are where
+you would specify physical units (micrometers, seconds), multi-resolution scales,
+as well as stage positions and spatial offsets for registration.
 
 === "v0.6"
 
@@ -556,6 +466,96 @@ as well as stage positions and spatial offsets for registration.
     each other...).  See [Coordinate Systems &
     Transformations](coordinate_systems.md).
 
+=== "v0.5"
+
+    Identical to v0.4, just stored under `attributes.ome` namespace.
+
+    **yaozarrs Code (same as v0.4):**
+
+    ```python
+    from yaozarrs import v05
+
+    dataset = v05.Dataset(
+        path="0",
+        coordinateTransformations=[
+            v05.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
+            v05.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
+        ],
+    )
+    ```
+
+    !!! info "v0.5 Additional Requirement"
+        In v0.5, each array's `zarr.json` **MUST** include `dimension_names` matching the axes:
+
+        ```json
+        {
+          "dimension_names": ["c", "z", "y", "x"]
+        }
+        ```
+
+=== "v0.4"
+
+    **Scale Transformation (REQUIRED):**
+
+    Maps array indices to physical coordinates. Scale values represent the physical size per pixel for each dimension.
+
+    **Spec JSON:**
+
+    ```json
+    {
+      "datasets": [{
+        "path": "0",
+        "coordinateTransformations": [
+          {"type": "scale", "scale": [1.0, 0.5, 0.1, 0.1]}
+        ]
+      }]
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v04
+
+    dataset = v04.Dataset(
+        path="0",
+        coordinateTransformations=[v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1])],
+    )
+    ```
+
+    **Translation Transformation (OPTIONAL):**
+
+    Adds a spatial offset. Must come after scale.
+
+    **Spec JSON:**
+
+    ```json
+    {
+      "coordinateTransformations": [
+        {"type": "scale", "scale": [1.0, 0.5, 0.1, 0.1]},
+        {"type": "translation", "translation": [0.0, 0.0, 100.0, 200.0]}
+      ]
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    dataset = v04.Dataset(
+        path="0",
+        coordinateTransformations=[
+            v04.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
+            v04.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
+        ],
+    )
+    ```
+
+    !!! warning "Transformation Rules"
+        - **MUST** have exactly one scale transformation per dataset
+        - **MAY** have at most one translation transformation
+        - If translation exists, it **MUST** come after scale
+        - Transformation length **MUST** match number of axes
+
 ---
 
 ### Interactive Example
@@ -584,7 +584,7 @@ They are represented as a special group named "labels/" within an image group.
 
 ??? example "Label Structure and Code"
 
-    === "OME-Zarr v0.6 (Zarr v3)"
+    === "v0.6"
         **Directory Structure:**
 
         Same as v0.5:
@@ -662,7 +662,7 @@ They are represented as a special group named "labels/" within an image group.
         )
         ```
 
-    === "OME-Zarr v0.5 (Zarr v3)"
+    === "v0.5"
         **Directory Structure:**
 
         ```
@@ -734,7 +734,7 @@ They are represented as a special group named "labels/" within an image group.
         )
         ```
 
-    === "OME-Zarr v0.4 (Zarr v2)"
+    === "v0.4"
 
         **Directory Structure:**
         ```
@@ -853,7 +853,7 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
 
 ### Directory Structure
 
-=== "OME-Zarr v0.6 (Zarr v3)"
+=== "v0.6"
 
     Same as v0.5:
 
@@ -874,7 +874,7 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
         └── 1/
     ```
 
-=== "OME-Zarr v0.5 (Zarr v3)"
+=== "v0.5"
 
     ```
     plate.zarr/
@@ -893,7 +893,7 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
         └── 1/
     ```
 
-=== "OME-Zarr v0.4 (Zarr v2)"
+=== "v0.4"
 
     ```
     plate.zarr/
@@ -922,62 +922,36 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
 
 ### Plate Metadata
 
-=== "v0.4"
+=== "v0.6"
 
-    **Spec JSON (`.zattrs` at plate root):**
+    The same structure as v0.5, with `"version": "0.6"` at `ome.version`.
+    (The v0.5 spec *text* still asked for a separate `version` key inside
+    `plate` and `well`, although its schemas didn't.  v0.6 removed it from the
+    text too, since the version is already given at `ome.version`.)
 
-    ```json
-    {
-      "plate": {
-        "version": "0.4",
-        "name": "HCS Experiment",
-        "columns": [
-          {"name": "1"},
-          {"name": "2"},
-          {"name": "3"}
-        ],
-        "rows": [
-          {"name": "A"},
-          {"name": "B"}
-        ],
-        "wells": [
-          {"path": "A/1", "rowIndex": 0, "columnIndex": 0},
-          {"path": "A/2", "rowIndex": 0, "columnIndex": 1},
-          {"path": "B/1", "rowIndex": 1, "columnIndex": 0}
-        ],
-        "acquisitions": [
-          {"id": 0, "name": "Initial", "maximumfieldcount": 4},
-          {"id": 1, "name": "24h", "maximumfieldcount": 4}
-        ],
-      }
-    }
-    ```
-
-    **yaozarrs Code:**
+    In yaozarrs, just swap `v05` for `v06`:
 
     ```python
-    from yaozarrs import v04
+    from yaozarrs import v06
 
-    plate_def = v04.PlateDef(
+    plate_def = v06.PlateDef(
         name="HCS Experiment",
-        columns=[v04.Column(name="1"), v04.Column(name="2"), v04.Column(name="3")],
-        rows=[v04.Row(name="A"), v04.Row(name="B")],
+        columns=[v06.Column(name="1"), v06.Column(name="2"), v06.Column(name="3")],
+        rows=[v06.Row(name="A"), v06.Row(name="B")],
         wells=[
-            v04.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
-            v04.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
-            v04.PlateWell(path="B/1", rowIndex=1, columnIndex=0),
+            v06.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
+            v06.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
+            v06.PlateWell(path="B/1", rowIndex=1, columnIndex=0),
         ],
         acquisitions=[
-            v04.Acquisition(id=0, name="Initial", maximumfieldcount=4),
-            v04.Acquisition(id=1, name="24h", maximumfieldcount=4),
+            v06.Acquisition(id=0, name="Initial", maximumfieldcount=4),
+            v06.Acquisition(id=1, name="24h", maximumfieldcount=4),
         ],
+        field_count=4,
     )
 
-    plate = v04.Plate(plate=plate_def)
+    plate = v06.Plate(plate=plate_def)
     ```
-
-    !!! warning "Breaking change from v0.3"
-        In v0.4, `rowIndex` and `columnIndex` became **required** for all wells. This enables efficient sparse plate handling without path parsing.
 
 === "v0.5"
 
@@ -1050,56 +1024,33 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
     json_str = zarr_json.model_dump_json(indent=2, exclude_unset=True)
     ```
 
-=== "v0.6"
-
-    The same structure as v0.5, with `"version": "0.6"` at `ome.version`.
-    (The v0.5 spec *text* still asked for a separate `version` key inside
-    `plate` and `well`, although its schemas didn't.  v0.6 removed it from the
-    text too, since the version is already given at `ome.version`.)
-
-    In yaozarrs, just swap `v05` for `v06`:
-
-    ```python
-    from yaozarrs import v06
-
-    plate_def = v06.PlateDef(
-        name="HCS Experiment",
-        columns=[v06.Column(name="1"), v06.Column(name="2"), v06.Column(name="3")],
-        rows=[v06.Row(name="A"), v06.Row(name="B")],
-        wells=[
-            v06.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
-            v06.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
-            v06.PlateWell(path="B/1", rowIndex=1, columnIndex=0),
-        ],
-        acquisitions=[
-            v06.Acquisition(id=0, name="Initial", maximumfieldcount=4),
-            v06.Acquisition(id=1, name="24h", maximumfieldcount=4),
-        ],
-        field_count=4,
-    )
-
-    plate = v06.Plate(plate=plate_def)
-    ```
-
----
-
-### Well Metadata
-
-Wells list the fields of view (images) they contain:
-
 === "v0.4"
 
-    **Spec JSON (`.zattrs` in well directory):**
+    **Spec JSON (`.zattrs` at plate root):**
 
     ```json
     {
-      "well": {
+      "plate": {
         "version": "0.4",
-        "images": [
-          {"path": "0", "acquisition": 0},
-          {"path": "1", "acquisition": 0},
-          {"path": "2", "acquisition": 1}
-        ]
+        "name": "HCS Experiment",
+        "columns": [
+          {"name": "1"},
+          {"name": "2"},
+          {"name": "3"}
+        ],
+        "rows": [
+          {"name": "A"},
+          {"name": "B"}
+        ],
+        "wells": [
+          {"path": "A/1", "rowIndex": 0, "columnIndex": 0},
+          {"path": "A/2", "rowIndex": 0, "columnIndex": 1},
+          {"path": "B/1", "rowIndex": 1, "columnIndex": 0}
+        ],
+        "acquisitions": [
+          {"id": 0, "name": "Initial", "maximumfieldcount": 4},
+          {"id": 1, "name": "24h", "maximumfieldcount": 4}
+        ],
       }
     }
     ```
@@ -1109,16 +1060,32 @@ Wells list the fields of view (images) they contain:
     ```python
     from yaozarrs import v04
 
-    well_def = v04.WellDef(
-        images=[
-            v04.FieldOfView(path="0", acquisition=0),
-            v04.FieldOfView(path="1", acquisition=0),
-            v04.FieldOfView(path="2", acquisition=1),
-        ]
+    plate_def = v04.PlateDef(
+        name="HCS Experiment",
+        columns=[v04.Column(name="1"), v04.Column(name="2"), v04.Column(name="3")],
+        rows=[v04.Row(name="A"), v04.Row(name="B")],
+        wells=[
+            v04.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
+            v04.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
+            v04.PlateWell(path="B/1", rowIndex=1, columnIndex=0),
+        ],
+        acquisitions=[
+            v04.Acquisition(id=0, name="Initial", maximumfieldcount=4),
+            v04.Acquisition(id=1, name="24h", maximumfieldcount=4),
+        ],
     )
 
-    well = v04.Well(well=well_def)
+    plate = v04.Plate(plate=plate_def)
     ```
+
+    !!! warning "Breaking change from v0.3"
+        In v0.4, `rowIndex` and `columnIndex` became **required** for all wells. This enables efficient sparse plate handling without path parsing.
+
+---
+
+### Well Metadata
+
+Wells list the fields of view (images) they contain:
 
 === "v0.6"
 
@@ -1164,6 +1131,78 @@ Wells list the fields of view (images) they contain:
         follows Zarr's rules for node names instead: letters, digits, `-`, `_`
         and `.` are allowed, but a path **MUST NOT** be empty, consist only of
         periods (like `.` or `..`), or start with `__`.
+
+=== "v0.5"
+
+    **Spec JSON (`zarr.json` in well directory):**
+
+    ```json
+    {
+      "zarr_format": 3,
+      "node_type": "group",
+      "attributes": {
+        "ome": {
+          "version": "0.5",
+          "well": {
+            "images": [
+              {"path": "0", "acquisition": 0},
+              {"path": "1", "acquisition": 0},
+              {"path": "2", "acquisition": 1}
+            ]
+          }
+        }
+      }
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v05
+
+    well_def = v05.WellDef(
+        images=[
+            v05.FieldOfView(path="0", acquisition=0),
+            v05.FieldOfView(path="1", acquisition=0),
+            v05.FieldOfView(path="2", acquisition=1),
+        ]
+    )
+
+    well = v05.Well(well=well_def)
+    ```
+
+=== "v0.4"
+
+    **Spec JSON (`.zattrs` in well directory):**
+
+    ```json
+    {
+      "well": {
+        "version": "0.4",
+        "images": [
+          {"path": "0", "acquisition": 0},
+          {"path": "1", "acquisition": 0},
+          {"path": "2", "acquisition": 1}
+        ]
+      }
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v04
+
+    well_def = v04.WellDef(
+        images=[
+            v04.FieldOfView(path="0", acquisition=0),
+            v04.FieldOfView(path="1", acquisition=0),
+            v04.FieldOfView(path="2", acquisition=1),
+        ]
+    )
+
+    well = v04.Well(well=well_def)
+    ```
 
 | Field | Requirement | Description |
 |-------|-------------|-------------|
@@ -1216,6 +1255,32 @@ This bioformats2raw layout described in the NGFF spec, is described below:
 
 ### Directory Structure
 
+=== "v0.6"
+
+    ```
+    series.ome.zarr               # One converted fileset from bioformats2raw
+        ├── zarr.json             # Contains "bioformats2raw.layout" metadata
+        ├── OME                   # Special group for containing OME metadata
+        │   ├── zarr.json         # Contains "series" metadata
+        │   └── METADATA.ome.xml  # OME-XML file stored within the Zarr fileset
+        ├── 0                     # First image in the collection
+        ├── 1                     # Second image in the collection
+        └── ...
+    ```
+
+=== "v0.5"
+
+    ```
+    series.ome.zarr               # One converted fileset from bioformats2raw
+        ├── zarr.json             # Contains "bioformats2raw.layout" metadata
+        ├── OME                   # Special group for containing OME metadata
+        │   ├── zarr.json         # Contains "series" metadata
+        │   └── METADATA.ome.xml  # OME-XML file stored within the Zarr fileset
+        ├── 0                     # First image in the collection
+        ├── 1                     # Second image in the collection
+        └── ...
+    ```
+
 === "v0.4"
 
     ```
@@ -1231,20 +1296,43 @@ This bioformats2raw layout described in the NGFF spec, is described below:
         └── ...
     ```
 
-=== "v0.5 / v0.6"
-
-    ```
-    series.ome.zarr               # One converted fileset from bioformats2raw
-        ├── zarr.json             # Contains "bioformats2raw.layout" metadata
-        ├── OME                   # Special group for containing OME metadata
-        │   ├── zarr.json         # Contains "series" metadata
-        │   └── METADATA.ome.xml  # OME-XML file stored within the Zarr fileset
-        ├── 0                     # First image in the collection
-        ├── 1                     # Second image in the collection
-        └── ...
-    ```
-
 ### Metadata
+
+=== "v0.6"
+
+    Unchanged from v0.5 (it's still *transitional*).
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v06
+
+    # Root zarr.json
+    root_zarr_json = v06.OMEZarrGroupJSON(
+        attributes={"ome": v06.Bf2Raw(bioformats2raw_layout=3)}
+    )
+
+    # OME/zarr.json
+    ome_zarr_json = v06.OMEZarrGroupJSON(
+        attributes={"ome": v06.Series(series=["0", "1", "2", "3"])}
+    )
+    ```
+
+=== "v0.5"
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v05
+
+    # Root zarr.json
+    root_zarr_json = v05.OMEZarrGroupJSON(attributes={"ome": v05.Bf2Raw()})
+
+    # OME/zarr.json
+    ome_zarr_json = v05.OMEZarrGroupJSON(
+        attributes={"ome": v05.Series(series=["0", "1", "2", "3"])}
+    )
+    ```
 
 === "v0.4"
 
@@ -1266,42 +1354,6 @@ This bioformats2raw layout described in the NGFF spec, is described below:
 
     # OME/.zattrs
     series = v04.Series(series=["0", "1", "2", "3"])
-    ```
-
-=== "v0.5"
-
-    **yaozarrs Code:**
-
-    ```python
-    from yaozarrs import v05
-
-    # Root zarr.json
-    root_zarr_json = v05.OMEZarrGroupJSON(attributes={"ome": v05.Bf2Raw()})
-
-    # OME/zarr.json
-    ome_zarr_json = v05.OMEZarrGroupJSON(
-        attributes={"ome": v05.Series(series=["0", "1", "2", "3"])}
-    )
-    ```
-
-=== "v0.6"
-
-    Unchanged from v0.5 (it's still *transitional*).
-
-    **yaozarrs Code:**
-
-    ```python
-    from yaozarrs import v06
-
-    # Root zarr.json
-    root_zarr_json = v06.OMEZarrGroupJSON(
-        attributes={"ome": v06.Bf2Raw(bioformats2raw_layout=3)}
-    )
-
-    # OME/zarr.json
-    ome_zarr_json = v06.OMEZarrGroupJSON(
-        attributes={"ome": v06.Series(series=["0", "1", "2", "3"])}
-    )
     ```
 
 !!! info "Image Location Rules"
