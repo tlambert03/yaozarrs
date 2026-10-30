@@ -12,6 +12,9 @@ path = "javascripts/yaozarrs-animation.js"
 [[project.extra_javascript]]
 path = "javascripts/ome_explorer.js"
 type = "module"
+[[project.extra_javascript]]
+path = "javascripts/ome_transforms.js"
+type = "module"
 
 
 [project.theme]
