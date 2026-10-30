@@ -36,6 +36,7 @@ Notes specific to v0.6:
 from __future__ import annotations
 
 import posixpath
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, overload
 
@@ -97,7 +98,14 @@ if TYPE_CHECKING:
 
     # Compound types for images with data or specs
     ImageWithDatasets: TypeAlias = tuple[Image, ArrayOrPyramid]
-    ImageWithShapeSpecs: TypeAlias = tuple[Image, ShapeAndDTypeOrPyramid]
+    # (an image added to a SceneBuilder: its dataset specs and array options)
+    AddedImage: TypeAlias = tuple[Image, ShapeAndDTypeOrPyramid, dict[str, Any]]
+
+
+class _Default(Enum):
+    """Sentinel for a per-image setting that defaults to the builder's."""
+
+    BUILDER = "builder"
 
 
 # ######################## Public API ##########################################
@@ -568,6 +576,11 @@ def write_scene(
     images must form one connected graph.  A reference to a multiscale image *inside*
     one of `images` (such as one of its labels) is allowed, but not checked, as that
     image isn't written here; nor is the graph, in that case.
+
+    `chunks`, `shards` and `compression` apply to every image.  If the images have
+    different numbers of dimensions, use `chunks="auto"` (the default) or `None`, or
+    write them with a [`SceneBuilder`][yaozarrs.write.v06.SceneBuilder], which takes
+    these settings per image.
 
     With `overwrite=True`, an existing store at `dest` is replaced once the checks pass.
 
@@ -1209,6 +1222,10 @@ class SceneBuilder:
        scene as a whole first (as [`write_scene`][yaozarrs.write.v06.write_scene]
        does): every referenced image is there, and the graph is connected.
 
+    `chunks`, `shards` and `compression` are defaults for every image: `write_image()`
+    and `add_image()` can override them per image (e.g. for images with different
+    numbers of dimensions).
+
     See Also
     --------
     - [`write_scene`][yaozarrs.write.v06.write_scene] : High-level function to write
@@ -1301,8 +1318,8 @@ class SceneBuilder:
         self._overwrite = overwrite
         self._compression: CompressionName = compression
 
-        # For prepare-only workflow: {path: (image, dataset_specs)}
-        self._images: dict[str, ImageWithShapeSpecs] = {}
+        # For prepare-only workflow: {path: (image, dataset_specs, array_options)}
+        self._images: dict[str, AddedImage] = {}
         # For immediate write workflow: {path: image}
         self._initialized = False
         self._written_images: dict[str, Image] = {}
@@ -1318,6 +1335,9 @@ class SceneBuilder:
         image: Image,
         datasets: ArrayOrPyramid,
         *,
+        chunks: ShapeLike | Literal["auto"] | _Default | None = _Default.BUILDER,
+        shards: ShapeLike | _Default | None = _Default.BUILDER,
+        compression: CompressionName | _Default = _Default.BUILDER,
         progress: bool = False,
     ) -> Self:
         """Write an image of the scene immediately, with its data.
@@ -1334,6 +1354,12 @@ class SceneBuilder:
         datasets : ArrayLike | Sequence[ArrayLike]
             Data array(s) for each resolution level. For a single dataset,
             pass the array directly without wrapping in a list.
+        chunks : tuple[int, ...] | "auto" | None, optional
+            Chunk shape for this image's arrays.  Default is the builder's.
+        shards : tuple[int, ...] | None, optional
+            Shard shape for this image's arrays.  Default is the builder's.
+        compression : "blosc-zstd" | "blosc-lz4" | "zstd" | "none", optional
+            Compression codec for this image's arrays.  Default is the builder's.
         progress : bool, optional
             Show progress bar when writing dask arrays. Default is False.
 
@@ -1363,11 +1389,9 @@ class SceneBuilder:
             datasets,
             image_type=Image,
             writer=self._writer,
-            chunks=self._chunks,
-            shards=self._shards,
             overwrite=self._overwrite,
-            compression=self._compression,
             progress=progress,
+            **self._array_options(chunks, shards, compression),
         )
         self._written_images[path] = image
         return self
@@ -1377,6 +1401,10 @@ class SceneBuilder:
         path: str,
         image: Image,
         datasets: ShapeAndDTypeOrPyramid,
+        *,
+        chunks: ShapeLike | Literal["auto"] | _Default | None = _Default.BUILDER,
+        shards: ShapeLike | _Default | None = _Default.BUILDER,
+        compression: CompressionName | _Default = _Default.BUILDER,
     ) -> Self:
         """Add an image for the prepare-only workflow.
 
@@ -1393,6 +1421,12 @@ class SceneBuilder:
             Shape and dtype specification(s) for each resolution level, as
             `(shape, dtype)` tuples. For a single dataset, pass the tuple
             directly without wrapping in a list.
+        chunks : tuple[int, ...] | "auto" | None, optional
+            Chunk shape for this image's arrays.  Default is the builder's.
+        shards : tuple[int, ...] | None, optional
+            Shard shape for this image's arrays.  Default is the builder's.
+        compression : "blosc-zstd" | "blosc-lz4" | "zstd" | "none", optional
+            Compression codec for this image's arrays.  Default is the builder's.
 
         Returns
         -------
@@ -1408,7 +1442,8 @@ class SceneBuilder:
             If the Image has multiple multiscales.
         """
         _, specs = self._check_image(path, image, datasets)
-        self._images[path] = (image, specs)
+        options = self._array_options(chunks, shards, compression)
+        self._images[path] = (image, specs, options)
         return self
 
     def prepare(self) -> tuple[Path, dict[str, Any]]:
@@ -1439,23 +1474,21 @@ class SceneBuilder:
         """
         if not self._images:
             raise ValueError("No images added. Use add_image() before prepare().")
-        added = {path: image for path, (image, _) in self._images.items()}
+        added = {path: image for path, (image, *_) in self._images.items()}
         _check_scene(self._scene, {**self._written_images, **added})
 
         self._ensure_initialized()
         all_arrays: dict[str, Any] = {}
-        for path, (image, specs) in self._images.items():
+        for path, (image, specs, options) in self._images.items():
             _ensure_parent_groups(self._dest, path)
             _, arrays = _prepare_image(
                 self._dest / path,
                 image,
                 specs,
                 image_type=Image,
-                chunks=self._chunks,
-                shards=self._shards,
                 writer=self._writer,
                 overwrite=self._overwrite,
-                compression=self._compression,
+                **options,
             )
             for dataset_path, arr in arrays.items():
                 all_arrays[f"{path}/{dataset_path}"] = arr
@@ -1466,6 +1499,21 @@ class SceneBuilder:
         return f"<{self.__class__.__name__}: {total_images} images>"
 
     # ------------------ Internal methods ------------------
+
+    def _array_options(
+        self,
+        chunks: ShapeLike | Literal["auto"] | _Default | None,
+        shards: ShapeLike | _Default | None,
+        compression: CompressionName | _Default,
+    ) -> dict[str, Any]:
+        """Resolve per-image array settings, falling back to the builder's."""
+        return {
+            "chunks": self._chunks if chunks is _Default.BUILDER else chunks,
+            "shards": self._shards if shards is _Default.BUILDER else shards,
+            "compression": (
+                self._compression if compression is _Default.BUILDER else compression
+            ),
+        }
 
     def _check_image(
         self,

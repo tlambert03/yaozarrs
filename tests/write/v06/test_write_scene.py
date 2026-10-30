@@ -96,6 +96,25 @@ def test_scene_builder_prepare(tmp_path: Path) -> None:
     yaozarrs.validate_zarr_store(dest)
 
 
+def test_scene_builder_per_image_options(tmp_path: Path) -> None:
+    scene = _scene(_to_world("a"), _to_world("b"), _to_world("c"))
+    builder = SceneBuilder(tmp_path / "s.zarr", scene, chunks=(8, 8))
+    builder.write_image("a", _image(), DATA, chunks=(4, 16), compression="none")
+    builder.write_image("b", _image(), DATA)
+    builder.add_image("c", _image(), SPEC, chunks=None)
+    dest, _ = builder.prepare()
+
+    def _array_meta(path: str) -> dict[str, Any]:
+        return json.loads((dest / path / "0" / "zarr.json").read_text())
+
+    chunk_shapes = {
+        p: _array_meta(p)["chunk_grid"]["configuration"]["chunk_shape"] for p in "abc"
+    }
+    assert chunk_shapes == {"a": [4, 16], "b": [8, 8], "c": [16, 16]}
+    assert "blosc" not in json.dumps(_array_meta("a")["codecs"])
+    assert "blosc" in json.dumps(_array_meta("b")["codecs"])
+
+
 def test_scene_with_label_image(tmp_path: Path) -> None:
     # a reference to a multiscale image *inside* one of the images (here one of its
     # labels) isn't checked when writing: the label image is written separately
