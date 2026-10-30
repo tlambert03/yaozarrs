@@ -204,8 +204,9 @@ more than 5 dimensions**, and may store multiple resolution levels.
 
 ### Axes
 
-Axes define the dimensions of your image data. As of v0.4, axes are **objects**
-with `name`, and optional `type` and/or `unit`:
+Axes define the dimensions of your image data. Starting with v0.4, axes are
+**objects** with a `name`, and optional `type` and/or `unit` (v0.6 adds the
+optional `discrete` and `longName`, and moves axes into named coordinate systems):
 
 !!! important "Axis Constraints"
     Constraints for image axes in OME-Zarr are the same in v0.4, v0.5 and v0.6
