@@ -30,8 +30,15 @@ writing functions added via [optional extras](./installation.md).
 ### Metadata Creation
 
 You can create OME-Zarr metadata objects using the pydantic models in
-`yaozarrs.v04` and `yaozarrs.v05` modules.  Pick a top-level object (e.g.
+`yaozarrs.v04`, `yaozarrs.v05` and `yaozarrs.v06` modules.  Pick a top-level object (e.g.
 [`Image`](./ome_zarr_guide.md#working-with-images), [`Plate`](./ome_zarr_guide.md#working-with-plates), etc..) and create it using standard pydantic model syntax:
+
+!!! tip "Using v0.6?"
+    The examples below use v0.5.  In v0.6, axes live in named *coordinate
+    systems*, and transformations say what they map from and to, so the
+    explicit models look a bit different (see [Coordinate Systems &
+    Transformations](./coordinate_systems.md)).  The `DimSpec` convenience
+    works the same way for both: just swap `v05` for `v06`.
 
 === "From `yaozarrs` models"
 
@@ -249,9 +256,9 @@ yaozarrs.validate_zarr_store(uri)  # (3)!
 
 ### Writing OME-Zarr Stores
 
-See [`yaozarrs.write.v05`][] for convenience functions to write OME-Zarr v0.5
-stores using your metadata objects, with either `zarr-python`, `tensorstore`,
-or custom backends.
+See [`yaozarrs.write.v05`][] and [`yaozarrs.write.v06`][] for convenience
+functions to write OME-Zarr v0.5 and v0.6 stores using your metadata objects,
+with either `zarr-python`, `tensorstore`, or custom backends.
 
 ```python
 import numpy as np
@@ -271,6 +278,10 @@ write.v05.prepare_image(...)
 write.v05.LabelsBuilder(...)
 write.v05.PlateBuilder(...)
 write.v05.Bf2RawBuilder(...)
+
+# v0.6 has all of the above (in write.v06), plus scenes:
+write.v06.write_scene(...)
+write.v06.SceneBuilder(...)
 ```
 
 ### CLI validation
