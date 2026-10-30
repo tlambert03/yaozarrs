@@ -197,6 +197,30 @@ def test_validate_valid_demo_storage_bf2raw_ome_group(write_demo_ome: Callable) 
         validate_zarr_store(path)
 
 
+def _strip_version(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _strip_version(v) for k, v in obj.items() if k != "version"}
+    return [_strip_version(v) for v in obj] if isinstance(obj, list) else obj
+
+
+@pytest.mark.parametrize("type", ["image", "labels", "plate", "image-with-labels"])
+def test_validate_v04_without_version(type: str, write_demo_ome: Callable) -> None:
+    """`version` is only a SHOULD in v0.4."""
+    path = write_demo_ome(type, version="0.4")
+    for zattrs in path.rglob(".zattrs"):
+        zattrs.write_text(json.dumps(_strip_version(json.loads(zattrs.read_text()))))
+
+    group = validate_zarr_store(path)
+    assert group.ome_version() == "0.4"
+
+
+def test_ome_version_ignores_top_level_keys_in_zarr_v3(tmp_path: Path) -> None:
+    """v0.4 is zarr v2 only, so these aren't OME metadata in a zarr v3 group."""
+    meta = {"zarr_format": 3, "node_type": "group", "attributes": {"plate": {}}}
+    (tmp_path / "zarr.json").write_text(json.dumps(meta))
+    assert open_group(tmp_path).ome_version() is None
+
+
 def test_validate_null_storage(tmp_path: Path) -> None:
     """Test validation with intentionally broken storage."""
     with pytest.raises(OSError, match="No zarr metadata found"):

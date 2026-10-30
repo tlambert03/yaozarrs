@@ -198,14 +198,16 @@ class ZarrMetadata(BaseModel):
             if "version" in attrs["ome"]:
                 return attrs["ome"]["version"]
         # TODO: this is probably flaky
-        if ms := attrs.get("multiscales"):
-            return ms[0]["version"]
+        # metadata outside of "ome" means v0.4 (zarr v2), where version is only a SHOULD
+        default = "0.4" if self.zarr_format == 2 else None
+        if "multiscales" in attrs:
+            ms = attrs["multiscales"]
+            return ms[0].get("version", default) if ms else default
         for possible_key in ["plate", "well", "labels", "series"]:
             if possible_key in attrs:
                 if "version" in attrs[possible_key]:
                     return attrs[possible_key]["version"]
-                if "version" in attrs:
-                    return attrs["version"]
+                return attrs.get("version", default)
 
         return None
 
