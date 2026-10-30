@@ -45,7 +45,30 @@ title: Guide to OME-Zarr
 
     [:octicons-arrow-right-24: Go to Collections](#working-with-collections)
 
+- :material-vector-polyline:{ .lg .middle } **My images are related in space**
+
+    ---
+
+    Tiles of a mosaic, multiple views of a sample, or images to register onto
+    each other (*new in v0.6*)
+
+    [:octicons-arrow-right-24: Go to Scenes](#working-with-scenes)
+
 </div>
+
+!!! info "Which version is this guide about?"
+    This guide covers OME-Zarr **v0.4, v0.5 and v0.6**, with tabs to show the
+    differences.  The biggest change in v0.6 is a much more expressive way of
+    describing where your pixels are in space (coordinate systems and
+    transformations).  That topic gets its own page:
+    [Coordinate Systems & Transformations](coordinate_systems.md).
+
+    ??? question "Which version should I write?"
+        It depends on who needs to read your data.  Newer versions can express
+        more, but your files are only useful if the tools you (and your
+        collaborators) rely on can read them.  Support for v0.6 is still new, so
+        check the tools you care about before choosing it.  If you don't need
+        anything new in v0.6, v0.5 is a safe choice today.
 
 ## What is OME-Zarr?
 
@@ -88,8 +111,8 @@ imaging datasets.
 
 An **Image** is the fundamental building block of OME-Zarr.
 
-As of v0.5, a single image may have **no less than 2 and no more than 5
-dimensions**, and may store multiple resolution levels.
+As of v0.6 (and since v0.4), a single image may have **no less than 2 and no
+more than 5 dimensions**, and may store multiple resolution levels.
 
 - **Spatial dimensions**: X, Y, optionally Z
 - **Time**: T (temporal axis)
@@ -103,16 +126,38 @@ dimensions**, and may store multiple resolution levels.
     `bioformats2raw.layout` to store multiple images in a single zarr group.
     See [Working with Collections](#working-with-collections)
 
+    If the extra dimension is *where* each image was taken (stage positions,
+    views from different angles, etc...), v0.6 also lets you describe how the
+    images relate to each other in space with a *scene*.  See [Working with
+    Scenes](#working-with-scenes).
+
     See also: an RFC ("request for comments") proposing a relaxation of this
     restriction: [RFC-3](https://ngff.openmicroscopy.org/rfc/3/index.html)
 
 ??? question "What if I have both RGB and optical channels?"
-    As of v0.5, there is no formal specification for mixing the concepts
+    As of v0.6, there is no formal specification for mixing the concepts
     of RGB image components and conventional "channels" (like optical
     configurations).  You will need to either create a custom group layout
     or flatten them all into a single channel dimension.
 
 ### Directory Structure
+
+=== "OME-Zarr v0.6 (Zarr v3)"
+
+    ```
+    image.zarr/
+    ├── zarr.json            # {"zarr_format": 3} group, with attributes.ome.multiscales
+    ├── 0/                   # Full resolution array
+    │   ├── zarr.json        # Array metadata (standard zarr schema)
+    │   └── c/0/1/2/3        # Chunk files
+    ├── 1/                   # downsampled level 1
+    │   └── ...
+    └── 2/                   # downsampled level 2
+        └── ...
+    ```
+
+    *The same layout as v0.5: what changed in v0.6 is the metadata inside
+    `zarr.json`.*
 
 === "OME-Zarr v0.5 (Zarr v3)"
 
@@ -151,6 +196,10 @@ dimensions**, and may store multiple resolution levels.
     - **<=v0.4**: "multiscales" metadata directly in root of `.zattrs` files
     - **>=v0.5**: "multiscales" metadata in `zarr.json` under `attributes.ome` namespace
 
+    Between v0.5 and v0.6, the storage is the same (Zarr v3). The changes are all
+    in the metadata, mostly in how axes and transformations are described (see
+    below).
+
 ---
 
 ### Axes
@@ -159,7 +208,8 @@ Axes define the dimensions of your image data. As of v0.4, axes are **objects**
 with `name`, and optional `type` and/or `unit`:
 
 !!! important "Axis Constraints"
-    Constraints for image axes in OME-Zarr are the same in v0.4 and v0.5:
+    Constraints for image axes in OME-Zarr are the same in v0.4, v0.5 and v0.6
+    (in v0.6, they apply to every coordinate system inside a multiscale):
 
     - **MUST** have 2-5 dimensions total
     - **MUST** have 2-3 spatial axes
@@ -230,6 +280,61 @@ with `name`, and optional `type` and/or `unit`:
         v05.SpaceAxis(name="x", unit="micrometer"),
     ]
     ```
+
+=== "v0.6"
+
+    In v0.6, the axes are no longer listed directly in the multiscale.  Instead,
+    they belong to a named **coordinate system**, and each multiscale lists one
+    or more of these under `coordinateSystems`.  (The *why* is explained in
+    [Coordinate Systems & Transformations](coordinate_systems.md).)
+
+    **Spec JSON:**
+
+    ```json
+    {
+      // found in a "multiscales" object
+      "coordinateSystems": [
+        {
+          "name": "physical",
+          "axes": [
+            {"name": "c", "type": "channel", "discrete": true},
+            {"name": "z", "type": "space", "unit": "micrometer"},
+            {"name": "y", "type": "space", "unit": "micrometer"},
+            {"name": "x", "type": "space", "unit": "micrometer"}
+          ]
+        }
+      ]
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v06
+
+    physical = v06.CoordinateSystem(
+        name="physical",
+        axes=[
+            v06.ChannelAxis(name="c", discrete=True),
+            v06.SpaceAxis(name="z", unit="micrometer"),
+            v06.SpaceAxis(name="y", unit="micrometer"),
+            v06.SpaceAxis(name="x", unit="micrometer"),
+        ],
+    )
+    ```
+
+    !!! info "What's new for axes in v0.6"
+        - **`discrete`** (optional): `true` if the axis may only be indexed by
+          whole numbers (channels usually are), `false` if values *in between*
+          samples are meaningful, so interpolating along it makes sense (space
+          and time usually are).
+        - **`longName`** (optional): a longer name or description of the axis.
+        - **More suggested `type`s**: besides `space`, `time` and `channel`, the
+          spec now lists `array`, `coordinate` and `displacement` (the latter two
+          are used by [vector fields](coordinate_systems.md#transformation-types)).
+          Other strings are still allowed for custom types.
+        - Axis names **MUST** be non-empty, and unique *within their coordinate
+          system*.
 
 ---
 
@@ -330,6 +435,126 @@ as well as stage positions and spatial offsets for registration.
         }
         ```
 
+=== "v0.6"
+
+    Each dataset still has a transformation from its array (pixel) coordinates
+    to physical coordinates, but now it explicitly says *where* it maps from and
+    to: its `input` is the dataset's array (by `path`), and its `output` is a
+    coordinate system of the multiscale (by `name`).  Every dataset maps into
+    the **same** coordinate system, which the spec calls the image's
+    ["intrinsic" coordinate
+    system](coordinate_systems.md#the-intrinsic-coordinate-system).
+
+    **Scale Transformation:**
+
+    **Spec JSON:**
+
+    ```json
+    {
+      "coordinateSystems": [
+        {"name": "physical", "axes": [...]}  // the 4 axes from above
+      ],
+      "datasets": [{
+        "path": "0",
+        "coordinateTransformations": [{
+          "type": "scale",
+          "scale": [1.0, 0.5, 0.1, 0.1],
+          "input": {"path": "0"},
+          "output": {"name": "physical"}
+        }]
+      }]
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v06
+
+    dataset = v06.Dataset(
+        path="0",
+        coordinateTransformations=[
+            v06.ScaleTransformation(
+                scale=[1.0, 0.5, 0.1, 0.1],
+                input={"path": "0"},
+                output={"name": "physical"},
+            )
+        ],
+    )
+    ```
+
+    **Scale + Translation:**
+
+    A scale and a translation are no longer listed side by side.  To add a
+    translation, wrap both in a single `sequence` transformation (scale first):
+
+    **Spec JSON:**
+
+    ```json
+    {
+      "path": "0",
+      "coordinateTransformations": [{
+        "type": "sequence",
+        "input": {"path": "0"},
+        "output": {"name": "physical"},
+        "transformations": [
+          {"type": "scale", "scale": [1.0, 0.5, 0.1, 0.1]},
+          {"type": "translation", "translation": [0.0, 0.0, 100.0, 200.0]}
+        ]
+      }]
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    dataset = v06.Dataset(
+        path="0",
+        coordinateTransformations=[
+            v06.SequenceTransformation(
+                input={"path": "0"},
+                output={"name": "physical"},
+                transformations=[
+                    v06.ScaleTransformation(scale=[1.0, 0.5, 0.1, 0.1]),
+                    v06.TranslationTransformation(translation=[0.0, 0.0, 100.0, 200.0]),
+                ],
+            )
+        ],
+    )
+    ```
+
+    !!! warning "Transformation Rules (v0.6)"
+        - **MUST** have exactly one transformation per dataset: a `scale`, an
+          `identity`, or a `sequence` of a scale followed by a translation
+        - Its `input` **MUST** have a `path` matching the dataset's `path`, and
+          should omit `name` (see below)
+        - Its `output` **MUST** have the `name` of a coordinate system in
+          `coordinateSystems`, the same one for every dataset, and should omit
+          `path` (see below)
+        - Parameter lengths **MUST** match the number of axes
+
+        *About omitting `input.name` and `output.path`:* the spec says this
+        both ways.  Its "Constraints" section says they **MUST** be omitted,
+        while its "multiscales" section says they **SHOULD** be.  To be safe,
+        leave them out.  (yaozarrs warns, rather than failing, if they're
+        present.)
+
+    !!! tip "Use `Multiscale.from_dims`"
+        Writing all of this by hand gets tedious.
+        [`v06.Multiscale.from_dims`][yaozarrs.v06.Multiscale.from_dims] builds
+        the coordinate system and every level's transformation for you (see
+        [`DimSpec`][yaozarrs.DimSpec]).
+
+    !!! info "`dimension_names` are no longer required"
+        v0.5 required `dimension_names` in each array's `zarr.json`; v0.6 does
+        not mention them.  (yaozarrs still writes them, as other Zarr tools find
+        them useful.)
+
+    **There's a lot more** that v0.6 can express with coordinate systems and
+    transformations (rotations, affines, linking images to their labels or to
+    each other...).  See [Coordinate Systems &
+    Transformations](coordinate_systems.md).
+
 ---
 
 ### Interactive Example
@@ -353,9 +578,88 @@ They are represented as a special group named "labels/" within an image group.
     
     Conforming readers must *search* for the `labels/` group within an image
     group to discover it: its presence is not indicated in the parent image
-    metadata.
+    metadata.  (In v0.6, an image *may* refer to one of its label images, in an
+    optional transformation, but doesn't have to.)
 
 ??? example "Label Structure and Code"
+
+    === "OME-Zarr v0.6 (Zarr v3)"
+        **Directory Structure:**
+
+        Same as v0.5:
+
+        ```
+        image.zarr/
+        ├── zarr.json            # Image metadata ("attributes.ome.multiscales")
+        ├── 0/                   # Full resolution image
+        ├── 1/                   # Downsampled level 1
+        └── labels/
+            ├── zarr.json        # Labels group metadata ("attributes.ome.labels")
+            ├── nuclei/          # Label image (integer dtype)
+            │   ├── zarr.json    # Label metadata ("attributes.ome.multiscales", "attributes.ome.image-label")
+            │   ├── 0/           # Full resolution labels
+            │   └── 1/           # Downsampled labels
+            └── cells/
+                └── ...
+        ```
+
+        **Labels Group Metadata (`labels/zarr.json`):**
+        ```json
+        {
+          "zarr_format": 3,
+          "node_type": "group",
+          "attributes": {
+            "ome": {
+              "version": "0.6",
+              "labels": ["nuclei", "cells"]
+            }
+          }
+        }
+        ```
+
+        **Label Image Metadata (`labels/nuclei/zarr.json`):**
+        ```json
+        {
+          "zarr_format": 3,
+          "node_type": "group",
+          "attributes": {
+            "ome": {
+              "version": "0.6",
+              "multiscales": [...],
+              "image-label": {
+                "colors": [
+                  {"label-value": 1, "rgba": [255, 0, 0, 255]},
+                  {"label-value": 2, "rgba": [0, 255, 0, 255]}
+                ],
+                "source": {
+                  "image": "../../"
+                }
+              }
+            }
+          }
+        }
+        ```
+
+        *The v0.5 spec text also asked for a `version` key inside
+        `image-label`.  v0.6 doesn't: the version is given once, at
+        `ome.version`.*
+
+        **yaozarrs Code:**
+        ```python
+        from yaozarrs import v06
+
+        # Label metadata stored at labels/nuclei/zarr.json
+        label_image = v06.LabelImage(
+            multiscales=[...],  # Same structure as regular image
+            image_label=v06.ImageLabel(
+                colors=[
+                    v06.LabelColor(label_value=1, rgba=[255, 0, 0, 255]),
+                    v06.LabelColor(label_value=2, rgba=[0, 255, 0, 255]),
+                ],
+                source=v06.LabelSource(image="../../"),
+            ),
+        )
+        ```
 
     === "OME-Zarr v0.5 (Zarr v3)"
         **Directory Structure:**
@@ -495,6 +799,47 @@ They are represented as a special group named "labels/" within an image group.
     !!! warning "Labels must use integer dtype"
         Validation will fail if label arrays use float dtypes. Use `uint8`, `uint16`, `uint32`, or `int32`.
 
+### Lining labels up with the image (v0.6)
+
+Up to v0.5, a label image was expected to be "in the same coordinate system" as
+its parent image, so the only way to place it was through its own `scale` and
+`translation`.  In v0.6, that's still the default: without anything else, the
+label image's [intrinsic coordinate
+system](coordinate_systems.md#the-intrinsic-coordinate-system) is "usually
+understood to be the same" as the image's.
+
+What v0.6 adds is a way to link the two when they *aren't* the same.  Say a
+segmentation tool wrote labels for a crop of the image, with the corner of the
+crop as its origin.  Rather than rewriting the label image's metadata, you can add
+a transformation to the **parent image's** multiscale `coordinateTransformations`,
+linking its intrinsic coordinate system to the label image's (referenced by `name`
+*and* `path`, relative to the image group):
+
+```json
+{
+  // found in the multiscales object of the *image* (not the label image)
+  "coordinateTransformations": [
+    {
+      "type": "translation",
+      "translation": [0.0, 100.0, 50.0],
+      "input": {"name": "physical", "path": "labels/cells"},
+      "output": {"name": "physical"}
+    }
+  ]
+}
+```
+
+Here, a point in the `cells` label image's `physical` coordinate system, shifted
+by `(0, 100, 50)`, gives the matching point in the image's own `physical`
+coordinate system.  (Either direction is allowed: the image's intrinsic
+coordinate system may be the `input` or the `output`.)
+
+!!! warning "Only simple transformations"
+    A transformation to a label image **MUST** be an `identity`, `scale` or
+    `translation`.  The "labels" section of the spec also allows a `sequence` of
+    a scale and a translation (its "Constraints" and "multiscales" sections
+    don't), and yaozarrs accepts that too.
+
 ---
 
 ## Working with Plates
@@ -506,6 +851,27 @@ A **Plate** represents multi-well plate data from high-content screening (HCS) e
 Each well can contain multiple fields of view (FOVs) across multiple acquisitions (timepoints).
 
 ### Directory Structure
+
+=== "OME-Zarr v0.6 (Zarr v3)"
+
+    Same as v0.5:
+
+    ```
+    plate.zarr/
+    ├── zarr.json              # contains Plate metadata ("attributes.ome.plate")
+    ├── A/                     # Row A
+    │   ├── 1/                 # Well A1
+    │   │   ├── zarr.json      # contains Well metadata ("attributes.ome.well")
+    │   │   ├── 0/             # Field 0 (Standard multiscales image)
+    │   │   │   ├── zarr.json  # contains Image metadata ("attributes.ome.multiscales")
+    │   │   │   ├── 0/         # Full resolution
+    │   │   │   ├── 1/         # Downsampled
+    │   │   │   └── labels/    # Optional labels group (see above)
+    │   │   └── 1/             # Field 1
+    │   └── 2/                 # Well A2
+    └── B/                     # Row B
+        └── 1/
+    ```
 
 === "OME-Zarr v0.5 (Zarr v3)"
 
@@ -683,42 +1049,120 @@ Each well can contain multiple fields of view (FOVs) across multiple acquisition
     json_str = zarr_json.model_dump_json(indent=2, exclude_unset=True)
     ```
 
+=== "v0.6"
+
+    The same structure as v0.5, with `"version": "0.6"` at `ome.version`.
+    (The v0.5 spec *text* still asked for a separate `version` key inside
+    `plate` and `well`, although its schemas didn't.  v0.6 removed it from the
+    text too, since the version is already given at `ome.version`.)
+
+    In yaozarrs, just swap `v05` for `v06`:
+
+    ```python
+    from yaozarrs import v06
+
+    plate_def = v06.PlateDef(
+        name="HCS Experiment",
+        columns=[v06.Column(name="1"), v06.Column(name="2"), v06.Column(name="3")],
+        rows=[v06.Row(name="A"), v06.Row(name="B")],
+        wells=[
+            v06.PlateWell(path="A/1", rowIndex=0, columnIndex=0),
+            v06.PlateWell(path="A/2", rowIndex=0, columnIndex=1),
+            v06.PlateWell(path="B/1", rowIndex=1, columnIndex=0),
+        ],
+        acquisitions=[
+            v06.Acquisition(id=0, name="Initial", maximumfieldcount=4),
+            v06.Acquisition(id=1, name="24h", maximumfieldcount=4),
+        ],
+        field_count=4,
+    )
+
+    plate = v06.Plate(plate=plate_def)
+    ```
+
 ---
 
 ### Well Metadata
 
 Wells list the fields of view (images) they contain:
 
-**Spec JSON (`.zattrs` in well directory):**
+=== "v0.4"
 
-```json
-{
-  "well": {
-    "version": "0.4",
-    "images": [
-      {"path": "0", "acquisition": 0},
-      {"path": "1", "acquisition": 0},
-      {"path": "2", "acquisition": 1}
-    ]
-  }
-}
-```
+    **Spec JSON (`.zattrs` in well directory):**
 
-**yaozarrs Code:**
+    ```json
+    {
+      "well": {
+        "version": "0.4",
+        "images": [
+          {"path": "0", "acquisition": 0},
+          {"path": "1", "acquisition": 0},
+          {"path": "2", "acquisition": 1}
+        ]
+      }
+    }
+    ```
 
-```python
-from yaozarrs import v04
+    **yaozarrs Code:**
 
-well_def = v04.WellDef(
-    images=[
-        v04.FieldOfView(path="0", acquisition=0),
-        v04.FieldOfView(path="1", acquisition=0),
-        v04.FieldOfView(path="2", acquisition=1),
-    ]
-)
+    ```python
+    from yaozarrs import v04
 
-well = v04.Well(well=well_def)
-```
+    well_def = v04.WellDef(
+        images=[
+            v04.FieldOfView(path="0", acquisition=0),
+            v04.FieldOfView(path="1", acquisition=0),
+            v04.FieldOfView(path="2", acquisition=1),
+        ]
+    )
+
+    well = v04.Well(well=well_def)
+    ```
+
+=== "v0.6"
+
+    **Spec JSON (`zarr.json` in well directory):**
+
+    ```json
+    {
+      "zarr_format": 3,
+      "node_type": "group",
+      "attributes": {
+        "ome": {
+          "version": "0.6",
+          "well": {
+            "images": [
+              {"path": "0", "acquisition": 0},
+              {"path": "1", "acquisition": 0},
+              {"path": "2", "acquisition": 1}
+            ]
+          }
+        }
+      }
+    }
+    ```
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v06
+
+    well_def = v06.WellDef(
+        images=[
+            v06.FieldOfView(path="0", acquisition=0),
+            v06.FieldOfView(path="1", acquisition=0),
+            v06.FieldOfView(path="2", acquisition=1),
+        ]
+    )
+
+    well = v06.Well(well=well_def)
+    ```
+
+    !!! info "Field of view paths in v0.6"
+        Up to v0.5, a field of view's `path` had to be alphanumeric.  v0.6
+        follows Zarr's rules for node names instead: letters, digits, `-`, `_`
+        and `.` are allowed, but a path **MUST NOT** be empty, consist only of
+        periods (like `.` or `..`), or start with `__`.
 
 | Field | Requirement | Description |
 |-------|-------------|-------------|
@@ -750,9 +1194,15 @@ that do not fit into the plate model.  Examples include:
 !!! information "Status"
 
     There is a [long-standing github issue](https://github.com/ome/ngff/issues/31)
-    that discusses potential future standards for collections, and a (currently
-    pending) [pull request for RFC-8](https://github.com/ome/ngff/pull/343), which covers this topic.
-    But as of v0.5 and January 2026, there is no official spec.
+    that discusses potential future standards for collections, and
+    [RFC-8](https://ngff.openmicroscopy.org/rfc/8/index.html), which covers this
+    topic (still under review).  But as of v0.6, there is no official spec for
+    collections.
+
+    v0.6 *does* add [scenes](#working-with-scenes), which cover one common
+    case: images that share a spatial relationship.  (RFC-8 describes scenes as
+    having "partially solved this issue", and aims to fold them into a more
+    general collection mechanism in the future.)
 
     The [`"bioformats2raw"`
     layout](https://ngff.openmicroscopy.org/0.5/index.html#bf2raw) is a
@@ -780,7 +1230,7 @@ This bioformats2raw layout described in the NGFF spec, is described below:
         └── ...
     ```
 
-=== "v0.5"
+=== "v0.5 / v0.6"
 
     ```
     series.ome.zarr               # One converted fileset from bioformats2raw
@@ -833,6 +1283,26 @@ This bioformats2raw layout described in the NGFF spec, is described below:
     )
     ```
 
+=== "v0.6"
+
+    Unchanged from v0.5 (it's still *transitional*).
+
+    **yaozarrs Code:**
+
+    ```python
+    from yaozarrs import v06
+
+    # Root zarr.json
+    root_zarr_json = v06.OMEZarrGroupJSON(
+        attributes={"ome": v06.Bf2Raw(bioformats2raw_layout=3)}
+    )
+
+    # OME/zarr.json
+    ome_zarr_json = v06.OMEZarrGroupJSON(
+        attributes={"ome": v06.Series(series=["0", "1", "2", "3"])}
+    )
+    ```
+
 !!! info "Image Location Rules"
     1. If `plate` metadata exists → use plate structure
     2. If `series` attribute exists in `OME/.zattrs` → paths must match OME-XML Image element order
@@ -842,35 +1312,330 @@ This bioformats2raw layout described in the NGFF spec, is described below:
 
 ### When to Use Collections vs. Plates
 
-| Scenario | Use Collection | Use Plate |
-|----------|:--------------:|:---------:|
-| Multiple FOVs on coverslip | :white_check_mark: | :x: |
-| Irregular stage positions | :white_check_mark: | :x: |
-| Time-lapse split across files | :white_check_mark: | :x: |
-| Multi-well HCS experiment | :x: | :white_check_mark: |
-| Regular grid with well labels | :x: | :white_check_mark: |
+| Scenario | Use Collection | Use Plate | Use Scene (v0.6) |
+|----------|:--------------:|:---------:|:----------------:|
+| Multiple FOVs on coverslip | :white_check_mark: | :x: | :white_check_mark: |
+| Irregular stage positions | :white_check_mark: | :x: | :white_check_mark: |
+| Tiles of a mosaic | :white_check_mark: | :x: | :white_check_mark: |
+| Multiple views of the same sample | :white_check_mark: | :x: | :white_check_mark: |
+| Time-lapse split across files | :white_check_mark: | :x: | :x: |
+| Multi-well HCS experiment | :x: | :white_check_mark: | :x: |
+| Regular grid with well labels | :x: | :white_check_mark: | :x: |
 
 !!! tip "Rule of thumb"
     If your data has **rows and columns** (like A1, B2, etc.), use a **Plate**.
+    If it's **multiple images related in space** (and you know how they relate),
+    and you can use v0.6, use a **Scene**.
     If it's just **multiple related images**, use a **Collection**.
+
+---
+
+## Working with Scenes
+
+!!! info "New in v0.6"
+    Scenes arrived in v0.6, along with named coordinate systems and many new
+    transformation types
+    ([RFC-5](https://ngff.openmicroscopy.org/rfc/5/index.html)).  They aren't
+    available in earlier versions.
+
+A **Scene** is a group of images that **share a spatial relationship** with each
+other.  For example:
+
+- Tiles of a mosaic, placed side by side in a common "stage" coordinate system
+- The same sample imaged from several angles (e.g. multiview light sheet)
+- Images from different instruments (or modalities), registered onto each other
+
+A scene group has no image data of its own.  Its `zarr.json` holds
+`scene` metadata, describing **transformations between the coordinate systems of
+its images**, and each image is a normal multiscale image group inside it.
+
+!!! tip "Not sure what a coordinate system is?"
+    Scenes build on the coordinate systems and transformations of v0.6.  If those are new to you, start with [Coordinate Systems &
+    Transformations](coordinate_systems.md), then come back here.
+
+### Directory Structure
+
+```
+mosaic.zarr/
+├── zarr.json                  # contains Scene metadata ("attributes.ome.scene")
+├── tile_0/                    # a normal multiscale image
+│   ├── zarr.json              # contains Image metadata ("attributes.ome.multiscales")
+│   ├── 0/                     # Full resolution
+│   └── labels/                # Optional labels group
+├── tile_1/                    # another multiscale image
+│   └── ...
+└── coordinateTransformations/ # (optional) transformation parameters stored in Zarr
+```
+
+### Scene Metadata
+
+The `scene` object **MUST** contain `coordinateTransformations`, and **MAY**
+contain `coordinateSystems` of its own.  Here, two tiles are placed in a shared
+`stage` coordinate system, defined by the scene:
+
+**Spec JSON (`zarr.json` at the scene root):**
+
+```json
+{
+  "zarr_format": 3,
+  "node_type": "group",
+  "attributes": {
+    "ome": {
+      "version": "0.6",
+      "scene": {
+        "coordinateSystems": [
+          {
+            "name": "stage",
+            "axes": [
+              {"name": "y", "type": "space", "unit": "micrometer"},
+              {"name": "x", "type": "space", "unit": "micrometer"}
+            ]
+          }
+        ],
+        "coordinateTransformations": [
+          {
+            "type": "translation",
+            "translation": [0.0, 0.0],
+            "input": {"path": "tile_0", "name": "physical"},
+            "output": {"name": "stage"}
+          },
+          {
+            "type": "translation",
+            "translation": [0.0, 270.0],
+            "input": {"path": "tile_1", "name": "physical"},
+            "output": {"name": "stage"}
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+Each `input` and `output` refers to a coordinate system by `name`:
+
+- With a `path`, it's a coordinate system of the image at that `path`
+  (relative to the scene group).  Here, `physical` is the [intrinsic coordinate
+  system](coordinate_systems.md#the-intrinsic-coordinate-system) of each tile.
+- Without a `path`, it's one of the scene's own `coordinateSystems` (here,
+  `stage`).
+
+So these two transformations say "a point in `tile_1`'s physical coordinates,
+shifted by 270 µm along x, is that point's position on the stage".
+
+**yaozarrs Code:**
+
+```python
+from yaozarrs import v06
+
+stage = v06.CoordinateSystem(
+    name="stage",
+    axes=[
+        v06.SpaceAxis(name="y", unit="micrometer"),
+        v06.SpaceAxis(name="x", unit="micrometer"),
+    ],
+)
+scene = v06.Scene(
+    scene=v06.SceneDef(
+        coordinateSystems=[stage],
+        coordinateTransformations=[
+            v06.TranslationTransformation(
+                translation=[0.0, 270.0 * i],
+                input={"path": f"tile_{i}", "name": "physical"},
+                output={"name": "stage"},
+            )
+            for i in range(2)
+        ],
+    )
+)
+```
+
+??? example "Writing it (with data)"
+    [`write_scene`][yaozarrs.write.v06.write_scene] writes the scene group and
+    all of its images at once, after checking that the scene and the images fit
+    together:
+
+    ```python
+    import numpy as np
+
+    from yaozarrs import DimSpec, v06
+    from yaozarrs.write.v06 import write_scene
+
+    # each tile is 600x600 pixels, at 0.5 µm per pixel (300 µm wide)
+    tile = v06.Image(
+        multiscales=[
+            v06.Multiscale.from_dims(
+                [
+                    DimSpec(name="y", scale=0.5, unit="micrometer"),
+                    DimSpec(name="x", scale=0.5, unit="micrometer"),
+                ],
+                coordinate_system="physical",
+            )
+        ]
+    )
+    data = np.zeros((600, 600), dtype=np.uint16)
+    write_scene("mosaic.zarr", scene, {"tile_0": (tile, data), "tile_1": (tile, data)})
+    ```
+
+    For bigger scenes (or to write data piece by piece), see
+    [`SceneBuilder`][yaozarrs.write.v06.SceneBuilder].
+
+!!! warning "Scene rules"
+    - In a scene, both `input` and `output` **MUST** have a `name`.  A `path`
+      is **required** when the coordinate system belongs to an image, and may be
+      left out when it's one of the scene's own.
+    - All of the coordinate systems (the scene's and its images') **MUST** be
+      connected by transformations: there must be a path of one or more
+      transformations between *any* two of them (they don't all need to link
+      to each other directly).
+    - A transformation's parameters **MUST** fit the coordinate systems it
+      links (e.g. a `translation` between two 2D coordinate systems has 2
+      values).
+
+!!! tip "Which coordinate system is the 'main' one?"
+    If a viewer picks a default coordinate system to display a scene in, the
+    spec **RECOMMENDS** the **first** of the scene's own `coordinateSystems`.  Likewise, when
+    writing a scene, if one coordinate system acts as the common reference for
+    the others (like `stage` above), put it first.
+
+??? question "Do I need scene coordinate systems at all?"
+    No, they're optional.  A transformation may link one image directly to
+    another (both with a `path`), which is natural for registration, where you
+    map a "moving" image onto a "fixed" one:
+
+    ```json
+    {
+      "type": "affine",
+      "affine": [[...], [...], [...]],  // a 3x4 matrix, for 3D images
+      "input": {"path": "moving_image", "name": "physical"},
+      "output": {"path": "fixed_image", "name": "physical"}
+    }
+    ```
+
+??? question "Where do large transformation parameters go?"
+    Some transformations store their parameters in Zarr: an `affine` or
+    `rotation` matrix *can* (instead of inline JSON), and the vector field of a
+    `displacements` or `coordinates` transformation (e.g. for non-rigid
+    registration) *must*, as a multiscale image group.  In a scene, those
+    **SHOULD** be stored in a group called `coordinateTransformations`, next to
+    the images.
 
 ---
 
 ## Reference
 
+### What changed in v0.6?
+
+v0.6 was [released on September 14, 2026](https://github.com/ome/ngff-spec/releases/tag/0.6).
+Its headline feature is
+[RFC-5: Coordinate Systems and Transformations](https://ngff.openmicroscopy.org/rfc/5/index.html),
+by John Bogovic, Davis Bennett, Luca Marconato, Matt McCormick, Stephan Saalfeld
+and Johannes Soltwedel, which "provides first-class support for spatial and
+coordinate transformations in OME-Zarr".
+
+That work has a long history.  It grew out of community discussions that started
+in early 2022 ([user stories](https://github.com/ome/ngff/issues/84),
+[spaces and transforms](https://github.com/ome/ngff/issues/94),
+[transformation types](https://github.com/ome/ngff/issues/101)) and a first
+[proposal PR](https://github.com/ome/ngff/pull/138), and was then refined through
+two rounds of [RFC reviews](https://ngff.openmicroscopy.org/rfc/5/reviews/index.html)
+(see also the authors' [responses](https://ngff.openmicroscopy.org/rfc/5/responses/index.html))
+and community hackathons.  Along the way, the spec itself moved from
+[ome/ngff](https://github.com/ome/ngff) to its own repository,
+[ome/ngff-spec](https://github.com/ome/ngff-spec)
+([why](https://github.com/ome/ngff/issues/399)).
+
+Here's what changed, roughly in order of how likely it is to affect you:
+
+1. **Axes now live in named coordinate systems.**  A multiscale no longer has an
+   `axes` field.  Instead, it has `coordinateSystems`: a list of
+   `{"name": ..., "axes": [...]}` objects.  The axis rules you know (2-5
+   dimensions, `[time,] [channel/custom,] space` ordering) still apply to each of
+   them.  See [Axes](#axes).
+2. **Dataset transformations are more explicit.**  Each dataset now has *exactly
+   one* transformation, with an `input` (the dataset's array, by `path`) and an
+   `output` (the image's [intrinsic coordinate
+   system](coordinate_systems.md#the-intrinsic-coordinate-system), by `name`).
+   A scale and a translation are no longer listed side by side: they go inside a
+   single `sequence` (scale first).  An `identity` is now allowed too.  See
+   [Coordinate Transformations](#coordinate-transformations).
+3. **Multiscale-level `coordinateTransformations` mean something different.**
+   In v0.5, they were applied *after* the datasets' transformations (with the
+   same rules).  In v0.6, they link the intrinsic coordinate system to *other*
+   named coordinate systems (of the same multiscale, or of a label image).  If
+   you used them in v0.5, you'll need to rethink them (e.g. fold them into each
+   dataset's transformation).  Also, all coordinate systems **MUST** now be
+   connected by transformations (an unlinked extra coordinate system is
+   invalid).  See [Coordinate Systems &
+   Transformations](coordinate_systems.md#more-coordinate-systems-in-one-image).
+4. **Many more transformation types.**  `identity`, `scale` and `translation`
+   are joined by `mapAxis`, `projectAxis`, `affine`, `rotation`, `sequence`,
+   `byDimension`, `bijection`, `displacements` and `coordinates`.  (Readers
+   **MUST** parse identity, scale, translation and sequences of them, and
+   **SHOULD** parse mapAxis, affine, rotation and byDimension.)  See
+   [Transformation types](coordinate_systems.md#transformation-types).
+5. **Scenes: images that share a spatial relationship.**  A new `scene`
+   group describes how several images relate to each other in space.  See
+   [Working with Scenes](#working-with-scenes).  (The name "scene" was picked at
+   the [2025 NGFF hackathon](https://ngff.openmicroscopy.org/rfc/5/responses/2/index.html),
+   among candidates like "SpatialCollection" and "TransformGroup".)
+6. **Labels can be explicitly lined up with their image**, with a transformation
+   in the parent image's metadata.  See [Lining labels up with the
+   image](#lining-labels-up-with-the-image-v06).
+7. **New axis fields**: `discrete` and `longName`, plus new suggested axis
+   types (`array`, `coordinate`, `displacement`).  Axis names must now be
+   non-empty (they already had to be unique).
+8. **An explicit pixel coordinate convention**: the *center* of a pixel is its
+   coordinate (so pixel `(0, 0)` covers the area from -0.5 to 0.5 along each
+   axis).  See [Where is a pixel?](coordinate_systems.md#where-is-a-pixel).
+9. **All resolution levels MUST have the same data type** (in addition to the
+   same number of dimensions).
+10. **`dimension_names` are no longer required** on arrays.  v0.5.2 made them a
+    **MUST**; v0.6 doesn't mention them.  (This was [confirmed as
+    intentional](https://github.com/ome/ngff/issues/645), though not everyone
+    agrees, and it didn't make it into the changelog.)
+11. **`scale` and `translation` parameters must be inline JSON.**  v0.5 also
+    allowed storing them in a Zarr array (with `path`); v0.6 doesn't.  (One
+    leftover line in the spec's summary table still says otherwise.)
+12. **Field of view paths in a well** follow Zarr's node name rules, rather than
+    being strictly alphanumeric.  See [Well Metadata](#well-metadata).
+13. **No more nested `version` keys.**  The v0.5 text still required a
+    `version` key inside `plate` (and recommended one in `well` and
+    `image-label`), although its schemas didn't; v0.6 only has `ome.version`.
+
+**What *didn't* change:** the storage format (still Zarr v3, with metadata under
+`attributes.ome`), the 2-5 dimension limit for images, the layout of plates and
+wells, and the (still transitional) `bioformats2raw.layout` and `omero`
+metadata.
+
+??? info "Still on the horizon"
+    A few RFCs that come up a lot are **not** part of v0.6:
+
+    - [RFC-3](https://ngff.openmicroscopy.org/rfc/3/index.html): removing the
+      axis restrictions (more than 5 dimensions, etc...)
+    - [RFC-4](https://ngff.openmicroscopy.org/rfc/4/index.html): anatomical
+      orientation of axes
+    - [RFC-8](https://ngff.openmicroscopy.org/rfc/8/index.html): collections
+    - [RFC-9](https://ngff.openmicroscopy.org/rfc/9/index.html): zipped OME-Zarr
+
+    See the [RFC index](https://ngff.openmicroscopy.org/rfc/index.html) for
+    their current status.
+
 ### Version Comparison Matrix
 
-| Feature | v0.2 | v0.3 | v0.4 | v0.5 |
-|---------|:----:|:----:|:----:|:----:|
-| Zarr version | v2 | v2 | v2 | v3 |
-| Axes format | Implicit TCZYX | Strings | Objects | Objects |
-| Axis type field | N/A | N/A | SHOULD | SHOULD |
-| Axis unit field | N/A | N/A | SHOULD | SHOULD |
-| Coordinate transforms | N/A | N/A | **MUST** | **MUST** |
-| Metadata location | `.zattrs` | `.zattrs` | `.zattrs` | `zarr.json` |
-| OME namespace | N/A | N/A | N/A | `attributes.ome` |
-| `dimension_names` | N/A | N/A | N/A | **MUST** |
-| Plate indices | Optional | Optional | **MUST** | **MUST** |
+| Feature | v0.2 | v0.3 | v0.4 | v0.5 | v0.6 |
+|---------|:----:|:----:|:----:|:----:|:----:|
+| Zarr version | v2 | v2 | v2 | v3 | v3 |
+| Axes format | Implicit TCZYX | Strings | Objects | Objects | Objects, in named coordinate systems |
+| Axis type field | N/A | N/A | SHOULD | SHOULD | SHOULD |
+| Axis unit field | N/A | N/A | SHOULD | SHOULD | SHOULD |
+| Coordinate transforms | N/A | N/A | **MUST** | **MUST** | **MUST** |
+| Transformation types | N/A | N/A | identity, scale, translation | identity, scale, translation | 12 types |
+| Metadata location | `.zattrs` | `.zattrs` | `.zattrs` | `zarr.json` | `zarr.json` |
+| OME namespace | N/A | N/A | N/A | `attributes.ome` | `attributes.ome` |
+| `dimension_names` | N/A | N/A | N/A | **MUST** | Not required |
+| Plate indices | Optional | Optional | **MUST** | **MUST** | **MUST** |
+| Scenes | N/A | N/A | N/A | N/A | MAY |
 
 ### Breaking Changes Quick Reference
 
@@ -879,6 +1644,7 @@ This bioformats2raw layout described in the NGFF spec, is described below:
 | **v0.2 → v0.3** | Axes must be explicit strings | :warning: Moderate - add `axes` field |
 | **v0.3 → v0.4** | Axes become objects + coordinate transforms required | :warning::warning: Major - restructure metadata |
 | **v0.4 → v0.5** | Zarr v3 file structure + OME namespace | :warning::warning::warning: Critical - completely different storage |
+| **v0.5 → v0.6** | Axes move into named coordinate systems + explicit `input`/`output` on transformations | :warning::warning: Major - restructure `multiscales` metadata (storage unchanged) |
 
 ---
 
