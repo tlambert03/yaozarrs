@@ -1,8 +1,25 @@
 # https://github.com/casey/just
 
+oztest := "oztest @ git+https://github.com/German-BioImaging/oztest@d43847d36cffa5368523d44dbc5dfb2e796a5fbc"
+
 # Default recipe
 default:
     @just --list
+
+# Run oztest conformance cases and compare with tests/conformance/known_failures.txt
+test-conformance:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    results=$(mktemp -d)
+    trap 'rm -rf "$results"' EXIT
+    for kind in parse_attributes validate_zarr; do
+        uv run -p 3.13 --no-dev --extra io --with "{{ oztest }}" oztest run "$kind" \
+            --include-profile core --no-progress --format json --out-file "$results/$kind.json" \
+            python tests/conformance/dingus.py
+    done
+    uv run -p 3.13 --no-dev --extra io --with "{{ oztest }}" \
+        python tests/conformance/check.py "$results"/*.json
 
 # Run full coverage tests across Python versions and dependency resolutions
 test-cov-full:
