@@ -6,6 +6,7 @@ import importlib.util
 import re
 import warnings
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from packaging.version import Version
@@ -22,6 +23,7 @@ from yaozarrs._rules import (
     rewrap_error,
     rule_error,
 )
+from yaozarrs._rules._model import Level
 from yaozarrs._rules._registry import TRACKED_VERSIONS
 
 ROOT = Path(__file__).parent.parent
@@ -75,7 +77,7 @@ def test_rule_fields(rule: Rule) -> None:
         assert rule.severity is not None
         return
 
-    assert rule.level and rule.introduced
+    assert rule.level in get_args(Level) and rule.introduced
     assert rule.sources or not rule.checkable
     versions = [Version(s.doc.version) for s in rule.sources]
     assert Version(rule.introduced) <= versions[0]

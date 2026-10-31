@@ -6,7 +6,8 @@ import json
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
-Level = Literal["MUST", "MUST NOT", "SHOULD", "SHOULD NOT", "MAY"]
+# the strength of a statement: "MUST NOT" is a MUST, and "SHOULD NOT" a SHOULD
+Level = Literal["MUST", "SHOULD", "MAY"]
 Status = Literal["draft", "stable", "withdrawn"]
 Severity = Literal["error", "warning"]
 
@@ -122,4 +123,4 @@ class Rule:
     def default_severity(self) -> Severity:
         if self.severity is not None:
             return self.severity
-        return "warning" if self.level in ("SHOULD", "SHOULD NOT") else "error"
+        return "warning" if self.level == "SHOULD" else "error"

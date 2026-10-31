@@ -614,7 +614,7 @@ json = '''
 
 [rules.NGFF-DS-003]
 slug = 'datasets-max-5d'
-level = 'MUST NOT'
+level = 'MUST'
 summary = '`datasets` must not have more than 5 dimensions.'
 introduced = '0.4'
 
@@ -3245,7 +3245,7 @@ json = '''
 
 [rules.NGFF-PL-019]
 slug = 'column-name-unique'
-level = 'MUST NOT'
+level = 'MUST'
 summary = 'Plate column names must be unique.'
 introduced = '0.4'
 
@@ -3415,7 +3415,7 @@ json = '''
 
 [rules.NGFF-PL-027]
 slug = 'row-name-unique'
-level = 'MUST NOT'
+level = 'MUST'
 summary = 'Plate row names must be unique.'
 introduced = '0.4'
 
@@ -3701,7 +3701,7 @@ json = '''
 
 [rules.NGFF-WL-002]
 slug = 'field-path-unique'
-level = 'MUST NOT'
+level = 'MUST'
 summary = 'Field of view `path`s must be unique within a well.'
 introduced = '0.4'
 
@@ -3970,7 +3970,7 @@ json = '''
 
 [rules.NGFF-WL-011]
 slug = 'field-path-node-name'
-level = 'MUST NOT'
+level = 'MUST'
 summary = 'A field of view `path` must not consist only of periods, or start with `__`.'
 introduced = '0.6'
 

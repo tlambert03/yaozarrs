@@ -118,10 +118,13 @@ id: Annotated[
 1. **Codes are permanent.** Never renumber, reuse, or delete a code. A new code takes
    the next unused number in its area (look at the highest existing number in
    `rules.toml`, including withdrawn rules).
-2. **One rule = one (subject, constraint, RFC 2119 level).** A sentence with two
-   keywords is two rules. If a later version changes any of the three, the old rule
-   gets `removed="<version>"` and a new code is minted with `supersedes=("<old>",)`.
-   If only the wording changes, keep the code and add a source for the new version.
+2. **One rule = one (subject, constraint, RFC 2119 level).** The level is the
+   statement's strength: `MUST`, `SHOULD`, or `MAY`. "MUST NOT" is level `MUST` and
+   "SHOULD NOT" is level `SHOULD`, so rewording "MUST NOT be a duplicate" as "MUST be
+   unique" is only a change of wording. A sentence with two keywords is two rules. If
+   a later version changes any of the three, the old rule gets `removed="<version>"`
+   and a new code is minted with `supersedes=("<old>",)`. If only the wording changes,
+   keep the code and add a source for the new version.
 3. **Quotes are verbatim** (whitespace-insensitive) and must contain the rule's
    `level` keyword. Never type line numbers by hand. Write `[0, 0]` and run
    `uv run python scripts/ngff_rules.py check --fix`, which fills them in when a quote
@@ -160,7 +163,7 @@ user before adding a new area.
 1. `uv run python scripts/ngff_rules.py check`: every quote must be at its lines.
 2. For each rule, read the quote **in context**: open the vendored spec file in
    `tests/spec_sources/` about 10 lines around `lines`. Confirm that:
-   - the `level` matches the keyword that governs the constraint;
+   - the `level` matches the strength of the keyword that governs the constraint;
    - the `summary` says what the spec says, no more and no less;
    - the yaozarrs check (grep `src/` for the code) enforces that statement. Record any
      deliberate divergence (relaxed, stricter, partial) in `notes`.

@@ -383,7 +383,7 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
     lines = [f"# {rule.code}: `{rule.slug}`", ""]
     lines += [f"> {rule.summary}", ""]
     meta = [
-        ("Spec keyword", rule.level or "— (not from the NGFF spec)"),
+        ("Spec level", rule.level or "— (not from the NGFF spec)"),
         ("yaozarrs severity", rule.default_severity),
         ("Status", rule.status),
         ("Spec versions", _versions(rule)),
@@ -456,7 +456,7 @@ def render_index(checked: dict[str, list[str]]) -> str:
         f"specification itself. Spec versions audited so far: {tracked}. The "
         "registry does not yet cover every normative statement in those versions.",
         "",
-        "| Code | Name | Keyword | Severity | Versions | Checked in | Summary |",
+        "| Code | Name | Level | Severity | Versions | Checked in | Summary |",
         "|---|---|---|---|---|---|---|",
     ]
     for r in RULES.values():
