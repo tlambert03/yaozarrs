@@ -30,10 +30,11 @@ def _load_rule(code: str, entry: dict[str, Any], docs: dict[str, SpecDoc]) -> Ru
         )
     )
     example = Example(**entry.pop("example")) if "example" in entry else None
+    examples = {v: Example(**e) for v, e in entry.pop("examples", {}).items()}
     for key in ("supersedes", "aliases"):
         if key in entry:
             entry[key] = tuple(entry[key])
-    return Rule(code=code, sources=sources, example=example, **entry)
+    return Rule(code=code, sources=sources, example=example, examples=examples, **entry)
 
 
 def _load() -> tuple[dict[str, SpecDoc], dict[str, Rule]]:

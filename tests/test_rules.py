@@ -11,8 +11,17 @@ import pytest
 from packaging.version import Version
 from pydantic import TypeAdapter, ValidationError
 
-from yaozarrs import v05
-from yaozarrs._rules import RULES, Rule, RuleCodes, SpecSource, get_rule
+from yaozarrs import v05, v06
+from yaozarrs._rules import (
+    RULES,
+    Rule,
+    RuleCodes,
+    SpecSource,
+    error_code,
+    get_rule,
+    rewrap_error,
+    rule_error,
+)
 from yaozarrs._rules._registry import TRACKED_VERSIONS
 
 ROOT = Path(__file__).parent.parent
@@ -36,6 +45,9 @@ KNOWN_GAPS = {
     ("NGFF-PL-003", "0.4"),
     ("NGFF-PL-006", "0.4"),
     ("NGFF-WL-002", "0.4"),
+    # each dataset's transformation is checked against the axes instead (NGFF-CT-004),
+    # and each array's number of dimensions (NGFF-DS-005)
+    ("NGFF-DS-002", "0.6"),
 }
 # yaozarrs checks the rule in a version whose spec doesn't state it.
 KNOWN_OVERREACH = {
@@ -46,6 +58,8 @@ KNOWN_OVERREACH = {
     ("NGFF-OM-004", "0.4"),
     ("NGFF-OM-005", "0.4"),
     ("NGFF-OM-006", "0.4"),
+    # shared base model; 0.5 only says the version "is denoted as a string"
+    ("NGFF-GN-001", "0.5"),
 }
 
 
@@ -114,7 +128,7 @@ def test_codes_in_source_exist() -> None:
     for path in (ROOT / "src" / "yaozarrs").rglob("*.py"):
         used.update(pattern.findall(path.read_text(encoding="utf-8")))
     assert used - set(RULES) == set()
-    assert {c for c in used if RULES[c].example is None} == set()
+    assert {c for c in used if not (RULES[c].example or RULES[c].examples)} == set()
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +142,7 @@ def _expected(rule: Rule, version: str) -> bool:
     if (rule.code, version) in KNOWN_GAPS:
         return False
     if rule.code.startswith("YZ-"):
-        return True
+        return ngff_rules.example_for(rule, version) is not None
     return version in {s.doc.version for s in rule.sources}
 
 
@@ -137,12 +151,13 @@ def _expected(rule: Rule, version: str) -> bool:
     [
         pytest.param(r, v, id=f"{r.code}-{v}")
         for r in RULES.values()
-        if r.example
+        if r.example or r.examples
         for v in ngff_rules.MODULES
     ],
 )
 def test_example_coverage(rule: Rule, version: str) -> None:
-    if rule.example and rule.example.store is not None:
+    example = ngff_rules.example_for(rule, version)
+    if example and example.store is not None:
         pytest.importorskip("fsspec")
     emitted = rule.code in ngff_rules.emitted_codes(rule, version)
     assert emitted == _expected(rule, version)
@@ -150,7 +165,8 @@ def test_example_coverage(rule: Rule, version: str) -> None:
 
 def test_known_exceptions_have_examples() -> None:
     for code, version in KNOWN_GAPS | KNOWN_OVERREACH:
-        assert RULES[code].example and version in ngff_rules.MODULES
+        assert version in ngff_rules.MODULES
+        assert ngff_rules.example_for(RULES[code], version)
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +238,72 @@ def test_field_error_codes_keep_union_labels() -> None:
         "ScaleTransformation",
         "TranslationTransformation",
     }
+
+
+def test_rewrap_error_keeps_code() -> None:
+    # the code survives the context that callers add to a message
+    example = ngff_rules.example_for(get_rule("NGFF-CT-004"), "0.6")
+    with pytest.raises(ValidationError) as e:
+        v06.Multiscale.model_validate(example.data)
+    (err,) = e.value.errors()
+    assert err["type"] == "NGFF-CT-004"
+    assert "datasets[" in err["msg"]
+    assert err["msg"].count("See https://") == 1
+
+    original = rule_error("NGFF-CT-004", "bad")
+    assert error_code(rewrap_error(original, "a: ", ": b")) == "NGFF-CT-004"
+    assert str(rewrap_error(original, "a: ", ": b")).startswith("a: bad: b\n  See ")
+    assert error_code(rewrap_error(original, code="NGFF-CT-041")) == "NGFF-CT-041"
+    plain = rewrap_error(ValueError("bad"), "a: ")
+    assert str(plain) == "a: bad" and error_code(plain) is None
+
+
+def test_storage_dimension_mismatch_keeps_code() -> None:
+    # a dimensionality error found in storage validation keeps its specific code
+    pytest.importorskip("fsspec")
+    image = get_rule("NGFF-DS-005").example
+    assert image
+    files = ngff_rules.to_v06_store(image.files)
+    files["s0/zarr.json"]["shape"] = [4, 4]
+    scene = {
+        "version": "0.6",
+        "scene": {
+            "coordinateSystems": [{"name": "world", "axes": [{"name": "x"}]}],
+            "coordinateTransformations": [
+                {
+                    "type": "scale",
+                    "scale": [1, 1],
+                    "input": {"name": "physical", "path": "image"},
+                    "output": {"name": "world"},
+                }
+            ],
+        },
+    }
+    root = {"zarr_format": 3, "node_type": "group", "attributes": {"ome": scene}}
+    store = {"zarr.json": root, **{f"image/{k}": v for k, v in files.items()}}
+    assert "NGFF-CT-004" in ngff_rules._store_codes(store)
+
+
+def test_field_error_codes_nested_discriminated_union() -> None:
+    # discriminated unions stay discriminated in models nested in other models
+    example = ngff_rules.example_for(get_rule("NGFF-CT-005"), "0.6")
+    multiscale = {
+        "coordinateSystems": [
+            {
+                "name": "physical",
+                "axes": [
+                    {"name": "y", "type": "space"},
+                    {"name": "x", "type": "space"},
+                ],
+            }
+        ],
+        "datasets": [example.data],
+    }
+    with pytest.raises(ValidationError) as e:
+        v06.Image.model_validate({"multiscales": [multiscale]})
+    (err,) = e.value.errors()
+    assert err["type"] == "NGFF-CT-005"
+    assert err["ctx"]["pydantic_type"] == "union_tag_invalid"
 
 
 def test_rule_codes_unknown_code() -> None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 Level = Literal["MUST", "MUST NOT", "SHOULD", "SHOULD NOT", "MAY"]
@@ -60,8 +60,10 @@ class Example:
     """A minimal input that violates a rule.
 
     Either a JSON document validated as `model`, or a `store`: a JSON object mapping
-    v0.5 metadata file paths (`zarr.json`, `s0/zarr.json`, ...) to their contents,
-    validated with `validate_zarr_store`.
+    metadata file paths (`zarr.json`, `s0/zarr.json`, ...) to their contents, validated
+    with `validate_zarr_store`.  A rule's `example` is in the v0.5 format, and is
+    converted for other versions (see `example_for` in `scripts/ngff_rules.py`); its
+    `examples` are in the format of the version they are for.
     """
 
     model: str | None = None  # name of a model class in a version module
@@ -95,6 +97,8 @@ class Rule:
     aliases: tuple[str, ...] = ()
     notes: str = ""
     example: Example | None = None  # None if yaozarrs doesn't check this rule
+    # replaces `example` for specific versions
+    examples: dict[str, Example] = field(default_factory=dict, hash=False)
 
     @property
     def url(self) -> str:

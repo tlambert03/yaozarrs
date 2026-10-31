@@ -19,6 +19,12 @@ repo = 'ome/ngff'
 sha = '5cdf83b6806b5e500477c7af69dae9ed2adcf77d'
 path = '0.5/index.bs'
 
+[spec."0.6"]
+tag = '0.6'
+repo = 'ome/ngff-spec'
+sha = '89da1da5b0491f83b7cdde7d123aef763a457029'
+path = 'index.md'
+
 # ------------------------------------------------------------------------------
 # NGFF-AX
 # ------------------------------------------------------------------------------
@@ -32,6 +38,10 @@ introduced = '0.4'
 [[rules.NGFF-AX-001.sources]]
 quote = 'The values MUST be unique across all "name" fields.'
 lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
+
+[[rules.NGFF-AX-001.sources]]
+quote = 'The values in the `name` fields MUST be unique within the same coordinate system.'
+lines = { "0.6" = [260, 260] }
 
 [rules.NGFF-AX-001.example]
 model = 'Multiscale'
@@ -55,10 +65,15 @@ slug = 'axes-space-count'
 level = 'MUST'
 summary = '`axes` must contain 2 or 3 axes of type `space`.'
 introduced = '0.4'
+notes = 'For 0.6, yaozarrs only warns about a coordinate system with no `space` axes but at least two `array` axes: the prose forbids it, but the JSON schema allows it.'
 
 [[rules.NGFF-AX-002.sources]]
 quote = 'The "axes" MUST contain 2 or 3 entries of "type:space"'
 lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
+
+[[rules.NGFF-AX-002.sources]]
+quote = '`axes` MUST contain 2 or 3 entries of `type:space`'
+lines = { "0.6" = [1289, 1289] }
 
 [rules.NGFF-AX-002.example]
 model = 'Multiscale'
@@ -83,6 +98,10 @@ introduced = '0.4'
 [[rules.NGFF-AX-003.sources]]
 quote = 'MAY contain one additional entry of "type:time"'
 lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
+
+[[rules.NGFF-AX-003.sources]]
+quote = 'MAY contain one additional entry of `type:time`'
+lines = { "0.6" = [1290, 1290] }
 
 [rules.NGFF-AX-003.example]
 model = 'Multiscale'
@@ -114,6 +133,10 @@ notes = 'yaozarrs currently only counts axes of type `channel`; multiple null/cu
 quote = 'MAY contain one additional entry of "type:channel" or a null / custom type'
 lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
 
+[[rules.NGFF-AX-004.sources]]
+quote = 'MAY contain one additional entry of `type:channel` or a null / custom type'
+lines = { "0.6" = [1291, 1291] }
+
 [rules.NGFF-AX-004.example]
 model = 'Multiscale'
 json = '''
@@ -143,6 +166,10 @@ introduced = '0.4'
 quote = 'the entries MUST be ordered by "type" where the "time" axis must come first (if present), followed by the "channel" or custom axis (if present) and the axes of type "space".'
 lines = { "0.4" = [361, 361], "0.5" = [305, 305] }
 
+[[rules.NGFF-AX-005.sources]]
+quote = '`axes` entries MUST be ordered by `type` where the `time` axis must come first (if present), followed by the `channel` or custom axis (if present) and the axes of type `space`.'
+lines = { "0.6" = [1292, 1293] }
+
 [rules.NGFF-AX-005.example]
 model = 'Multiscale'
 json = '''
@@ -170,7 +197,7 @@ notes = 'yaozarrs checks this for `space` and `time` axes.'
 
 [[rules.NGFF-AX-006.sources]]
 quote = 'The value SHOULD be one of the following strings, which are valid units according to UDUNITS-2.'
-lines = { "0.4" = [245, 245], "0.5" = [185, 185] }
+lines = { "0.4" = [245, 245], "0.5" = [185, 185], "0.6" = [252, 253] }
 
 [rules.NGFF-AX-006.example]
 model = 'SpaceAxis'
@@ -184,6 +211,7 @@ slug = 'dimension-names-present'
 level = 'MUST'
 summary = "Each multiscale array's `zarr.json` must include `dimension_names`."
 introduced = '0.5'
+removed = '0.6'
 severity = 'warning'
 notes = 'yaozarrs only warns, because zarr-python omits `dimension_names` unless it is passed explicitly.'
 
@@ -231,6 +259,7 @@ slug = 'dimension-names-match-axes'
 level = 'MUST'
 summary = "An array's `dimension_names` must match the names in `axes`."
 introduced = '0.5'
+removed = '0.6'
 notes = 'For 0.4 stores, yaozarrs checks a non-standard `dimension_names` array attribute if it is present.'
 
 [[rules.NGFF-AX-008.sources]]
@@ -282,6 +311,10 @@ introduced = '0.4'
 quote = 'MUST contain the field "name" that gives the name for this dimension.'
 lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
 
+[[rules.NGFF-AX-009.sources]]
+quote = 'MUST contain the field `name` that gives the name for this dimension.'
+lines = { "0.6" = [243, 243] }
+
 [rules.NGFF-AX-009.example]
 model = 'Multiscale'
 json = '''
@@ -289,6 +322,146 @@ json = '''
   "axes": [{"type": "space"}, {"name": "x", "type": "space"}],
   "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
 }
+'''
+
+[rules.NGFF-AX-010]
+slug = 'axis-name-nonempty-string'
+level = 'MUST'
+summary = 'An axis `name` must be a non-empty string.'
+introduced = '0.6'
+
+[[rules.NGFF-AX-010.sources]]
+quote = 'The value MUST be a non-empty string.'
+lines = { "0.6" = [244, 244] }
+
+[rules.NGFF-AX-010.examples."0.6"]
+model = 'SpaceAxis'
+json = '''
+{"name": ""}
+'''
+
+
+[rules.NGFF-AX-011]
+slug = 'axis-long-name-string'
+level = 'MUST'
+summary = 'An axis `longName`, if present, must be a string.'
+introduced = '0.6'
+
+[[rules.NGFF-AX-011.sources]]
+quote = 'MAY contain the field `longName`. The value MUST be a string'
+lines = { "0.6" = [256, 257] }
+
+[rules.NGFF-AX-011.examples."0.6"]
+model = 'SpaceAxis'
+json = '''
+{"name": "x", "longName": 1}
+'''
+
+
+[rules.NGFF-AX-012]
+slug = 'axis-discrete-boolean'
+level = 'MUST'
+summary = 'An axis `discrete`, if present, must be a boolean.'
+introduced = '0.6'
+
+[[rules.NGFF-AX-012.sources]]
+quote = 'MAY contain the field `discrete`. The value MUST be a boolean'
+lines = { "0.6" = [248, 249] }
+
+[rules.NGFF-AX-012.examples."0.6"]
+model = 'SpaceAxis'
+json = '''
+{"name": "x", "discrete": "nope"}
+'''
+
+
+[rules.NGFF-AX-013]
+slug = 'multiscale-axes-min-count'
+level = 'MUST'
+summary = 'A coordinate system inside `multiscales` must have at least 2 axes.'
+introduced = '0.6'
+notes = 'The 0.6 spec writes this in lowercase, as the start of a sentence that continues with MUST. The upper limit is NGFF-DS-003.'
+
+[[rules.NGFF-AX-013.sources]]
+quote = 'The length of `axes` must be between 2 and 5'
+implied = true
+lines = { "0.6" = [1288, 1288] }
+
+[rules.NGFF-AX-013.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-CS
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-CS-001]
+slug = 'coordinate-system-name-present'
+level = 'MUST'
+summary = 'A coordinate system must contain `name`.'
+introduced = '0.6'
+
+[[rules.NGFF-CS-001.sources]]
+quote = 'Every coordinate system: - MUST contain the field `name`.'
+lines = { "0.6" = [199, 200] }
+
+[rules.NGFF-CS-001.examples."0.6"]
+model = 'CoordinateSystem'
+json = '''
+{"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
+
+
+[rules.NGFF-CS-002]
+slug = 'coordinate-system-name-nonempty-string'
+level = 'MUST'
+summary = 'A coordinate system `name` must be a non-empty string.'
+introduced = '0.6'
+
+[[rules.NGFF-CS-002.sources]]
+quote = 'The value MUST be a non-empty string that is unique among all entries in a `coordinateSystems` array.'
+lines = { "0.6" = [201, 201] }
+
+[rules.NGFF-CS-002.examples."0.6"]
+model = 'CoordinateSystem'
+json = '''
+{"name": "", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
+
+
+[rules.NGFF-CS-003]
+slug = 'coordinate-system-name-unique'
+level = 'MUST'
+summary = 'Coordinate system names must be unique within a `coordinateSystems` array.'
+introduced = '0.6'
+
+[[rules.NGFF-CS-003.sources]]
+quote = 'The value MUST be a non-empty string that is unique among all entries in a `coordinateSystems` array.'
+lines = { "0.6" = [201, 201] }
+
+[rules.NGFF-CS-003.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "physical", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
+'''
+
+
+[rules.NGFF-CS-004]
+slug = 'coordinate-system-axes-present'
+level = 'MUST'
+summary = 'A coordinate system must contain `axes`, an array.'
+introduced = '0.6'
+
+[[rules.NGFF-CS-004.sources]]
+quote = 'MUST contain the field `axes`, whose value is an array of valid `axes`'
+lines = { "0.6" = [202, 202] }
+
+[rules.NGFF-CS-004.examples."0.6"]
+model = 'CoordinateSystem'
+json = '''
+{"name": "physical"}
 '''
 
 # ------------------------------------------------------------------------------
@@ -305,11 +478,16 @@ introduced = '0.4'
 quote = 'Each "multiscales" dictionary SHOULD contain the field "name".'
 lines = { "0.4" = [380, 380], "0.5" = [324, 324] }
 
+[[rules.NGFF-MS-001.sources]]
+quote = 'Each `multiscales` object SHOULD contain the field `name`.'
+lines = { "0.6" = [1386, 1386] }
+
 [rules.NGFF-MS-002]
 slug = 'multiscales-axes-present'
 level = 'MUST'
 summary = 'Each "multiscales" entry must contain `axes`.'
 introduced = '0.4'
+removed = '0.6'
 
 [[rules.NGFF-MS-002.sources]]
 quote = 'Each "multiscales" dictionary MUST contain the field "axes"'
@@ -328,15 +506,40 @@ slug = 'multiscales-datasets-present'
 level = 'MUST'
 summary = 'Each "multiscales" entry must contain `datasets`.'
 introduced = '0.4'
+notes = 'The 0.6 spec states this in the `multiscales` field table ("Required: yes"), not with a keyword.'
 
 [[rules.NGFF-MS-003.sources]]
 quote = 'Each "multiscales" dictionary MUST contain the field "datasets"'
 lines = { "0.4" = [364, 364], "0.5" = [308, 308] }
 
+[[rules.NGFF-MS-003.sources]]
+quote = '| `datasets` | JSON array of objects | yes |'
+implied = true
+lines = { "0.6" = [1278, 1278] }
+
 [rules.NGFF-MS-003.example]
 model = 'Multiscale'
 json = '''
 {"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
+
+[rules.NGFF-MS-004]
+slug = 'multiscales-coordinate-systems-present'
+level = 'MUST'
+summary = 'Each `multiscales` entry must contain `coordinateSystems`.'
+introduced = '0.6'
+supersedes = ['NGFF-MS-002']
+notes = 'The 0.6 spec states this in the `multiscales` field table ("Required: yes"), not with a keyword. Replaces `axes` (NGFF-MS-002).'
+
+[[rules.NGFF-MS-004.sources]]
+quote = '| `coordinateSystems` | JSON array of objects | yes |'
+implied = true
+lines = { "0.6" = [1277, 1277] }
+
+[rules.NGFF-MS-004.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
 '''
 
 # ------------------------------------------------------------------------------
@@ -348,11 +551,15 @@ slug = 'datasets-resolution-order'
 level = 'MUST'
 summary = '`datasets` must be ordered from highest to lowest resolution.'
 introduced = '0.4'
-notes = 'yaozarrs compares the `scale` values of the spatial axes.'
+notes = 'yaozarrs compares the `scale` values of the spatial axes: per axis, a scale may not shrink from one level to the next (allowing for float noise). For 0.6, it compares their magnitudes, as scales may be negative.'
 
 [[rules.NGFF-DS-001.sources]]
 quote = 'The "path"s MUST be ordered from largest (i.e. highest resolution) to smallest.'
 lines = { "0.4" = [366, 366], "0.5" = [310, 310] }
+
+[[rules.NGFF-DS-001.sources]]
+quote = 'The `path`s MUST be ordered from largest (i.e. highest resolution) to smallest.'
+lines = { "0.6" = [1312, 1312] }
 
 [rules.NGFF-DS-001.example]
 model = 'Multiscale'
@@ -383,6 +590,10 @@ notes = "The spec does not define a dataset's number of dimensions; yaozarrs use
 quote = 'Each "datasets" dictionary MUST have the same number of dimensions'
 lines = { "0.4" = [368, 368], "0.5" = [312, 312] }
 
+[[rules.NGFF-DS-002.sources]]
+quote = 'Every Zarr array referred to by a `path` MUST have the same number of dimensions and datatype,'
+lines = { "0.6" = [1313, 1313] }
+
 [rules.NGFF-DS-002.example]
 model = 'Multiscale'
 json = '''
@@ -409,7 +620,7 @@ introduced = '0.4'
 
 [[rules.NGFF-DS-003.sources]]
 quote = 'MUST NOT have more than 5 dimensions.'
-lines = { "0.4" = [368, 368], "0.5" = [312, 312] }
+lines = { "0.4" = [368, 368], "0.5" = [312, 312], "0.6" = [1314, 1314] }
 
 [rules.NGFF-DS-003.example]
 model = 'Multiscale'
@@ -425,6 +636,39 @@ json = '''
 }
 '''
 
+[rules.NGFF-DS-003.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{
+  "coordinateSystems": [
+    {
+      "name": "physical",
+      "axes": [
+        {"name": "a"},
+        {"name": "b"},
+        {"name": "c"},
+        {"name": "z", "type": "space"},
+        {"name": "y", "type": "space"},
+        {"name": "x", "type": "space"}
+      ]
+    }
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [
+        {
+          "type": "scale",
+          "scale": [1, 1, 1, 1, 1, 1],
+          "input": {"path": "0"},
+          "output": {"name": "physical"}
+        }
+      ]
+    }
+  ]
+}
+'''
+
 
 [rules.NGFF-DS-004]
 slug = 'dataset-path-is-array'
@@ -435,6 +679,10 @@ introduced = '0.4'
 [[rules.NGFF-DS-004.sources]]
 quote = 'Each dictionary in "datasets" MUST contain the field "path", whose value contains the path to the array for this resolution relative'
 lines = { "0.4" = [365, 365], "0.5" = [309, 309] }
+
+[[rules.NGFF-DS-004.sources]]
+quote = 'Each object in `datasets` MUST contain the field `path`, whose value is a string containing the path to the Zarr array for this resolution relative'
+lines = { "0.6" = [1310, 1311] }
 
 [rules.NGFF-DS-004.example]
 store = '''
@@ -474,6 +722,10 @@ introduced = '0.4'
 [[rules.NGFF-DS-005.sources]]
 quote = 'MUST be equal to the dimensionality of the zarr arrays storing the image data (see "datasets:path").'
 lines = { "0.4" = [359, 359], "0.5" = [303, 303] }
+
+[[rules.NGFF-DS-005.sources]]
+quote = 'MUST be equal to the dimensionality of the Zarr arrays storing the image data (see `datasets:path`).'
+lines = { "0.6" = [1288, 1288] }
 
 [rules.NGFF-DS-005.example]
 store = '''
@@ -519,6 +771,10 @@ introduced = '0.4'
 quote = 'Each dictionary in "datasets" MUST contain the field "path"'
 lines = { "0.4" = [365, 365], "0.5" = [309, 309] }
 
+[[rules.NGFF-DS-006.sources]]
+quote = 'Each object in `datasets` MUST contain the field `path`'
+lines = { "0.6" = [1310, 1310] }
+
 [rules.NGFF-DS-006.example]
 model = 'Dataset'
 json = '''
@@ -535,10 +791,114 @@ introduced = '0.4'
 quote = 'Each dictionary in "datasets" MUST contain the field "coordinateTransformations"'
 lines = { "0.4" = [369, 369], "0.5" = [313, 313] }
 
+[[rules.NGFF-DS-007.sources]]
+quote = 'Each object in `datasets` MUST contain the field `coordinateTransformations`'
+lines = { "0.6" = [1317, 1317] }
+
 [rules.NGFF-DS-007.example]
 model = 'Dataset'
 json = '''
 {"path": "0"}
+'''
+
+[rules.NGFF-DS-008]
+slug = 'datasets-same-dtype'
+level = 'MUST'
+summary = 'All arrays referred to by `datasets` must have the same data type.'
+introduced = '0.6'
+
+[[rules.NGFF-DS-008.sources]]
+quote = 'Every Zarr array referred to by a `path` MUST have the same number of dimensions and datatype,'
+lines = { "0.6" = [1313, 1313] }
+
+[rules.NGFF-DS-008.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "s1",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      2,
+                      2
+                    ],
+                    "input": {
+                      "path": "s1"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "s1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint16"
+  }
+}
 '''
 
 # ------------------------------------------------------------------------------
@@ -550,6 +910,7 @@ slug = 'scale-exactly-one'
 level = 'MUST'
 summary = '`coordinateTransformations` must contain exactly one `scale`.'
 introduced = '0.4'
+removed = '0.6'
 
 [[rules.NGFF-CT-001.sources]]
 quote = 'They MUST contain exactly one `scale` transformation'
@@ -572,6 +933,7 @@ slug = 'translation-at-most-one'
 level = 'MAY'
 summary = '`coordinateTransformations` may contain at most one `translation`.'
 introduced = '0.4'
+removed = '0.6'
 
 [[rules.NGFF-CT-002.sources]]
 quote = 'It MAY contain exactly one `translation`'
@@ -595,6 +957,7 @@ slug = 'translation-after-scale'
 level = 'MUST'
 summary = 'A `translation` must be listed after the `scale`.'
 introduced = '0.4'
+removed = '0.6'
 
 [[rules.NGFF-CT-003.sources]]
 quote = 'If `translation` is given it MUST be listed after `scale`'
@@ -622,6 +985,14 @@ introduced = '0.4'
 quote = 'The length of the `scale` and `translation` array MUST be the same as the length of "axes".'
 lines = { "0.4" = [373, 373], "0.5" = [317, 317] }
 
+[[rules.NGFF-CT-004.sources]]
+quote = 'Input and output dimensionality MUST be identical and MUST equal the length of the `translation` array (N).'
+lines = { "0.6" = [807, 808] }
+
+[[rules.NGFF-CT-004.sources]]
+quote = 'Input and output dimensionality MUST be identical and MUST equal the length of the `scale` array (N).'
+lines = { "0.6" = [834, 835] }
+
 [rules.NGFF-CT-004.example]
 model = 'Multiscale'
 json = '''
@@ -636,6 +1007,1670 @@ json = '''
 }
 '''
 
+[rules.NGFF-CT-005]
+slug = 'dataset-transform-type'
+level = 'MUST'
+summary = 'A dataset must have a single transformation: a `scale`, an `identity`, or a `sequence` of a scale followed by a translation.'
+introduced = '0.6'
+supersedes = ['NGFF-CT-001', 'NGFF-CT-002', 'NGFF-CT-003']
+
+[[rules.NGFF-CT-005.sources]]
+quote = '`coordinateTransformations` herein MUST - be restricted to a single `scale`, `identity` or `sequence` of a scale followed by a translation transformation.'
+lines = { "0.6" = [449, 450] }
+
+[rules.NGFF-CT-005.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "translation", "translation": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
+'''
+
+
+[rules.NGFF-CT-006]
+slug = 'dataset-transform-input-path'
+level = 'MUST'
+summary = "The `input` of a dataset's transformation must specify a `path` matching the dataset's."
+introduced = '0.6'
+
+[[rules.NGFF-CT-006.sources]]
+quote = 'The `input` object MUST specify a `path` field matching the `path` field of the dataset.'
+lines = { "0.6" = [1323, 1323] }
+
+[rules.NGFF-CT-006.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "output": {"name": "physical"}}]}
+'''
+
+
+[rules.NGFF-CT-007]
+slug = 'dataset-transform-output-name'
+level = 'MUST'
+summary = "The `output` of a dataset's transformation must name a coordinate system."
+introduced = '0.6'
+
+[[rules.NGFF-CT-007.sources]]
+quote = 'The `name` field of `output` MUST be the `name` of a coordinate system.'
+lines = { "0.6" = [1327, 1327] }
+
+[rules.NGFF-CT-007.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}}]}
+'''
+
+
+[rules.NGFF-CT-008]
+slug = 'dataset-transform-input-name-omitted'
+level = 'SHOULD'
+summary = "The `input` of a dataset's transformation should not have a `name`."
+introduced = '0.6'
+notes = 'Another section of the 0.6 spec says these transformations "MUST ... omit `name`", so this is only a warning.'
+
+[[rules.NGFF-CT-008.sources]]
+quote = 'The `name` field under `input` SHOULD be omitted.'
+lines = { "0.6" = [1324, 1324] }
+
+[rules.NGFF-CT-008.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0", "name": "a"}, "output": {"name": "physical"}}]}
+'''
+
+
+[rules.NGFF-CT-009]
+slug = 'dataset-transform-output-path-omitted'
+level = 'SHOULD'
+summary = "The `output` of a dataset's transformation should not have a `path`."
+introduced = '0.6'
+notes = 'Another section of the 0.6 spec says these transformations "MUST ... omit `path`", so this is only a warning.'
+
+[[rules.NGFF-CT-009.sources]]
+quote = 'The `path` field of `output` SHOULD be omitted.'
+lines = { "0.6" = [1329, 1329] }
+
+[rules.NGFF-CT-009.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical", "path": "x"}}]}
+'''
+
+
+[rules.NGFF-CT-010]
+slug = 'dataset-transform-same-output'
+level = 'MUST'
+summary = 'Every dataset of a multiscale must output to the same coordinate system.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-010.sources]]
+quote = 'It MUST be the same value for every resolution level in a single multiscales'
+lines = { "0.6" = [1328, 1328] }
+
+[rules.NGFF-CT-010.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}, {"path": "s1", "coordinateTransformations": [{"type": "scale", "scale": [2, 2], "input": {"path": "s1"}, "output": {"name": "other"}}]}]}
+'''
+
+
+[rules.NGFF-CT-011]
+slug = 'transform-input-output-present'
+level = 'MUST'
+summary = 'A transformation must have an `input` and an `output`, unless it is part of a wrapper transformation.'
+introduced = '0.6'
+notes = 'The 0.6 spec states this in the transformation field table ("Required: yes, unless ..."), not with a keyword.'
+
+[[rules.NGFF-CT-011.sources]]
+quote = '| [`input`](#input-output-md) | object | yes, unless part of a wrapper transform'
+implied = true
+lines = { "0.6" = [401, 401] }
+
+[[rules.NGFF-CT-011.sources]]
+quote = '| [`output`](#input-output-md) | object | yes, unless part of a wrapper transform'
+implied = true
+lines = { "0.6" = [402, 402] }
+
+[rules.NGFF-CT-011.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity"}]}
+'''
+
+
+[rules.NGFF-CT-012]
+slug = 'multiscale-transform-references-intrinsic'
+level = 'MUST'
+summary = "One of the `input` or `output` of a multiscale's transformation must be the intrinsic coordinate system."
+introduced = '0.6'
+
+[[rules.NGFF-CT-012.sources]]
+quote = '- One of `input` or `output` MUST reference the "[intrinsic](#spec:hint:multiscales-intrinsic-coordinate-system)" coordinate system by `name` (`path` MAY be omitted or null). - The other of `input` or `output` MUST reference either:'
+lines = { "0.6" = [1359, 1360] }
+
+[rules.NGFF-CT-012.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "a", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "b", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}]}
+'''
+
+
+[rules.NGFF-CT-013]
+slug = 'multiscale-transform-other-reference'
+level = 'MUST'
+summary = "The other end of a multiscale's transformation must name a coordinate system in the same multiscale, or in a child labels group."
+introduced = '0.6'
+
+[[rules.NGFF-CT-013.sources]]
+quote = 'The other of `input` or `output` MUST reference either: - A named coordinate system in the same multiscales group (by `name`, `path` MAY be omitted or null), or - A named coordinate system in a child [labels](#labels-md) group (by `name` and `path`).'
+lines = { "0.6" = [1360, 1362] }
+
+[rules.NGFF-CT-013.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "physical"}, "output": {"name": "missing"}}]}
+'''
+
+
+[rules.NGFF-CT-014]
+slug = 'label-transform-type'
+level = 'MUST'
+summary = 'A transformation to a coordinate system in a child labels group must be `identity`, `scale`, or `translation`.'
+introduced = '0.6'
+notes = 'yaozarrs also accepts a sequence of a scale and a translation, which the labels section of the spec allows (see ome/ngff#639).'
+
+[[rules.NGFF-CT-014.sources]]
+quote = 'When referencing a coordinate system in a child labels group, the transformation MUST be one of [`identity`](#identity-md), [`scale`](#scale-md), or [`translation`](#translation-md).'
+lines = { "0.6" = [1363, 1363] }
+
+[rules.NGFF-CT-014.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "mapAxis", "mapAxis": [1, 0], "input": {"name": "physical"}, "output": {"name": "physical", "path": "labels/a"}}]}
+'''
+
+
+[rules.NGFF-CT-015]
+slug = 'transform-params-match-ndim'
+level = 'MUST'
+summary = "A transformation's parameters must be compatible with the dimensionality of its input and output."
+introduced = '0.6'
+
+[[rules.NGFF-CT-015.sources]]
+quote = 'The parameter values (e.g., `scale` for a [scale transformation](#scale-md)) MUST be compatible with input and output space dimensionality (see details).'
+lines = { "0.6" = [422, 422] }
+
+[rules.NGFF-CT-015.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+
+[rules.NGFF-CT-016]
+slug = 'map-axis-present'
+level = 'MUST'
+summary = 'A `mapAxis` transformation must have a `mapAxis` field.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-016.sources]]
+quote = 'Transformations MUST include a `mapAxis` field'
+lines = { "0.6" = [708, 708] }
+
+[rules.NGFF-CT-016.examples."0.6"]
+model = 'MapAxisTransformation'
+json = '''
+{"type": "mapAxis"}
+'''
+
+
+[rules.NGFF-CT-017]
+slug = 'map-axis-length'
+level = 'MUST'
+summary = 'The length of `mapAxis` must equal the number of input and output axes.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-017.sources]]
+quote = 'The length of the array MUST equal the number of dimensions in both the input and output coordinate systems.'
+lines = { "0.6" = [710, 710] }
+
+[rules.NGFF-CT-017.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "mapAxis", "mapAxis": [0], "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+
+[rules.NGFF-CT-018]
+slug = 'map-axis-valid-index'
+level = 'MUST'
+summary = 'Each value in `mapAxis` must be a valid index into the input axes.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-018.sources]]
+quote = "Each integer in the array MUST be a valid zero-based index into the input coordinate system's axes"
+lines = { "0.6" = [711, 711] }
+
+[rules.NGFF-CT-018.examples."0.6"]
+model = 'MapAxisTransformation'
+json = '''
+{"mapAxis": [0, 2]}
+'''
+
+
+[rules.NGFF-CT-019]
+slug = 'map-axis-unique'
+level = 'MUST'
+summary = 'Each index must appear exactly once in `mapAxis`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-019.sources]]
+quote = 'Each index MUST appear exactly once in the array.'
+lines = { "0.6" = [713, 713] }
+
+[rules.NGFF-CT-019.examples."0.6"]
+model = 'MapAxisTransformation'
+json = '''
+{"mapAxis": [0, 0]}
+'''
+
+
+[rules.NGFF-CT-020]
+slug = 'project-axis-created-outputs-unique'
+level = 'MUST'
+summary = 'The values in `createdOutputs` must be unique.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-020.sources]]
+quote = 'The values in the `createdOutputs` array MUST be unique.'
+lines = { "0.6" = [752, 752] }
+
+[rules.NGFF-CT-020.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{"createdOutputs": [0, 0]}
+'''
+
+
+[rules.NGFF-CT-021]
+slug = 'project-axis-dropped-inputs-unique'
+level = 'MUST'
+summary = 'The values in `droppedInputs` must be unique.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-021.sources]]
+quote = 'The values in the `droppedInputs` array MUST be unique.'
+lines = { "0.6" = [756, 756] }
+
+[rules.NGFF-CT-021.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{"droppedInputs": [0, 0]}
+'''
+
+
+[rules.NGFF-CT-022]
+slug = 'scale-nonzero'
+level = 'SHOULD'
+summary = 'Values in a `scale` array should be non-zero.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-022.sources]]
+quote = 'Values in the `scale` array SHOULD be non-zero;'
+lines = { "0.6" = [836, 836] }
+
+[rules.NGFF-CT-022.examples."0.6"]
+model = 'ScaleTransformation'
+json = '''
+{"scale": [0, 1]}
+'''
+
+
+[rules.NGFF-CT-023]
+slug = 'affine-matrix-stored'
+level = 'MUST'
+summary = 'An `affine` must have its matrix either inline or in a Zarr array at `path`.'
+introduced = '0.6'
+notes = 'yaozarrs rejects a transformation with both.'
+
+[[rules.NGFF-CT-023.sources]]
+quote = 'The matrix MUST be stored as a 2D array either as json or as a Zarr array.'
+lines = { "0.6" = [877, 877] }
+
+[rules.NGFF-CT-023.examples."0.6"]
+model = 'AffineTransformation'
+json = '''
+{}
+'''
+
+
+[rules.NGFF-CT-024]
+slug = 'affine-path-array'
+level = 'MUST'
+summary = 'The `path` of an `affine` must point to a 2D Zarr array of shape `(M)x(N+1)`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-024.sources]]
+quote = 'The array at this path MUST be 2D whose shape MUST be `(M)x(N+1)`.'
+lines = { "0.6" = [881, 881] }
+
+[rules.NGFF-CT-024.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "affine",
+                "path": "m",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "m/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      6
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-025]
+slug = 'affine-inline-shape'
+level = 'MUST'
+summary = 'An inline `affine` matrix must have `M` rows of length `N+1`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-025.sources]]
+quote = 'where the outer array MUST be length `M` and the inner arrays MUST be length `N+1`.'
+lines = { "0.6" = [886, 886] }
+
+[rules.NGFF-CT-025.examples."0.6"]
+model = 'AffineTransformation'
+json = '''
+{"affine": [[1, 0, 0], [0, 1]]}
+'''
+
+
+[rules.NGFF-CT-026]
+slug = 'rotation-same-ndim'
+level = 'MUST'
+summary = 'The input and output of a `rotation` must have the same dimensionality.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-026.sources]]
+quote = 'Input and output dimensionality (N) MUST be identical.'
+lines = { "0.6" = [962, 962] }
+
+[rules.NGFF-CT-026.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "rotation", "path": "m", "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+
+[rules.NGFF-CT-027]
+slug = 'rotation-orthonormal'
+level = 'MUST'
+summary = 'A `rotation` matrix must have determinant 1, with orthonormal rows and columns.'
+introduced = '0.6'
+notes = 'The spec defines no tolerance; yaozarrs allows 1e-4.'
+
+[[rules.NGFF-CT-027.sources]]
+quote = 'and MUST have determinant equal to one, with orthonormal rows and columns.'
+lines = { "0.6" = [964, 964] }
+
+[rules.NGFF-CT-027.examples."0.6"]
+model = 'RotationTransformation'
+json = '''
+{"rotation": [[2, 0], [0, 2]]}
+'''
+
+
+[rules.NGFF-CT-028]
+slug = 'rotation-matrix-stored'
+level = 'MUST'
+summary = 'A `rotation` must have its matrix either inline or in a Zarr array at `path`.'
+introduced = '0.6'
+notes = 'yaozarrs rejects a transformation with both.'
+
+[[rules.NGFF-CT-028.sources]]
+quote = 'The matrix MUST be stored as a 2D array either as json or in a Zarr array.'
+lines = { "0.6" = [965, 965] }
+
+[rules.NGFF-CT-028.examples."0.6"]
+model = 'RotationTransformation'
+json = '''
+{}
+'''
+
+
+[rules.NGFF-CT-029]
+slug = 'rotation-path-array'
+level = 'MUST'
+summary = 'The `path` of a `rotation` must point to a 2D Zarr array of shape `N x N`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-029.sources]]
+quote = 'The array at this path MUST be 2D whose shape MUST be `N x N`.'
+lines = { "0.6" = [970, 970] }
+
+[rules.NGFF-CT-029.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "rotation",
+                "path": "m",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "m/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      4
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-030]
+slug = 'rotation-inline-shape'
+level = 'MUST'
+summary = 'An inline `rotation` matrix must be `N x N`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-030.sources]]
+quote = 'where the outer array MUST be length `N` and the inner arrays MUST be length `N`.'
+lines = { "0.6" = [974, 975] }
+
+[rules.NGFF-CT-030.examples."0.6"]
+model = 'RotationTransformation'
+json = '''
+{"rotation": [[1, 0, 0], [0, 1, 0]]}
+'''
+
+
+[rules.NGFF-CT-031]
+slug = 'field-path-multiscale'
+level = 'MUST'
+summary = 'The `path` of a `coordinates` or `displacements` transformation must point to a multiscale image group.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-031.sources]]
+quote = 'The multiscale group at `path` MUST satisfy:'
+lines = { "0.6" = [1098, 1098] }
+
+[rules.NGFF-CT-031.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1,
+      2
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-032]
+slug = 'field-vector-axis'
+level = 'MUST'
+summary = 'A coordinate or displacement field must have one axis of type `coordinate` or `displacement`, with `discrete: true`.'
+introduced = '0.6'
+notes = 'The keyword is in the lead-in to this list: "The array containing the coordinates or displacements MUST:".'
+
+[[rules.NGFF-CT-032.sources]]
+quote = '''specify `"type": "displacement"` or `"type": "coordinate"` depending on the type of transformation and `"discrete": true` in the multiscale image's [axes metadata](#axes-md) for the dimension corresponding to the coordinate or displacement vector.'''
+implied = true
+lines = { "0.6" = [1060, 1062] }
+
+[rules.NGFF-CT-032.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-033]
+slug = 'field-ndim'
+level = 'MUST'
+summary = 'A field for an input with `N` axes must have `N+1` dimensions.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-033.sources]]
+quote = 'If the input coordinate system has `N` axes, the multiscale image at location `path` MUST have `N+1` dimensions.'
+lines = { "0.6" = [1099, 1099] }
+
+[rules.NGFF-CT-033.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "d",
+                    "type": "displacement",
+                    "discrete": true
+                  },
+                  {
+                    "name": "z",
+                    "type": "space"
+                  },
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1,
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      2,
+      1,
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-034]
+slug = 'coordinates-vector-length'
+level = 'MUST'
+summary = 'The `coordinate` axis of a field must have length `M`, the number of output axes.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-034.sources]]
+quote = 'For `coordinates` transformations, the length of the array along the `coordinate` dimension (last axis) MUST equal `M`,'
+lines = { "0.6" = [1101, 1101] }
+
+[rules.NGFF-CT-034.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "coordinates",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "c",
+                    "type": "coordinate",
+                    "discrete": true
+                  },
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      3,
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-035]
+slug = 'displacements-vector-length'
+level = 'MUST'
+summary = 'The `displacement` axis of a field must have length `N`, the number of input (and output) axes.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-035.sources]]
+quote = 'For `displacements` transformations, the length of the array along the `displacement` dimension (last axis) MUST equal `N`,'
+lines = { "0.6" = [1103, 1103] }
+
+[rules.NGFF-CT-035.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "d",
+                    "type": "displacement",
+                    "discrete": true
+                  },
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      3,
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-036]
+slug = 'by-dimension-item-fields'
+level = 'MUST'
+summary = '`transformations` of a `byDimension` must be an array of objects with `inputAxes`, `outputAxes`, and `transformation`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-036.sources]]
+quote = 'MUST be an array of objects where each object MUST contain the fields `inputAxes`, `outputAxes` and `transformation`.'
+lines = { "0.6" = [1173, 1174] }
+
+[rules.NGFF-CT-036.examples."0.6"]
+model = 'ByDimensionItem'
+json = '''
+{}
+'''
+
+
+[rules.NGFF-CT-037]
+slug = 'by-dimension-output-axes'
+level = 'MUST'
+summary = 'Every output axis of a `byDimension` must appear in exactly one `outputAxes`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-037.sources]]
+quote = "Every axis index in the parent byDimension's `output` coordinate system MUST appear in exactly one child transformation's `outputAxes` array."
+lines = { "0.6" = [1179, 1180] }
+
+[rules.NGFF-CT-037.examples."0.6"]
+model = 'ByDimensionTransformation'
+json = '''
+{"transformations": [{"inputAxes": [0], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2]}}, {"inputAxes": [1], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2]}}]}
+'''
+
+
+[rules.NGFF-CT-038]
+slug = 'by-dimension-axes-length'
+level = 'MUST'
+summary = '`inputAxes` and `outputAxes` must have the same length as the parameter arrays of their transformation.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-038.sources]]
+quote = "The `inputAxes` and `outputAxes` arrays of each item MUST have the same length as that transformation's parameter arrays."
+lines = { "0.6" = [1181, 1182] }
+
+[rules.NGFF-CT-038.examples."0.6"]
+model = 'ByDimensionItem'
+json = '''
+{"inputAxes": [0], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2, 2]}}
+'''
+
+
+[rules.NGFF-CT-039]
+slug = 'bijection-not-closed-form-invertible'
+level = 'SHOULD'
+summary = 'Each direction of a `bijection` should be a type that is not closed-form invertible.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-039.sources]]
+quote = 'Each direction SHOULD be a transformation type that is not closed-form invertible.'
+lines = { "0.6" = [1231, 1231] }
+
+[rules.NGFF-CT-039.examples."0.6"]
+model = 'BijectionTransformation'
+json = '''
+{"forward": {"type": "scale", "scale": [2]}, "inverse": {"type": "scale", "scale": [0.5]}}
+'''
+
+
+[rules.NGFF-CT-040]
+slug = 'bijection-same-ndim'
+level = 'MUST'
+summary = 'The input and output of a `bijection` must have the same dimensionality.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-040.sources]]
+quote = 'Its input and output spaces MUST have equal dimension.'
+lines = { "0.6" = [1232, 1232] }
+
+[rules.NGFF-CT-040.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "bijection", "forward": {"type": "coordinates", "path": "f"}, "inverse": {"type": "coordinates", "path": "i"}, "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+
+[rules.NGFF-CT-041]
+slug = 'bijection-directions-match'
+level = 'MUST'
+summary = 'The forward and inverse of a `bijection` must match its input and output dimensionality.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-041.sources]]
+quote = "The input and output dimensions for the both the forward and inverse transformations MUST match bijection's input and output space dimensions."
+lines = { "0.6" = [1233, 1234] }
+
+[rules.NGFF-CT-041.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "bijection", "forward": {"type": "scale", "scale": [2]}, "inverse": {"type": "coordinates", "path": "i"}, "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+
+[rules.NGFF-CT-042]
+slug = 'transform-graph-connected'
+level = 'MUST'
+summary = 'The coordinate systems and transformations of the metadata must form a connected graph.'
+introduced = '0.6'
+notes = 'The statement covers the multiscales and scene metadata combined, so outside of a scene (where a scene could still link the coordinate systems) yaozarrs only warns.'
+
+[[rules.NGFF-CT-042.sources]]
+quote = 'The graph MUST be connected (but need not be complete):'
+lines = { "0.6" = [482, 482] }
+
+[rules.NGFF-CT-042.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+
+[rules.NGFF-CT-043]
+slug = 'transform-parameters-location'
+level = 'SHOULD'
+summary = 'In a scene, arrays with transformation parameters should be in a group called `coordinateTransformations`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-043.sources]]
+quote = 'those Zarr arrays SHOULD be stored in a Zarr group on the same level as images called "coordinateTransformations".'
+lines = { "0.6" = [145, 145] }
+
+[rules.NGFF-CT-043.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "scene": {
+          "coordinateSystems": [
+            {
+              "name": "a",
+              "axes": [
+                {
+                  "name": "y",
+                  "type": "space"
+                },
+                {
+                  "name": "x",
+                  "type": "space"
+                }
+              ]
+            },
+            {
+              "name": "b",
+              "axes": [
+                {
+                  "name": "y",
+                  "type": "space"
+                },
+                {
+                  "name": "x",
+                  "type": "space"
+                }
+              ]
+            }
+          ],
+          "coordinateTransformations": [
+            {
+              "type": "affine",
+              "path": "m",
+              "input": {
+                "name": "a"
+              },
+              "output": {
+                "name": "b"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "m/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      2,
+      3
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-OM
 # ------------------------------------------------------------------------------
@@ -645,11 +2680,15 @@ slug = 'omero-channel-color-hex'
 level = 'MUST'
 summary = 'An omero channel `color` must be a string of 6 hexadecimal digits.'
 introduced = '0.5'
-notes = 'yaozarrs also accepts a leading `#` and 3-digit shorthand, and normalizes them. The same check is currently applied to 0.4 documents, although the 0.4 spec has no such statement.'
+notes = 'yaozarrs also accepts a leading `#` and 3-digit shorthand, and normalizes them with a warning. The same check is currently applied to 0.4 documents, although the 0.4 spec has no such statement.'
 
 [[rules.NGFF-OM-001.sources]]
 quote = 'Each dictionary in "channels" MUST contain the field "color", which is a string of 6 hexadecimal digits specifying the color of the channel in RGB format.'
 lines = { "0.5" = [385, 385] }
+
+[[rules.NGFF-OM-001.sources]]
+quote = 'Each object in `channels` MUST contain the field `color`, which is a string of 6 hexadecimal digits specifying the color of the channel in RGB format.'
+lines = { "0.6" = [1456, 1457] }
 
 [rules.NGFF-OM-001.example]
 model = 'OmeroChannel'
@@ -671,6 +2710,10 @@ notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but 
 quote = 'The "omero" metadata is optional, but if present it MUST contain the field "channels"'
 lines = { "0.5" = [384, 384] }
 
+[[rules.NGFF-OM-002.sources]]
+quote = 'The `omero` metadata is optional, but if present it MUST contain the field `channels`'
+lines = { "0.6" = [1454, 1454] }
+
 [rules.NGFF-OM-002.example]
 model = 'Omero'
 json = '''
@@ -687,6 +2730,10 @@ notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but 
 [[rules.NGFF-OM-003.sources]]
 quote = 'Each dictionary in "channels" MUST contain the field "color"'
 lines = { "0.5" = [385, 385] }
+
+[[rules.NGFF-OM-003.sources]]
+quote = 'Each object in `channels` MUST contain the field `color`'
+lines = { "0.6" = [1456, 1456] }
 
 [rules.NGFF-OM-003.example]
 model = 'OmeroChannel'
@@ -705,6 +2752,10 @@ notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but 
 quote = 'Each dictionary in "channels" MUST contain the field "window"'
 lines = { "0.5" = [386, 386] }
 
+[[rules.NGFF-OM-004.sources]]
+quote = 'Each object in `channels` MUST contain the field `window`'
+lines = { "0.6" = [1458, 1458] }
+
 [rules.NGFF-OM-004.example]
 model = 'OmeroChannel'
 json = '''
@@ -722,6 +2773,10 @@ notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but 
 quote = 'The field "window" MUST contain the fields "min" and "max"'
 lines = { "0.5" = [387, 387] }
 
+[[rules.NGFF-OM-005.sources]]
+quote = 'The field `window` MUST contain the fields `min` and `max`'
+lines = { "0.6" = [1460, 1460] }
+
 [rules.NGFF-OM-005.example]
 model = 'OmeroWindow'
 json = '''
@@ -738,6 +2793,10 @@ notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but 
 [[rules.NGFF-OM-006.sources]]
 quote = 'It MUST also contain the fields "start" and "end"'
 lines = { "0.5" = [388, 388] }
+
+[[rules.NGFF-OM-006.sources]]
+quote = 'It MUST also contain the fields `start` and `end`'
+lines = { "0.6" = [1462, 1462] }
 
 [rules.NGFF-OM-006.example]
 model = 'OmeroWindow'
@@ -757,7 +2816,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-001.sources]]
 quote = 'whose value MUST be an unique integer identifier greater than or equal to 0 within the context of the plate'
-lines = { "0.4" = [531, 532], "0.5" = [466, 467] }
+lines = { "0.4" = [531, 532], "0.5" = [466, 467], "0.6" = [1597, 1597] }
 
 [rules.NGFF-PL-001.example]
 model = 'PlateDef'
@@ -780,6 +2839,10 @@ introduced = '0.4'
 quote = 'other `name` in the `columns` list. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
 lines = { "0.4" = [548, 549], "0.5" = [483, 484] }
 
+[[rules.NGFF-PL-002.sources]]
+quote = 'other `name` in the `columns` array. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
+lines = { "0.6" = [1616, 1617] }
+
 [rules.NGFF-PL-002.example]
 model = 'PlateDef'
 json = '''
@@ -800,6 +2863,10 @@ introduced = '0.4'
 quote = 'other `name` in the `rows` list. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
 lines = { "0.4" = [563, 564], "0.5" = [498, 499] }
 
+[[rules.NGFF-PL-003.sources]]
+quote = 'other `name` in the `rows` array. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
+lines = { "0.6" = [1634, 1635] }
+
 [rules.NGFF-PL-003.example]
 model = 'PlateDef'
 json = '''
@@ -819,6 +2886,10 @@ introduced = '0.4'
 [[rules.NGFF-PL-004.sources]]
 quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` list'
 lines = { "0.4" = [574, 575], "0.5" = [509, 510] }
+
+[[rules.NGFF-PL-004.sources]]
+quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` array'
+lines = { "0.6" = [1647, 1648] }
 
 [rules.NGFF-PL-004.example]
 model = 'PlateDef'
@@ -845,6 +2916,10 @@ lines = { "0.4" = [575, 576] }
 quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` list'
 lines = { "0.5" = [510, 511] }
 
+[[rules.NGFF-PL-005.sources]]
+quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` array'
+lines = { "0.6" = [1649, 1650] }
+
 [rules.NGFF-PL-005.example]
 model = 'PlateDef'
 json = '''
@@ -863,7 +2938,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-006.sources]]
 quote = '`rowIndex`, `columnIndex`, and `path` MUST all refer to the same row/column pair.'
-lines = { "0.4" = [577, 577], "0.5" = [512, 512] }
+lines = { "0.4" = [577, 577], "0.5" = [512, 512], "0.6" = [1652, 1652] }
 
 [rules.NGFF-PL-006.example]
 model = 'PlateDef'
@@ -884,7 +2959,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-007.sources]]
 quote = 'Each well object MUST contain a `path` key whose value MUST be a string specifying the path to the well subgroup.'
-lines = { "0.4" = [570, 571], "0.5" = [505, 506] }
+lines = { "0.4" = [570, 571], "0.5" = [505, 506], "0.6" = [1640, 1641] }
 
 [rules.NGFF-PL-007.example]
 store = '''
@@ -915,6 +2990,10 @@ introduced = '0.4'
 quote = 'The `plate` dictionary MAY contain an `acquisitions` key whose value MUST be a list of JSON objects'
 lines = { "0.4" = [529, 530], "0.5" = [464, 465] }
 
+[[rules.NGFF-PL-008.sources]]
+quote = 'The `plate` object MAY contain an `acquisitions` key whose value MUST be an array of JSON objects'
+lines = { "0.6" = [1594, 1595] }
+
 [rules.NGFF-PL-008.example]
 model = 'PlateDef'
 json = '''
@@ -934,7 +3013,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-009.sources]]
 quote = 'acquisition object MUST contain an `id` key'
-lines = { "0.4" = [531, 531], "0.5" = [466, 466] }
+lines = { "0.4" = [531, 531], "0.5" = [466, 466], "0.6" = [1596, 1596] }
 
 [rules.NGFF-PL-009.example]
 model = 'Acquisition'
@@ -950,7 +3029,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-010.sources]]
 quote = 'whose value MUST be an unique integer identifier greater than or equal to 0'
-lines = { "0.4" = [531, 532], "0.5" = [466, 467] }
+lines = { "0.4" = [531, 532], "0.5" = [466, 467], "0.6" = [1597, 1597] }
 
 [rules.NGFF-PL-010.example]
 model = 'Acquisition'
@@ -966,7 +3045,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-011.sources]]
 quote = 'Each acquisition object SHOULD contain a `name` key whose value MUST be a string'
-lines = { "0.4" = [534, 534], "0.5" = [469, 469] }
+lines = { "0.4" = [534, 534], "0.5" = [469, 469], "0.6" = [1599, 1599] }
 
 [rules.NGFF-PL-011.example]
 model = 'Acquisition'
@@ -982,7 +3061,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-012.sources]]
 quote = 'key whose value MUST be a positive integer indicating the maximum number of fields of view'
-lines = { "0.4" = [536, 536], "0.5" = [471, 471] }
+lines = { "0.4" = [536, 536], "0.5" = [471, 471], "0.6" = [1601, 1602] }
 
 [rules.NGFF-PL-012.example]
 model = 'Acquisition'
@@ -998,7 +3077,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-013.sources]]
 quote = 'Each acquisition object MAY contain a `description` key whose value MUST be a string'
-lines = { "0.4" = [537, 538], "0.5" = [472, 473] }
+lines = { "0.4" = [537, 538], "0.5" = [472, 473], "0.6" = [1603, 1604] }
 
 [rules.NGFF-PL-013.example]
 model = 'Acquisition'
@@ -1015,7 +3094,7 @@ notes = "yaozarrs also requires them to be greater than or equal to 0, which the
 
 [[rules.NGFF-PL-014.sources]]
 quote = 'a `starttime` and/or `endtime` key whose values MUST be integer epoch timestamps'
-lines = { "0.4" = [539, 539], "0.5" = [474, 474] }
+lines = { "0.4" = [539, 539], "0.5" = [474, 474], "0.6" = [1605, 1606] }
 
 [rules.NGFF-PL-014.example]
 model = 'Acquisition'
@@ -1032,6 +3111,10 @@ introduced = '0.4'
 [[rules.NGFF-PL-015.sources]]
 quote = 'The `plate` dictionary MUST contain a `columns` key'
 lines = { "0.4" = [542, 542], "0.5" = [477, 477] }
+
+[[rules.NGFF-PL-015.sources]]
+quote = 'The `plate` object MUST contain a `columns` key'
+lines = { "0.6" = [1608, 1608] }
 
 [rules.NGFF-PL-015.example]
 model = 'PlateDef'
@@ -1053,6 +3136,10 @@ notes = "yaozarrs also requires at least one entry (from the JSON schema); those
 quote = '`columns` key whose value MUST be a list of JSON objects defining the columns of the plate'
 lines = { "0.4" = [542, 543], "0.5" = [477, 478] }
 
+[[rules.NGFF-PL-016.sources]]
+quote = '`columns` key whose value MUST be an array of JSON objects defining the columns of the plate'
+lines = { "0.6" = [1608, 1609] }
+
 [rules.NGFF-PL-016.example]
 model = 'PlateDef'
 json = '''
@@ -1071,7 +3158,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-017.sources]]
 quote = 'Each column object MUST contain a `name` key'
-lines = { "0.4" = [545, 546], "0.5" = [480, 481] }
+lines = { "0.4" = [545, 546], "0.5" = [480, 481], "0.6" = [1613, 1613] }
 
 [rules.NGFF-PL-017.example]
 model = 'Column'
@@ -1087,7 +3174,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-018.sources]]
 quote = 'specifying the column name. The `name` MUST contain only alphanumeric characters'
-lines = { "0.4" = [546, 547], "0.5" = [481, 482] }
+lines = { "0.4" = [546, 547], "0.5" = [481, 482], "0.6" = [1613, 1614] }
 
 [rules.NGFF-PL-018.example]
 model = 'Column'
@@ -1104,6 +3191,10 @@ introduced = '0.4'
 [[rules.NGFF-PL-019.sources]]
 quote = 'MUST NOT be a duplicate of any other `name` in the `columns` list'
 lines = { "0.4" = [547, 548], "0.5" = [482, 483] }
+
+[[rules.NGFF-PL-019.sources]]
+quote = 'MUST NOT be a duplicate of any other `name` in the `columns` array'
+lines = { "0.6" = [1616, 1616] }
 
 [rules.NGFF-PL-019.example]
 model = 'PlateDef'
@@ -1124,6 +3215,10 @@ introduced = '0.4'
 [[rules.NGFF-PL-020.sources]]
 quote = 'The `plate` dictionary SHOULD contain a `field_count` key whose value MUST be a positive integer'
 lines = { "0.4" = [551, 551], "0.5" = [486, 486] }
+
+[[rules.NGFF-PL-020.sources]]
+quote = 'The `plate` object SHOULD contain a `field_count` key whose value MUST be a positive integer'
+lines = { "0.6" = [1620, 1621] }
 
 [rules.NGFF-PL-020.example]
 model = 'PlateDef'
@@ -1146,6 +3241,10 @@ introduced = '0.4'
 quote = 'The `plate` dictionary SHOULD contain a `name` key whose value MUST be a string'
 lines = { "0.4" = [554, 554], "0.5" = [489, 489] }
 
+[[rules.NGFF-PL-021.sources]]
+quote = 'The `plate` object SHOULD contain a `name` key whose value MUST be a string'
+lines = { "0.6" = [1623, 1624] }
+
 [rules.NGFF-PL-021.example]
 model = 'PlateDef'
 json = '''
@@ -1167,6 +3266,10 @@ introduced = '0.4'
 quote = 'The `plate` dictionary MUST contain a `rows` key'
 lines = { "0.4" = [557, 557], "0.5" = [492, 492] }
 
+[[rules.NGFF-PL-022.sources]]
+quote = 'The `plate` object MUST contain a `rows` key'
+lines = { "0.6" = [1626, 1626] }
+
 [rules.NGFF-PL-022.example]
 model = 'PlateDef'
 json = '''
@@ -1187,6 +3290,10 @@ notes = "yaozarrs also requires at least one entry (from the JSON schema); those
 quote = '`rows` key whose value MUST be a list of JSON objects defining the rows of the plate'
 lines = { "0.4" = [557, 558], "0.5" = [492, 493] }
 
+[[rules.NGFF-PL-023.sources]]
+quote = '`rows` key whose value MUST be an array of JSON objects defining the rows of the plate'
+lines = { "0.6" = [1626, 1627] }
+
 [rules.NGFF-PL-023.example]
 model = 'PlateDef'
 json = '''
@@ -1205,7 +3312,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-024.sources]]
 quote = 'Each defined row MUST contain a `name` key'
-lines = { "0.4" = [560, 561], "0.5" = [495, 496] }
+lines = { "0.4" = [560, 561], "0.5" = [495, 496], "0.6" = [1631, 1631] }
 
 [rules.NGFF-PL-024.example]
 model = 'Row'
@@ -1221,7 +3328,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-025.sources]]
 quote = 'whose value MUST be a string defining the row name'
-lines = { "0.4" = [561, 561], "0.5" = [496, 496] }
+lines = { "0.4" = [561, 561], "0.5" = [496, 496], "0.6" = [1631, 1631] }
 
 [rules.NGFF-PL-025.example]
 model = 'Row'
@@ -1237,7 +3344,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-026.sources]]
 quote = 'defining the row name. The `name` MUST contain only alphanumeric characters'
-lines = { "0.4" = [561, 562], "0.5" = [496, 497] }
+lines = { "0.4" = [561, 562], "0.5" = [496, 497], "0.6" = [1631, 1632] }
 
 [rules.NGFF-PL-026.example]
 model = 'Row'
@@ -1254,6 +3361,10 @@ introduced = '0.4'
 [[rules.NGFF-PL-027.sources]]
 quote = 'MUST NOT be a duplicate of any other `name` in the `rows` list'
 lines = { "0.4" = [562, 563], "0.5" = [497, 498] }
+
+[[rules.NGFF-PL-027.sources]]
+quote = 'MUST NOT be a duplicate of any other `name` in the `rows` array'
+lines = { "0.6" = [1634, 1634] }
 
 [rules.NGFF-PL-027.example]
 model = 'PlateDef'
@@ -1275,6 +3386,10 @@ introduced = '0.4'
 quote = 'The `plate` dictionary MUST contain a `wells` key'
 lines = { "0.4" = [569, 569], "0.5" = [504, 504] }
 
+[[rules.NGFF-PL-028.sources]]
+quote = 'The `plate` object MUST contain a `wells` key'
+lines = { "0.6" = [1638, 1638] }
+
 [rules.NGFF-PL-028.example]
 model = 'PlateDef'
 json = '''
@@ -1290,7 +3405,7 @@ notes = "yaozarrs also requires at least one entry, and unique entries (from the
 
 [[rules.NGFF-PL-029.sources]]
 quote = '`wells` key whose value MUST be a list of JSON objects defining the wells of the plate'
-lines = { "0.4" = [569, 570], "0.5" = [504, 505] }
+lines = { "0.4" = [569, 570], "0.5" = [504, 505], "0.6" = [1638, 1639] }
 
 [rules.NGFF-PL-029.example]
 model = 'PlateDef'
@@ -1310,7 +3425,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-030.sources]]
 quote = 'Each well object MUST contain a `path` key'
-lines = { "0.4" = [570, 570], "0.5" = [505, 505] }
+lines = { "0.4" = [570, 570], "0.5" = [505, 505], "0.6" = [1640, 1640] }
 
 [rules.NGFF-PL-030.example]
 model = 'PlateWell'
@@ -1326,7 +3441,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-031.sources]]
 quote = 'whose value MUST be a string specifying the path to the well subgroup'
-lines = { "0.4" = [570, 571], "0.5" = [505, 506] }
+lines = { "0.4" = [570, 571], "0.5" = [505, 506], "0.6" = [1641, 1641] }
 
 [rules.NGFF-PL-031.example]
 model = 'PlateWell'
@@ -1345,6 +3460,10 @@ notes = "yaozarrs checks the form with the pattern `^[A-Za-z0-9]+/[A-Za-z0-9]+$`
 quote = 'The `path` MUST consist of a `name` in the `rows` list, a file separator (`/`), and a `name` from the `columns` list, in that order.'
 lines = { "0.4" = [571, 572], "0.5" = [506, 507] }
 
+[[rules.NGFF-PL-032.sources]]
+quote = 'The `path` MUST consist of a `name` in the `rows` array, a file separator (`/`), and a `name` from the `columns` array, in that order.'
+lines = { "0.6" = [1642, 1645] }
+
 [rules.NGFF-PL-032.example]
 model = 'PlateWell'
 json = '''
@@ -1359,7 +3478,7 @@ introduced = '0.4'
 
 [[rules.NGFF-PL-033.sources]]
 quote = 'Each well object MUST contain both a `rowIndex` key'
-lines = { "0.4" = [574, 574], "0.5" = [509, 509] }
+lines = { "0.4" = [574, 574], "0.5" = [509, 509], "0.6" = [1647, 1647] }
 
 [rules.NGFF-PL-033.example]
 model = 'PlateWell'
@@ -1377,6 +3496,10 @@ notes = 'A negative `rowIndex` is reported as [NGFF-PL-004](NGFF-PL-004.md).'
 [[rules.NGFF-PL-034.sources]]
 quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` list'
 lines = { "0.4" = [574, 575], "0.5" = [509, 510] }
+
+[[rules.NGFF-PL-034.sources]]
+quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` array'
+lines = { "0.6" = [1647, 1648] }
 
 [rules.NGFF-PL-034.example]
 model = 'PlateWell'
@@ -1399,6 +3522,10 @@ lines = { "0.4" = [575, 576] }
 quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` list'
 lines = { "0.5" = [510, 511] }
 
+[[rules.NGFF-PL-035.sources]]
+quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` array'
+lines = { "0.6" = [1649, 1650] }
+
 [rules.NGFF-PL-035.example]
 model = 'PlateWell'
 json = '''
@@ -1414,6 +3541,7 @@ slug = 'field-path-alphanumeric'
 level = 'MUST'
 summary = 'A field of view `path` must contain only alphanumeric characters.'
 introduced = '0.4'
+removed = '0.6'
 notes = 'yaozarrs relaxes this rule: `.`, `_` and `-` produce a warning instead of an error (see ome/ngff-spec#71). Set `YAOZARRS_STRICT_FOV_NAMES=1` to make them errors, or `YAOZARRS_IGNORE_RISKY_FOV_NAMES=1` to silence the warning.'
 
 [[rules.NGFF-WL-001.sources]]
@@ -1434,7 +3562,7 @@ introduced = '0.4'
 
 [[rules.NGFF-WL-002.sources]]
 quote = 'MUST NOT be a duplicate of any other `path` in the `images` list.'
-lines = { "0.4" = [605, 606], "0.5" = [540, 541] }
+lines = { "0.4" = [605, 606], "0.5" = [540, 541], "0.6" = [1680, 1680] }
 
 [rules.NGFF-WL-002.example]
 model = 'WellDef'
@@ -1451,7 +3579,7 @@ introduced = '0.4'
 
 [[rules.NGFF-WL-003.sources]]
 quote = 'Each image object MUST contain a `path` key whose value MUST be a string specifying the path to the field of view.'
-lines = { "0.4" = [603, 604], "0.5" = [538, 539] }
+lines = { "0.4" = [603, 604], "0.5" = [538, 539], "0.6" = [1678, 1679] }
 
 [rules.NGFF-WL-003.example]
 store = '''
@@ -1473,6 +3601,10 @@ introduced = '0.4'
 quote = 'The `well` dictionary MUST contain an `images` key'
 lines = { "0.4" = [602, 602], "0.5" = [537, 537] }
 
+[[rules.NGFF-WL-004.sources]]
+quote = 'The `well` object MUST contain an `images` key'
+lines = { "0.6" = [1676, 1676] }
+
 [rules.NGFF-WL-004.example]
 model = 'WellDef'
 json = '''
@@ -1490,6 +3622,10 @@ notes = "yaozarrs also requires at least one entry, and unique entries (from the
 quote = '`images` key whose value MUST be a list of JSON objects specifying all fields of views for a given well'
 lines = { "0.4" = [602, 603], "0.5" = [537, 538] }
 
+[[rules.NGFF-WL-005.sources]]
+quote = '`images` key whose value MUST be an array of JSON objects specifying all fields of views for a given well'
+lines = { "0.6" = [1676, 1677] }
+
 [rules.NGFF-WL-005.example]
 model = 'WellDef'
 json = '''
@@ -1504,7 +3640,7 @@ introduced = '0.4'
 
 [[rules.NGFF-WL-006.sources]]
 quote = 'Each image object MUST contain a `path` key'
-lines = { "0.4" = [603, 604], "0.5" = [538, 539] }
+lines = { "0.4" = [603, 604], "0.5" = [538, 539], "0.6" = [1678, 1678] }
 
 [rules.NGFF-WL-006.example]
 model = 'FieldOfView'
@@ -1520,12 +3656,187 @@ introduced = '0.4'
 
 [[rules.NGFF-WL-007.sources]]
 quote = 'it MUST contain an `acquisition` key whose value MUST be an integer identifying the acquisition'
-lines = { "0.4" = [607, 607], "0.5" = [542, 542] }
+lines = { "0.4" = [607, 607], "0.5" = [542, 542], "0.6" = [1686, 1686] }
 
 [rules.NGFF-WL-007.example]
 model = 'FieldOfView'
 json = '''
 {"path": "0", "acquisition": "first"}
+'''
+
+[rules.NGFF-WL-008]
+slug = 'field-acquisition-present'
+level = 'MUST'
+summary = 'If a plate has multiple acquisitions, each field of view must have an `acquisition`.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-008.sources]]
+quote = 'If multiple acquisitions were performed in the plate, it MUST contain an `acquisition` key'
+lines = { "0.4" = [606, 607], "0.5" = [541, 542], "0.6" = [1685, 1686] }
+
+[rules.NGFF-WL-008.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "columns": [
+            {
+              "name": "1"
+            }
+          ],
+          "rows": [
+            {
+              "name": "A"
+            }
+          ],
+          "acquisitions": [
+            {
+              "id": 0
+            },
+            {
+              "id": 1
+            }
+          ],
+          "wells": [
+            {
+              "path": "A/1",
+              "rowIndex": 0,
+              "columnIndex": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "A/1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "well": {
+          "images": [
+            {
+              "path": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+'''
+
+
+[rules.NGFF-WL-009]
+slug = 'field-acquisition-matches-plate'
+level = 'MUST'
+summary = "A field of view's `acquisition` must match an acquisition in the plate."
+introduced = '0.4'
+notes = "yaozarrs doesn't check the value if the plate lists no acquisitions (like ome-zarr-models)."
+
+[[rules.NGFF-WL-009.sources]]
+quote = 'which MUST match one of the acquisition JSON objects defined in the'
+lines = { "0.4" = [608, 608], "0.5" = [543, 543], "0.6" = [1687, 1687] }
+
+[rules.NGFF-WL-009.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "columns": [
+            {
+              "name": "1"
+            }
+          ],
+          "rows": [
+            {
+              "name": "A"
+            }
+          ],
+          "acquisitions": [
+            {
+              "id": 0
+            },
+            {
+              "id": 1
+            }
+          ],
+          "wells": [
+            {
+              "path": "A/1",
+              "rowIndex": 0,
+              "columnIndex": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "A/1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "well": {
+          "images": [
+            {
+              "path": "0",
+              "acquisition": 7
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+'''
+
+
+[rules.NGFF-WL-010]
+slug = 'field-path-characters'
+level = 'MUST'
+summary = 'A field of view `path` must only use the characters `a-z`, `A-Z`, `0-9`, `-`, `_`, and `.`.'
+introduced = '0.6'
+supersedes = ['NGFF-WL-001']
+notes = 'Replaces the alphanumeric rule (NGFF-WL-001) of earlier versions. An empty `path` or one with `/` fails this rule as well.'
+
+[[rules.NGFF-WL-010.sources]]
+quote = 'The `path` MUST only use characters in the sets `a-z`, `A-Z`, `0-9`, `-`, `_`, `.`.'
+lines = { "0.6" = [1684, 1684] }
+
+[rules.NGFF-WL-010.examples."0.6"]
+model = 'FieldOfView'
+json = '''
+{"path": "a b"}
+'''
+
+
+[rules.NGFF-WL-011]
+slug = 'field-path-node-name'
+level = 'MUST NOT'
+summary = 'A field of view `path` must not consist only of periods, or start with `__`.'
+introduced = '0.6'
+
+[[rules.NGFF-WL-011.sources]]
+quote = 'The `path` MUST NOT consist only of periods (like `.` or `..`) or start with the reserved prefix `__`;'
+lines = { "0.6" = [1682, 1682] }
+
+[rules.NGFF-WL-011.examples."0.6"]
+model = 'FieldOfView'
+json = '''
+{"path": "__x"}
 '''
 
 # ------------------------------------------------------------------------------
@@ -1542,6 +3853,10 @@ notes = 'yaozarrs discovers images by probing `0/`, `1/`, ... and stops at the f
 [[rules.NGFF-BF-001.sources]]
 quote = 'separate "multiscales" images MUST be stored in consecutively numbered groups starting from 0'
 lines = { "0.4" = [322, 322], "0.5" = [263, 263] }
+
+[[rules.NGFF-BF-001.sources]]
+quote = 'separate `multiscales` images MUST be stored in consecutively numbered groups starting from 0'
+lines = { "0.6" = [377, 377] }
 
 [rules.NGFF-BF-001.example]
 store = '''
@@ -1601,6 +3916,10 @@ introduced = '0.4'
 quote = '"series" MUST be a list of string objects, each of which is a path to an image group.'
 lines = { "0.4" = [319, 319], "0.5" = [260, 260] }
 
+[[rules.NGFF-BF-002.sources]]
+quote = '`series` MUST be an array of string objects, each of which is a path to an image group.'
+lines = { "0.6" = [374, 374] }
+
 [rules.NGFF-BF-002.example]
 store = '''
 {
@@ -1657,10 +3976,20 @@ introduced = '0.4'
 quote = 'MUST have the value "3" for the "bioformats2raw.layout" key'
 lines = { "0.4" = [307, 307], "0.5" = [248, 248] }
 
+[[rules.NGFF-BF-003.sources]]
+quote = 'MUST have the value `3` for the `bioformats2raw.layout` key'
+lines = { "0.6" = [362, 362] }
+
 [rules.NGFF-BF-003.example]
 model = 'Bf2Raw'
 json = '''
-{"bioformats2raw.layout": 2}
+{"version": "0.5", "bioformats2raw.layout": 2}
+'''
+
+[rules.NGFF-BF-003.examples."0.6"]
+model = 'Bf2Raw'
+json = '''
+{"version": "0.6", "bioformats2raw.layout": 2}
 '''
 
 [rules.NGFF-BF-004]
@@ -1674,10 +4003,20 @@ notes = "yaozarrs also requires at least one entry; that error doesn't carry thi
 quote = '"series" MUST be a list of string objects'
 lines = { "0.4" = [319, 319], "0.5" = [260, 260] }
 
+[[rules.NGFF-BF-004.sources]]
+quote = '`series` MUST be an array of string objects'
+lines = { "0.6" = [374, 374] }
+
 [rules.NGFF-BF-004.example]
 model = 'Series'
 json = '''
-{"series": [0]}
+{"version": "0.5", "series": [0]}
+'''
+
+[rules.NGFF-BF-004.examples."0.6"]
+model = 'Series'
+json = '''
+{"version": "0.6", "series": [0]}
 '''
 
 # ------------------------------------------------------------------------------
@@ -1699,6 +4038,10 @@ lines = { "0.5" = [404, 404] }
 quote = "The special group \"labels\" found under an image Zarr contains the key `labels`"
 lines = { "0.4" = [444, 444] }
 implied = true
+
+[[rules.NGFF-LB-001.sources]]
+quote = 'The OME-Zarr Metadata in the `zarr.json` file associated with the `labels` group MUST contain a JSON object with the key `labels`'
+lines = { "0.6" = [1492, 1492] }
 
 [rules.NGFF-LB-001.example]
 store = '''
@@ -1752,7 +4095,7 @@ notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from
 
 [[rules.NGFF-LB-002.sources]]
 quote = 'MUST contain a JSON object with the key `labels`, whose value is a JSON array of paths to the labeled multiscale image(s).'
-lines = { "0.5" = [404, 405] }
+lines = { "0.5" = [404, 405], "0.6" = [1492, 1493] }
 
 [[rules.NGFF-LB-002.sources]]
 quote = "contains the key `labels` containing the paths to label objects which can be found underneath the group"
@@ -1816,6 +4159,10 @@ quote = "Each multiscale level is stored as a separate Zarr array, as above, but
 lines = { "0.4" = [179, 179] }
 implied = true
 
+[[rules.NGFF-LB-003.sources]]
+quote = 'The pixels of the label images MUST be integer data types,'
+lines = { "0.6" = [1486, 1486] }
+
 [rules.NGFF-LB-003.example]
 store = '''
 {
@@ -1869,7 +4216,7 @@ lines = { "0.4" = [462, 462] }
 
 [[rules.NGFF-IL-001.sources]]
 quote = 'The `zarr.json` file for the label image MUST implement the multiscales specification.'
-lines = { "0.5" = [421, 421] }
+lines = { "0.5" = [421, 421], "0.6" = [1496, 1496] }
 
 [rules.NGFF-IL-001.example]
 store = '''
@@ -1930,7 +4277,7 @@ lines = { "0.4" = [462, 463] }
 
 [[rules.NGFF-IL-002.sources]]
 quote = 'associated with the `datasets` key MUST have the same number of entries (scale levels) as the original unlabeled image.'
-lines = { "0.5" = [422, 422] }
+lines = { "0.5" = [422, 422], "0.6" = [1497, 1497] }
 
 [rules.NGFF-IL-002.example]
 store = '''
@@ -2031,6 +4378,10 @@ quote = "Groups containing the `image-label` dictionary represent an image segme
 lines = { "0.4" = [460, 460] }
 implied = true
 
+[[rules.NGFF-IL-003.sources]]
+quote = 'In addition to the `multiscales` key, the OME-Zarr Metadata in this image-level `zarr.json` file SHOULD contain another key, `image-label`'
+lines = { "0.6" = [1499, 1499] }
+
 [rules.NGFF-IL-003.example]
 store = '''
 {
@@ -2111,7 +4462,7 @@ notes = "0.4 states this without an RFC 2119 keyword. The 0.5 wording comes from
 
 [[rules.NGFF-IL-004.sources]]
 quote = 'This object MAY include a key `image`, whose value MUST be a string specifying the relative path to a Zarr image group.'
-lines = { "0.5" = [445, 445] }
+lines = { "0.5" = [445, 445], "0.6" = [1525, 1525] }
 
 [[rules.NGFF-IL-004.sources]]
 quote = "If included it MAY include a key `image` whose value is the relative path to a Zarr image group"
@@ -2164,7 +4515,7 @@ notes = "yaozarrs also requires at least one entry, and unique entries (from the
 
 [[rules.NGFF-IL-005.sources]]
 quote = 'a `colors` key, whose value MUST be a JSON array'
-lines = { "0.5" = [426, 427] }
+lines = { "0.5" = [426, 427], "0.6" = [1503, 1504] }
 
 [rules.NGFF-IL-005.example]
 model = 'ImageLabel'
@@ -2184,7 +4535,7 @@ lines = { "0.4" = [466, 467] }
 
 [[rules.NGFF-IL-006.sources]]
 quote = 'Each of these objects MUST contain the `label-value` key'
-lines = { "0.5" = [431, 431] }
+lines = { "0.5" = [431, 431], "0.6" = [1508, 1508] }
 
 [rules.NGFF-IL-006.example]
 model = 'LabelColor'
@@ -2200,7 +4551,7 @@ introduced = '0.5'
 
 [[rules.NGFF-IL-007.sources]]
 quote = 'whose value MUST be the integer corresponding to a particular label'
-lines = { "0.5" = [431, 432] }
+lines = { "0.5" = [431, 432], "0.6" = [1508, 1508] }
 
 [rules.NGFF-IL-007.example]
 model = 'LabelColor'
@@ -2216,7 +4567,7 @@ introduced = '0.5'
 
 [[rules.NGFF-IL-008.sources]]
 quote = 'the objects in this array MAY contain an `rgba` key whose value MUST be an array of four integers between 0 and 255, inclusive.'
-lines = { "0.5" = [432, 433] }
+lines = { "0.5" = [432, 433], "0.6" = [1509, 1510] }
 
 [rules.NGFF-IL-008.example]
 model = 'LabelColor'
@@ -2233,7 +4584,7 @@ notes = "yaozarrs also requires at least one entry, and unique entries (from the
 
 [[rules.NGFF-IL-009.sources]]
 quote = 'the value of the `properties` key MUST be an array of JSON objects'
-lines = { "0.5" = [439, 439] }
+lines = { "0.5" = [439, 439], "0.6" = [1517, 1517] }
 
 [rules.NGFF-IL-009.example]
 model = 'ImageLabel'
@@ -2253,7 +4604,7 @@ lines = { "0.4" = [476, 477] }
 
 [[rules.NGFF-IL-010.sources]]
 quote = 'Each object in the `properties` array MUST contain the `label-value` key'
-lines = { "0.5" = [440, 440] }
+lines = { "0.5" = [440, 440], "0.6" = [1518, 1518] }
 
 [rules.NGFF-IL-010.example]
 model = 'LabelProperty'
@@ -2269,7 +4620,7 @@ introduced = '0.5'
 
 [[rules.NGFF-IL-011.sources]]
 quote = 'whose value again MUST be an integer specifying the pixel value for that label'
-lines = { "0.5" = [440, 440] }
+lines = { "0.5" = [440, 440], "0.6" = [1519, 1519] }
 
 [rules.NGFF-IL-011.example]
 model = 'LabelProperty'
@@ -2285,7 +4636,7 @@ introduced = '0.5'
 
 [[rules.NGFF-IL-012.sources]]
 quote = 'The value of the `source` key MUST be a JSON object'
-lines = { "0.5" = [444, 444] }
+lines = { "0.5" = [444, 444], "0.6" = [1524, 1524] }
 
 [rules.NGFF-IL-012.example]
 model = 'ImageLabel'
@@ -2301,12 +4652,195 @@ introduced = '0.5'
 
 [[rules.NGFF-IL-013.sources]]
 quote = 'This object MAY include a key `image`, whose value MUST be a string'
-lines = { "0.5" = [445, 445] }
+lines = { "0.5" = [445, 445], "0.6" = [1525, 1525] }
 
 [rules.NGFF-IL-013.example]
 model = 'LabelSource'
 json = '''
 {"image": 1}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-SC
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-SC-001]
+slug = 'scene-transforms-present'
+level = 'MUST'
+summary = 'A `scene` must contain `coordinateTransformations`.'
+introduced = '0.6'
+
+[[rules.NGFF-SC-001.sources]]
+quote = 'The `scene` object MUST contain the field `coordinateTransformations`,'
+lines = { "0.6" = [1712, 1712] }
+
+[rules.NGFF-SC-001.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{}
+'''
+
+
+[rules.NGFF-SC-002]
+slug = 'scene-transforms-valid'
+level = 'MUST'
+summary = "A `scene`'s `coordinateTransformations` must be an array of valid transformations."
+introduced = '0.6'
+
+[[rules.NGFF-SC-002.sources]]
+quote = 'whose value MUST be an array of valid [transformations](#trafo-types-md).'
+lines = { "0.6" = [1713, 1713] }
+
+[rules.NGFF-SC-002.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": 1}
+'''
+
+
+[rules.NGFF-SC-003]
+slug = 'scene-coordinate-systems-valid'
+level = 'MUST'
+summary = "A `scene`'s `coordinateSystems`, if present, must be an array of valid coordinate systems."
+introduced = '0.6'
+
+[[rules.NGFF-SC-003.sources]]
+quote = 'whose values MUST be an array of valid [coordinate systems](#coordinate-systems-md).'
+lines = { "0.6" = [1715, 1715] }
+
+[rules.NGFF-SC-003.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}], "coordinateSystems": 1}
+'''
+
+
+[rules.NGFF-SC-004]
+slug = 'scene-transform-input-output'
+level = 'MUST'
+summary = 'Transformations in a `scene` must have an `input` and an `output`.'
+introduced = '0.6'
+
+[[rules.NGFF-SC-004.sources]]
+quote = 'If used inside `scene` metadata, the `input` and `output` fields of `coordinateTransformations` MUST contain a json object,'
+lines = { "0.6" = [1717, 1717] }
+
+[rules.NGFF-SC-004.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity"}]}
+'''
+
+
+[rules.NGFF-SC-005]
+slug = 'scene-transform-reference-name'
+level = 'MUST'
+summary = 'The `input` and `output` of a transformation in a `scene` must contain `name`.'
+introduced = '0.6'
+
+[[rules.NGFF-SC-005.sources]]
+quote = 'which MUST contain the field `name` and MAY contain the field `path`.'
+lines = { "0.6" = [1718, 1718] }
+
+[rules.NGFF-SC-005.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity", "input": {"path": "a"}, "output": {"name": "b", "path": "b"}}]}
+'''
+
+
+[rules.NGFF-SC-006]
+slug = 'scene-transform-reference-path'
+level = 'MUST'
+summary = "A reference in a `scene` to a coordinate system in an image must have both `path` and `name`, so one without `path` must be in the scene's `coordinateSystems`."
+introduced = '0.6'
+
+[[rules.NGFF-SC-006.sources]]
+quote = 'If `name` refers to a coordinate system in the multiscale image subgroup specified by `path`, both `path` and `name` MUST be provided.'
+lines = { "0.6" = [1729, 1730] }
+
+[rules.NGFF-SC-006.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}]}
+'''
+
+
+[rules.NGFF-SC-007]
+slug = 'scene-transform-reference-resolves'
+level = 'MUST'
+summary = 'A reference in a `scene` must resolve to a coordinate system in the multiscale image subgroup at `path`.'
+introduced = '0.6'
+notes = "The 0.6 spec describes what these fields refer to without a keyword; a reference that doesn't resolve can't mean anything."
+
+[[rules.NGFF-SC-007.sources]]
+quote = '**name** Refers to the name of a `coordinateSystem` either in the multiscale image subgroup specified by the path, or within the `scene` object itself.'
+implied = true
+lines = { "0.6" = [1720, 1722] }
+
+[rules.NGFF-SC-007.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "scene": {
+          "coordinateSystems": [
+            {
+              "name": "a",
+              "axes": [
+                {
+                  "name": "y",
+                  "type": "space"
+                },
+                {
+                  "name": "x",
+                  "type": "space"
+                }
+              ]
+            }
+          ],
+          "coordinateTransformations": [
+            {
+              "type": "identity",
+              "input": {
+                "name": "a"
+              },
+              "output": {
+                "name": "physical",
+                "path": "missing"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+'''
+
+# ------------------------------------------------------------------------------
+# NGFF-GN
+# ------------------------------------------------------------------------------
+
+[rules.NGFF-GN-001]
+slug = 'ome-version-present'
+level = 'MUST'
+summary = 'The `ome` object must contain a `version` key.'
+introduced = '0.6'
+notes = 'yaozarrs also requires it in JSON documents for 0.5, where the spec only says that the version is denoted by this attribute.'
+
+[[rules.NGFF-GN-001.sources]]
+quote = 'object that MUST contain a `version` key,'
+lines = { "0.6" = [181, 181] }
+
+[rules.NGFF-GN-001.example]
+model = 'Image'
+json = '''
+{"multiscales": []}
 '''
 
 # ------------------------------------------------------------------------------
@@ -2434,13 +4968,36 @@ store = '''
 }
 '''
 
-# TEMPORARY: placeholder for checks that came in with the merge of main.
-[rules.YZ-000]
-slug = 'unassigned'
-summary = 'A check that has no rule code yet.'
+[rules.YZ-004]
+slug = 'dataset-scale-positive'
+summary = "A dataset's `scale` values should be positive, as they are pixel sizes."
+severity = 'warning'
+notes = 'The 0.6 JSON schema requires values > 0, and the spec editor confirmed that only positive values are meant (ome/ngff#637), but the prose only says they should be non-zero (NGFF-CT-022).'
+
+[rules.YZ-004.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [-1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
+'''
+
+[rules.YZ-005]
+slug = 'version-prerelease'
+summary = 'The document declares a pre-release of a spec version.'
+severity = 'warning'
+notes = "The 0.6 schema accepts the release candidate `0.6rc0`. `0.6.dev4` isn't in the schema, but much of the 0.6 data written so far uses it."
+
+[rules.YZ-005.examples."0.6"]
+model = 'Bf2Raw'
+json = '''
+{"version": "0.6rc0", "bioformats2raw.layout": 3}
+'''
+
+[rules.YZ-006]
+slug = 'version-unsupported'
+summary = 'The store declares an OME-Zarr version that yaozarrs does not know.'
 severity = 'error'
 
-[rules.YZ-000.example]
+[rules.YZ-006.examples."0.5"]
 store = '''
 {
   "zarr.json": {
@@ -2448,20 +5005,116 @@ store = '''
     "node_type": "group",
     "attributes": {
       "ome": {
-        "version": "0.5",
-        "plate": {
-          "columns": [{"name": "1"}],
-          "rows": [{"name": "A"}],
-          "acquisitions": [{"id": 0}, {"id": 1}],
-          "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-        }
+        "version": "9.9",
+        "multiscales": []
+      }
+    }
+  }
+}
+'''
+
+[rules.YZ-007]
+slug = 'transform-path-relative'
+summary = "The `path` of a transformation's parameters must be a relative path with no empty, `.` or `..` segments."
+severity = 'error'
+notes = 'The 0.6 spec only says "a location in this container". Like ngff-zarr, yaozarrs rejects paths whose meaning nothing defines.'
+
+[rules.YZ-007.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "affine",
+                "path": "../m",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
       }
     }
   },
-  "A/1/zarr.json": {
+  "s0/zarr.json": {
     "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "well": {"images": [{"path": "0"}]}}}
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
   }
 }
+'''
+
+[rules.YZ-008]
+slug = 'project-axis-fields'
+summary = 'A `projectAxis` transformation must have `droppedInputs` or `createdOutputs`.'
+severity = 'error'
+notes = "Required by the 0.6 JSON schema; the prose doesn't say so."
+
+[rules.YZ-008.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{}
 '''

@@ -497,7 +497,7 @@ class StorageValidator:
                 if len(ids) > 1:
                     result.add_error(
                         StorageErrorType.field_acquisition_missing,
-                        "YZ-000",
+                        "NGFF-WL-008",
                         loc,
                         f"Field '{field_image.path}' has no 'acquisition', but the "
                         f"plate has {len(ids)} acquisitions",
@@ -506,7 +506,7 @@ class StorageValidator:
             elif ids and field_image.acquisition not in ids:
                 result.add_error(
                     StorageErrorType.field_acquisition_invalid,
-                    "YZ-000",
+                    "NGFF-WL-009",
                     loc,
                     f"Field '{field_image.path}' has acquisition "
                     f"{field_image.acquisition}, which is not one of the plate's "

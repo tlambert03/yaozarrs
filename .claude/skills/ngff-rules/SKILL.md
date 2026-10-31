@@ -13,9 +13,10 @@ points at one normative statement in the NGFF spec. The pieces are:
   and every rule (`[rules.<CODE>]`), with its quotes, line numbers, and a minimal
   failing `example`.
 - `src/yaozarrs/_rules/__init__.py`: `rule_error(code, msg)` (raise it inside a pydantic
-  validator), `warn_rule(code, msg, stacklevel)`, and `RuleCodes` (field metadata that
-  gives pydantic's own errors, such as a missing field or a wrong type, a rule code;
-  see "Field-shape rules" below).
+  validator), `warn_rule(code, msg, stacklevel)`, `rewrap_error(e, prefix, suffix, code)`
+  (add context to an error's message and keep its code), `error_code(e)`, and
+  `RuleCodes` (field metadata that gives pydantic's own errors, such as a missing field
+  or a wrong type, a rule code; see "Field-shape rules" below).
 - `scripts/ngff_rules.py`: `fetch`, `check [--fix]`, `relocate`, `coverage`, and
   `docs`.
 - `tests/spec_sources/`: vendored spec files at the pinned commits.
@@ -50,14 +51,21 @@ json = '''
 Rules checked by the storage validator (`validate_zarr_store`) use a `store` example
 instead of `model`/`json`. It is a JSON object that maps v0.5 metadata file paths to
 their contents (`{"zarr.json": {...}, "s0/zarr.json": {...}}`); no chunk data is
-needed. `to_v04_store` in `scripts/ngff_rules.py` derives the v0.4 layout
-automatically. In code, storage checks pass the code to
+needed. In code, storage checks pass the code to
 `result.add_error(StorageErrorType.<type>, "<code>", loc, msg)`. Several storage
 `type`s can share one code: `type` is the specific failure, `code` is the spec
 statement.
 
+`example` is written in the v0.5 format. `example_for` in `scripts/ngff_rules.py`
+derives the other versions: `to_v04_store`, `to_v06_store`, and the `Multiscale` and
+`Dataset` conversions to v0.6 (`axes` to a `coordinateSystems` entry named `physical`,
+with `input` and `output` on each dataset's transformation). Where that doesn't work,
+add `[rules.<CODE>.examples."<version>"]`, in that version's own format. A rule that
+only exists in one version has only that entry. Model examples are validated as JSON
+(`model_validate_json`), so documents with a `version` field need one in the example.
+
 Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error`),
-`status` (`stable` by default), `removed`, `supersedes`, `aliases`, and
+`status` (`stable` by default), `removed`, `supersedes`, `aliases`, `examples`, and
 `checkable = false`.
 
 ## Field-shape rules
@@ -86,9 +94,10 @@ id: Annotated[
   pydantic < 2.6 keeps only one metadata object of each type.
 - Only errors on the field itself or on its items are tagged; errors inside a nested
   model are tagged by that model. Don't tag fields of models used as members of a
-  non-discriminated union (e.g. a transformation's `type`): pydantic reports errors from
-  every member, so a valid `translation` would be reported as breaking the `scale`
-  member's rule.
+  non-discriminated union (e.g. a transformation's `type` in v0.4 or v0.5): pydantic
+  reports errors from every member, so a valid `translation` would be reported as
+  breaking the `scale` member's rule. Discriminated unions (v0.6 transformations) are
+  fine, and `union_tag_invalid` can be tagged.
 - Presence and value type are separate statements, so separate codes
   (`well-path-present`, `well-path-string`). If a statement has no RFC 2119 keyword in a
   version (e.g. 0.4's "whose value is a string"), don't tag that version's model.
@@ -115,9 +124,9 @@ id: Annotated[
    `labels`"), usually through loose writing rather than intent. Cite such a quote with
    `implied = true` on its `sources` block only when there is evidence the authors
    meant it as a requirement (e.g. a later version adds the keyword in a change
-   described as a rewording; cite the PR), and explain it in `notes`. Without such
-   evidence, don't cite the version, and list any check yaozarrs does there in
-   `KNOWN_OVERREACH`.
+   described as a rewording; cite the PR, or a field table says "Required: yes"), and
+   explain it in `notes`. Without such evidence, don't cite the version, and list any
+   check yaozarrs does there in `KNOWN_OVERREACH`.
 4. **`NGFF-` codes only cite spec text.** Checks that yaozarrs adds go in `YZ-NNN`
    (no `level`, `introduced`, or `sources`, and `severity` must be set).
 5. **Coverage is computed, never declared.** Every code that yaozarrs emits has an
@@ -133,10 +142,10 @@ id: Annotated[
    `status="withdrawn"` and `removed="<dev version where it disappeared>"`. Only mint
    codes for dev-version rules that yaozarrs actually checks.
 
-Area prefixes: `AX` axes, `MS` multiscales, `DS` datasets, `CT`
-coordinateTransformations, `LB` labels, `IL` image-label, `PL` plate, `WL` well,
-`BF` bioformats2raw, `OM` omero, `ZR` zarr/storage layout, `GN` general. Ask the user
-before adding a new area.
+Area prefixes: `AX` axes, `CS` coordinateSystems, `MS` multiscales, `DS` datasets, `CT`
+coordinateTransformations, `SC` scene, `LB` labels, `IL` image-label, `PL` plate, `WL`
+well, `BF` bioformats2raw, `OM` omero, `ZR` zarr/storage layout, `GN` general. Ask the
+user before adding a new area.
 
 ## Workflow: audit existing rules
 

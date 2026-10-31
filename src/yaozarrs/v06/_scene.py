@@ -5,6 +5,7 @@ from pydantic import Field, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel, _OMEDocument
+from yaozarrs._rules import RuleCodes, rewrap_error, rule_error
 
 from ._coordinate_systems import CoordinateSystemsList
 from ._transforms import (
@@ -47,12 +48,22 @@ class SceneDef(_BaseModel):
 
     # The `scene` object MUST contain the field `coordinateTransformations`, whose
     # value MUST be an array of valid transformations.
-    coordinateTransformations: Annotated[list[CoordinateTransformation], MinLen(1)] = (
-        Field(description="Transformations between coordinate systems of the images.")
-    )
+    coordinateTransformations: Annotated[
+        list[CoordinateTransformation],
+        MinLen(1),
+        RuleCodes(
+            missing="NGFF-SC-001",
+            list="NGFF-SC-002",
+            union_tag_invalid="NGFF-SC-002",
+            union_tag_not_found="NGFF-SC-002",
+        ),
+    ] = Field(description="Transformations between coordinate systems of the images.")
     # It MAY contain the field `coordinateSystems`, whose values MUST be an array of
     # valid coordinate systems.
-    coordinateSystems: CoordinateSystemsList | None = Field(
+    coordinateSystems: Annotated[
+        CoordinateSystemsList | None,
+        RuleCodes(list="NGFF-SC-003", listItemsNotUnique="NGFF-CS-003"),
+    ] = Field(
         default=None,
         description=(
             "Coordinate systems defined by the scene itself (the first one is "
@@ -69,23 +80,28 @@ class SceneDef(_BaseModel):
             # contain a json object, which MUST contain the field `name` and MAY
             # contain the field `path`.
             if t.input is None or t.output is None:
-                raise ValueError(f"{loc}: must have both an 'input' and an 'output'.")
+                raise rule_error(
+                    "NGFF-SC-004", f"{loc}: must have both an 'input' and an 'output'."
+                )
             for side, ref in (("input", t.input), ("output", t.output)):
                 if ref.name is None:
-                    raise ValueError(f"{loc}: {side} must specify a 'name'.")
+                    raise rule_error(
+                        "NGFF-SC-005", f"{loc}: {side} must specify a 'name'."
+                    )
                 # If `name` refers to a coordinate system in the `scene` object, the
                 # `path` value MAY be omitted or null.
                 # (so a name without a path must be one of the scene's own coordinate
                 # systems; names with a path are resolved in storage validation)
                 if ref.path is None and ref.name not in systems:
-                    raise ValueError(
+                    raise rule_error(
+                        "NGFF-SC-006",
                         f"{loc}: {side} {ref.name!r} has no 'path', so it must be one "
-                        f"of the scene's coordinateSystems ({list(systems)})."
+                        f"of the scene's coordinateSystems ({list(systems)}).",
                     )
             try:
                 self._check_ndim(t, systems)
             except ValueError as e:
-                raise ValueError(f"{loc}: {e}") from None
+                raise rewrap_error(e, prefix=f"{loc}: ") from None
         # NOTE: "The graph MUST be connected" applies to the coordinate systems of the
         # multiscales and scene metadata combined, so it needs the referenced images:
         # it's checked in storage validation.
@@ -113,9 +129,10 @@ class SceneDef(_BaseModel):
         except ValueError as e:
             if inferred is None:
                 raise
-            raise ValueError(
-                f"{e}; the {inferred} size here is inferred, as its coordinate system "
-                "is in an image subgroup"
+            raise rewrap_error(
+                e,
+                suffix=f"; the {inferred} size here is inferred, as its coordinate "
+                "system is in an image subgroup",
             ) from None
 
 

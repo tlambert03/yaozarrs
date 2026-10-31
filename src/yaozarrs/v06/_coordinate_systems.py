@@ -3,6 +3,7 @@ from typing import Annotated, TypeAlias
 from pydantic import Field, WrapValidator
 
 from yaozarrs._base import _BaseModel
+from yaozarrs._rules import RuleCodes, rule_error
 from yaozarrs._types import UniqueList
 
 from ._axes import AxesList
@@ -18,9 +19,19 @@ class CoordinateSystem(_BaseModel):
     """
 
     # MUST contain the field `name`. The value MUST be a non-empty string ...
-    name: str = Field(min_length=1, description="Name of the coordinate system.")
+    name: Annotated[
+        str,
+        RuleCodes(
+            missing="NGFF-CS-001", str="NGFF-CS-002", string_too_short="NGFF-CS-002"
+        ),
+    ] = Field(min_length=1, description="Name of the coordinate system.")
     # MUST contain the field `axes`, whose value is an array of valid `axes`
-    axes: AxesList = Field(description="The axes of this coordinate system.")
+    axes: Annotated[
+        AxesList,
+        RuleCodes(
+            missing="NGFF-CS-004", list="NGFF-CS-004", listItemsNotUnique="NGFF-AX-001"
+        ),
+    ] = Field(description="The axes of this coordinate system.")
 
     @property
     def ndim(self) -> int:
@@ -33,7 +44,10 @@ def _validate_names(systems: list[CoordinateSystem]) -> list[CoordinateSystem]:
     # `coordinateSystems` array.
     names = [cs.name for cs in systems]
     if dupes := sorted({n for n in names if names.count(n) > 1}):
-        raise ValueError(f"Coordinate system names must be unique. Duplicates: {dupes}")
+        raise rule_error(
+            "NGFF-CS-003",
+            f"Coordinate system names must be unique. Duplicates: {dupes}",
+        )
     return systems
 
 

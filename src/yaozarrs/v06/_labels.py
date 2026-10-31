@@ -5,6 +5,7 @@ from pydantic import Field
 
 from yaozarrs._base import _BaseModel, _OMEDocument
 from yaozarrs._common._labels import LabelColor, LabelProperty, LabelSource
+from yaozarrs._rules import RuleCodes
 from yaozarrs._types import UniqueList
 
 from ._image import Image
@@ -39,18 +40,24 @@ class ImageLabel(_BaseModel):
 
     # That `image-label` object SHOULD contain a `colors` key, whose value MUST be a
     # JSON array describing color information for the unique label values.
-    colors: Annotated[UniqueList[LabelColor], MinLen(1)] | None = Field(
+    colors: Annotated[
+        Annotated[UniqueList[LabelColor], MinLen(1)] | None,
+        RuleCodes(list="NGFF-IL-005"),
+    ] = Field(
         default=None,
         description="Color mappings for label values, used for visualization",
     )
     # the value of the `properties` key MUST be an array of JSON objects
-    properties: Annotated[UniqueList[LabelProperty], MinLen(1)] | None = Field(
+    properties: Annotated[
+        Annotated[UniqueList[LabelProperty], MinLen(1)] | None,
+        RuleCodes(list="NGFF-IL-009", object="NGFF-IL-009"),
+    ] = Field(
         default=None,
         description="Arbitrary metadata properties for individual label values",
     )
     # The value of the `source` key MUST be a JSON object containing information about
     # the original image from which the label image derives.
-    source: LabelSource | None = Field(
+    source: Annotated[LabelSource | None, RuleCodes(object="NGFF-IL-012")] = Field(
         default=None,
         description="Reference to the source intensity image that was segmented",
     )
@@ -82,7 +89,7 @@ class LabelsGroup(_OMEDocument):
     version: VersionStr = Field(default="0.6", description="OME-NGFF version")
     # [The labels group metadata] MUST contain a JSON object with the key `labels`,
     # whose value is a JSON array of paths to the labeled multiscale image(s).
-    labels: list[str] = Field(
+    labels: Annotated[list[str], RuleCodes(missing="NGFF-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

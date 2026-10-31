@@ -28,7 +28,9 @@ __all__ = [
     "RuleWarning",
     "SpecDoc",
     "SpecSource",
+    "error_code",
     "get_rule",
+    "rewrap_error",
     "rule_error",
     "rule_url",
     "warn_rule",
@@ -63,6 +65,24 @@ def rule_error(code: str, msg: str) -> PydanticCustomError:
     return PydanticCustomError(
         cast("LiteralString", code), cast("LiteralString", template)
     )
+
+
+def error_code(e: Exception) -> str | None:
+    """Return the rule code of error `e`, if it has one."""
+    return e.type if isinstance(e, PydanticCustomError) else None
+
+
+def rewrap_error(
+    e: ValueError, prefix: str = "", suffix: str = "", code: str | None = None
+) -> ValueError:
+    """Return `e` with more context in its message, and optionally a different code."""
+    msg = str(e)
+    if old := error_code(e):
+        msg = msg.removesuffix(f"\n  See {rule_url(old)}")
+    msg = f"{prefix}{msg}{suffix}"
+    if code := code or old:
+        return rule_error(code, msg)
+    return ValueError(msg)
 
 
 def warn_rule(code: str, msg: str, stacklevel: int = 2) -> None:

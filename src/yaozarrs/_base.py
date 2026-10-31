@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from yaozarrs._rules import rule_error
 from yaozarrs._rules._fields import with_field_rules
 
 if TYPE_CHECKING:
@@ -46,6 +47,10 @@ class _BaseModel(BaseModel):
     def __get_pydantic_core_schema__(
         cls, source: type[BaseModel], handler: GetCoreSchemaHandler, /
     ) -> CoreSchema:
+        # reuse this class's schema once it's built, as BaseModel does (on pydantic 2.5,
+        # rebuilding it inside a parent model loses discriminators of nested unions)
+        if isinstance(schema := cls.__dict__.get("__pydantic_core_schema__"), dict):
+            return schema  # type: ignore[return-value]
         # give pydantic's own errors on fields (missing, wrong type, ...) the rule
         # codes declared with `RuleCodes` (see `yaozarrs._rules`)
         return with_field_rules(cls, handler(source))
@@ -85,7 +90,9 @@ class _OMEDocument(_BaseModel):
     def _require_version_in_json(cls, data: Any, info: ValidationInfo) -> Any:
         # [The `ome` object] MUST contain a `version` key
         if info.mode == "json" and isinstance(data, dict) and "version" not in data:
-            raise ValueError("OME metadata MUST contain a 'version' key.")
+            raise rule_error(
+                "NGFF-GN-001", "OME metadata MUST contain a 'version' key."
+            )
         return data
 
     @model_serializer(mode="wrap")

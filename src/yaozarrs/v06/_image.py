@@ -1,5 +1,4 @@
 import math
-import warnings
 from collections.abc import Sequence
 from typing import Annotated, Any, TypeAlias, cast
 
@@ -10,9 +9,9 @@ from typing_extensions import Self
 from yaozarrs._base import _BaseModel, _OMEDocument
 from yaozarrs._common._omero import Omero
 from yaozarrs._dim_spec import DimSpec
+from yaozarrs._rules import RuleCodes, rewrap_error, rule_error, warn_rule
 from yaozarrs._types import UniqueList
 from yaozarrs._util import SuggestDatasetPath
-from yaozarrs._validation_warning import ValidationWarning
 
 from ._axes import Axis, validate_multiscale_axes
 from ._coordinate_systems import CoordinateSystem, CoordinateSystemsList
@@ -52,14 +51,22 @@ class Dataset(_BaseModel):
     "intrinsic" coordinate system with a single transformation.
     """
 
-    path: Annotated[str, SuggestDatasetPath] = Field(
+    path: Annotated[str, SuggestDatasetPath, RuleCodes(missing="NGFF-DS-006")] = Field(
         description=(
             "Path to the Zarr array for this resolution level, relative to the "
             "multiscale group."
         )
     )
     coordinateTransformations: Annotated[
-        list[DatasetTransformation], Len(min_length=1, max_length=1)
+        list[DatasetTransformation],
+        Len(min_length=1, max_length=1),
+        RuleCodes(
+            missing="NGFF-DS-007",
+            too_short="NGFF-CT-005",
+            too_long="NGFF-CT-005",
+            union_tag_invalid="NGFF-CT-005",
+            union_tag_not_found="NGFF-CT-005",
+        ),
     ] = Field(
         description=(
             "Exactly one transformation (scale, identity, or a sequence of a scale "
@@ -76,28 +83,32 @@ class Dataset(_BaseModel):
         if isinstance(t, SequenceTransformation):
             types = [step.type for step in t.transformations]
             if types != ["scale", "translation"]:
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-CT-005",
                     "A dataset's sequence transformation must be a scale followed by "
-                    f"a translation, got {types}."
+                    f"a translation, got {types}.",
                 )
         # The `input` object MUST specify a `path` field matching the `path` field of
         # the dataset.
         if t.input is None or t.input.path is None:
-            raise ValueError(
+            raise rule_error(
+                "NGFF-CT-006",
                 f"Dataset {self.path!r}: the transformation's 'input' must specify "
-                "the dataset 'path'."
+                "the dataset 'path'.",
             )
         if t.input.path != self.path:
-            raise ValueError(
+            raise rule_error(
+                "NGFF-CT-006",
                 f"Dataset {self.path!r}: the transformation's input path "
-                f"{t.input.path!r} does not match the dataset path."
+                f"{t.input.path!r} does not match the dataset path.",
             )
         # The `name` field of `output` MUST be the `name` of a coordinate system.
         # (that it exists is checked by the Multiscale)
         if t.output is None or t.output.name is None:
-            raise ValueError(
+            raise rule_error(
+                "NGFF-CT-007",
                 f"Dataset {self.path!r}: the transformation's 'output' must specify "
-                "the 'name' of the intrinsic coordinate system."
+                "the 'name' of the intrinsic coordinate system.",
             )
         # NOTE: dataset scales are pixel sizes: the schema requires them to be > 0 and
         # the spec editor confirmed "only positive scale values in multi scale
@@ -106,20 +117,27 @@ class Dataset(_BaseModel):
         if (scale := self.scale_transform) is not None and any(
             v < 0 for v in scale.scale
         ):
-            warnings.warn(
+            warn_rule(
+                "YZ-004",
                 f"Dataset {self.path!r}: scale values SHOULD be positive (they are "
                 f"pixel sizes), got {scale.scale}.",
-                ValidationWarning,
                 stacklevel=2,
             )
         # The `name` field under `input` SHOULD be omitted. ... The `path` field of
         # `output` SHOULD be omitted.
         # NOTE: another section says "MUST ... omit", so we only warn.
-        if t.input.name is not None or t.output.path is not None:
-            warnings.warn(
-                f"Dataset {self.path!r}: the transformation's input 'name' and output "
-                "'path' SHOULD be omitted.",
-                ValidationWarning,
+        if t.input.name is not None:
+            warn_rule(
+                "NGFF-CT-008",
+                f"Dataset {self.path!r}: the transformation's input 'name' SHOULD be "
+                "omitted.",
+                stacklevel=2,
+            )
+        if t.output.path is not None:
+            warn_rule(
+                "NGFF-CT-009",
+                f"Dataset {self.path!r}: the transformation's output 'path' SHOULD be "
+                "omitted.",
                 stacklevel=2,
             )
         return self
@@ -174,11 +192,15 @@ class Multiscale(_BaseModel):
     """
 
     name: str | None = Field(default=None, description="Name of the multiscale image.")
-    coordinateSystems: Annotated[CoordinateSystemsList, MinLen(1)] = Field(
-        description="Coordinate systems of this multiscale image."
-    )
+    coordinateSystems: Annotated[
+        CoordinateSystemsList,
+        MinLen(1),
+        RuleCodes(missing="NGFF-MS-004", listItemsNotUnique="NGFF-CS-003"),
+    ] = Field(description="Coordinate systems of this multiscale image.")
     # (entries are unique as in v05, although neither the schema nor the prose says so)
-    datasets: Annotated[UniqueList[Dataset], MinLen(1)] = Field(
+    datasets: Annotated[
+        UniqueList[Dataset], MinLen(1), RuleCodes(missing="NGFF-MS-003")
+    ] = Field(
         description="Resolution levels, ordered from highest to lowest resolution."
     )
     coordinateTransformations: (
@@ -209,28 +231,32 @@ class Multiscale(_BaseModel):
             try:
                 validate_multiscale_axes(cs.axes)
             except ValueError as e:
-                raise ValueError(f"coordinateSystems[{cs.name!r}]: {e}") from None
+                raise rewrap_error(
+                    e, prefix=f"coordinateSystems[{cs.name!r}]: "
+                ) from None
 
         # The `name` field of `output` MUST be the `name` of a coordinate system. It
         # MUST be the same value for every resolution level in a single multiscales
         names = {ds.output_name for ds in self.datasets}
         if len(names) != 1:
-            raise ValueError(
+            raise rule_error(
+                "NGFF-CT-010",
                 "All datasets must output to the same (intrinsic) coordinate system, "
-                f"found {sorted(names)}."
+                f"found {sorted(names)}.",
             )
         intrinsic = names.pop()
         if intrinsic not in systems:
-            raise ValueError(
+            raise rule_error(
+                "NGFF-CT-007",
                 f"The datasets' output coordinate system {intrinsic!r} is not "
-                f"declared in coordinateSystems ({list(systems)})."
+                f"declared in coordinateSystems ({list(systems)}).",
             )
         ndim = systems[intrinsic].ndim
         for i, ds in enumerate(self.datasets):
             try:
                 check_transform_ndim(ds.transform, ndim, ndim)
             except ValueError as e:
-                raise ValueError(f"datasets[{i}] ({ds.path!r}): {e}") from None
+                raise rewrap_error(e, prefix=f"datasets[{i}] ({ds.path!r}): ") from None
 
         self._validate_coordinate_transformations(systems, intrinsic)
         # NOTE: "The graph MUST be connected" applies to the coordinate systems of the
@@ -245,18 +271,23 @@ class Multiscale(_BaseModel):
         for i, t in enumerate(self.coordinateTransformations or ()):
             loc = f"coordinateTransformations[{i}] ({t.type})"
             if t.input is None or t.output is None:
-                raise ValueError(f"{loc}: must have both an 'input' and an 'output'.")
+                raise rule_error(
+                    "NGFF-CT-011", f"{loc}: must have both an 'input' and an 'output'."
+                )
             if t.input.name is None or t.output.name is None:
-                raise ValueError(f"{loc}: input and output must specify a 'name'.")
+                raise rule_error(
+                    "NGFF-CT-013", f"{loc}: input and output must specify a 'name'."
+                )
 
             # One of `input` or `output` MUST reference the "intrinsic" coordinate
             # system by `name` (`path` MAY be omitted or null).
             in_intrinsic = t.input.path is None and t.input.name == intrinsic
             out_intrinsic = t.output.path is None and t.output.name == intrinsic
             if not (in_intrinsic or out_intrinsic):
-                raise ValueError(
+                raise rule_error(
+                    "NGFF-CT-012",
                     f"{loc}: one of input or output must reference the intrinsic "
-                    f"coordinate system {intrinsic!r}."
+                    f"coordinate system {intrinsic!r}.",
                 )
             other = t.output if in_intrinsic else t.input
 
@@ -266,9 +297,10 @@ class Multiscale(_BaseModel):
                 # NOTE: we resolve names within this multiscale entry only (names need
                 # not be unique across the multiscales of a group).
                 if other.name not in systems:
-                    raise ValueError(
+                    raise rule_error(
+                        "NGFF-CT-013",
                         f"{loc}: coordinate system {other.name!r} is not declared in "
-                        f"this multiscale's coordinateSystems ({list(systems)})."
+                        f"this multiscale's coordinateSystems ({list(systems)}).",
                     )
                 n_in = systems[t.input.name].ndim
                 n_out = systems[t.output.name].ndim
@@ -279,17 +311,18 @@ class Multiscale(_BaseModel):
                 # NOTE: the labels section also allows "a sequence of a scale and a
                 # translation transformation", so we accept that too (ome/ngff#639).
                 if not _is_label_transform(t):
-                    raise ValueError(
+                    raise rule_error(
+                        "NGFF-CT-014",
                         f"{loc}: a transformation to a child label image must be "
                         "identity, scale, translation, or a sequence of a scale and "
-                        "a translation (in either order)."
+                        "a translation (in either order).",
                     )
                 # (these all preserve dimensionality)
                 n_in = n_out = systems[intrinsic].ndim
             try:
                 check_transform_ndim(t, n_in, n_out)
             except ValueError as e:
-                raise ValueError(f"{loc}: {e}") from None
+                raise rewrap_error(e, prefix=f"{loc}: ") from None
 
     def _validate_resolution_order(self, intrinsic: CoordinateSystem) -> None:
         # The `path`s MUST be ordered from largest (i.e. highest resolution) to
@@ -308,9 +341,10 @@ class Multiscale(_BaseModel):
             for prev, cur in zip(spatial, spatial[1:])
             for a, b in zip(prev, cur)
         ):
-            raise ValueError(
+            raise rule_error(
+                "NGFF-DS-001",
                 "The datasets are not ordered from highest to lowest resolution. "
-                f"Found spatial scales: {spatial}"
+                f"Found spatial scales: {spatial}",
             )
 
     @property

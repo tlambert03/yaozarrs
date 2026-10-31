@@ -76,7 +76,7 @@ def validate_zarr_store(
     else:
         error = ValidationResult().add_error(
             StorageErrorType.unsupported_version,
-            "YZ-000",
+            "YZ-006",
             ("version",),
             f"Unsupported OME-Zarr version {ome_version!r}",
         )

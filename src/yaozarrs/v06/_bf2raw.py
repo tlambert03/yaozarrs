@@ -4,6 +4,7 @@ from annotated_types import MinLen
 from pydantic import Field
 
 from yaozarrs._base import _OMEDocument
+from yaozarrs._rules import RuleCodes
 
 from ._version import VersionStr
 
@@ -38,7 +39,9 @@ class Bf2Raw(_OMEDocument):
 
     version: VersionStr = Field(default="0.6", description="OME-NGFF version")
     # MUST have the value `3` for the `bioformats2raw.layout` key
-    bioformats2raw_layout: Literal[3] = Field(
+    bioformats2raw_layout: Annotated[
+        Literal[3], RuleCodes(missing="NGFF-BF-003", literal_error="NGFF-BF-003")
+    ] = Field(
         alias="bioformats2raw.layout",
         description="Layout version marker added by bioformats2raw (currently 3)",
     )
@@ -60,7 +63,9 @@ class Series(_OMEDocument):
     version: VersionStr = Field(default="0.6", description="OME-NGFF version")
     # `series` MUST be an array of string objects, each of which is a path to an image
     # group.
-    series: Annotated[list[str], MinLen(1)] = Field(
+    series: Annotated[
+        list[str], MinLen(1), RuleCodes(list="NGFF-BF-004", str="NGFF-BF-004")
+    ] = Field(
         description=(
             "Ordered list of paths to image groups, matching the order in "
             "the companion OME-XML metadata"

@@ -6,6 +6,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel, _OMEDocument
 from yaozarrs._common._plate import Acquisition, Column, PlateDef, PlateWell, Row
+from yaozarrs._rules import RuleCodes, rule_error
 from yaozarrs._types import UniqueList
 from yaozarrs._util import BAD_NODE_RE
 
@@ -67,7 +68,9 @@ class Plate(_OMEDocument):
 
     # If the top-level group represents a plate, the `bioformats2raw.layout` metadata
     # will be present but the `plate` key MUST also be present
-    bioformats2raw_layout: Literal[3] | None = Field(
+    bioformats2raw_layout: Annotated[
+        Literal[3] | None, RuleCodes(literal_error="NGFF-BF-003")
+    ] = Field(
         default=None,
         alias="bioformats2raw.layout",
         description=(
@@ -86,9 +89,10 @@ def _validate_fov_path(path: str) -> str:
     # reserved prefix `__`; The `path` MUST NOT be an empty string and MUST NOT contain
     # `/` characters
     if BAD_NODE_RE.match(path):
-        raise ValueError(
+        raise rule_error(
+            "NGFF-WL-011",
             f"Field of view path {path!r} is not a valid Zarr node name (must not be "
-            "empty, only periods, start with '__', or contain '/')."
+            "empty, only periods, start with '__', or contain '/').",
         )
     return path
 
@@ -109,7 +113,10 @@ class FieldOfView(_BaseModel):
     This class appears within the `images` list of a [`WellDef`][yaozarrs.v06.WellDef].
     """
 
-    path: FieldOfViewPath = Field(
+    path: Annotated[
+        FieldOfViewPath,
+        RuleCodes(missing="NGFF-WL-006", string_pattern_mismatch="NGFF-WL-010"),
+    ] = Field(
         description=(
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
@@ -118,7 +125,7 @@ class FieldOfView(_BaseModel):
     # If multiple acquisitions were performed in the plate, it MUST contain an
     # `acquisition` key whose value MUST be an integer identifying the acquisition
     # (that it matches one of the plate's acquisitions needs the plate metadata)
-    acquisition: int | None = Field(
+    acquisition: Annotated[int | None, RuleCodes(int="NGFF-WL-007")] = Field(
         default=None,
         description=(
             "Acquisition ID linking this field to a specific acquisition run. "
@@ -134,7 +141,16 @@ class WellDef(_BaseModel):
     imaging positions captured for this well.
     """
 
-    images: Annotated[UniqueList[FieldOfView], MinLen(1)] = Field(
+    images: Annotated[
+        UniqueList[FieldOfView],
+        MinLen(1),
+        RuleCodes(
+            missing="NGFF-WL-004",
+            list="NGFF-WL-005",
+            object="NGFF-WL-005",
+            listItemsNotUnique="NGFF-WL-002",
+        ),
+    ] = Field(
         description="List of all fields-of-view imaged in this well",
     )
 
@@ -144,7 +160,10 @@ class WellDef(_BaseModel):
         # `path` in the `images` list.  (UniqueList only catches identical entries.)
         paths = [img.path for img in self.images]
         if dupes := sorted({p for p in paths if paths.count(p) > 1}):
-            raise ValueError(f"Field of view paths must be unique. Duplicates: {dupes}")
+            raise rule_error(
+                "NGFF-WL-002",
+                f"Field of view paths must be unique. Duplicates: {dupes}",
+            )
         return self
 
 

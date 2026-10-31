@@ -19,12 +19,13 @@ import tempfile
 import urllib.request
 import warnings
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import ValidationError
 
-from yaozarrs import v04, v05, validate_zarr_store
+from yaozarrs import v04, v05, v06, validate_zarr_store
 from yaozarrs._rules import RULES, Rule, RuleWarning, SpecDoc
 from yaozarrs._rules._registry import REGISTRY_FILE, SPEC_DOCS, TRACKED_VERSIONS
 from yaozarrs._storage import StorageValidationError, StorageValidationWarning
@@ -33,12 +34,14 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from types import ModuleType
 
+    from yaozarrs._rules._model import Example
+
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_SOURCES = ROOT / "tests" / "spec_sources"
 DOCS_DIR = ROOT / "docs" / "rules"
 
 # yaozarrs model module for each spec version it implements
-MODULES: dict[str, ModuleType] = {"0.4": v04, "0.5": v05}
+MODULES: dict[str, ModuleType] = {"0.4": v04, "0.5": v05, "0.6": v06}
 # env vars that change which rules fire; coverage is computed without them
 BEHAVIOR_ENV_VARS = (
     "YAOZARRS_ALLOW_RISKY_NODE_NAMES",
@@ -152,6 +155,60 @@ def to_v04_store(files: dict[str, dict]) -> dict[str, dict]:
     return out
 
 
+def _dataset_to_v06(ds: dict) -> dict:
+    """Convert a v0.5 `datasets` entry into the equivalent v0.6."""
+    ts = ds.get("coordinateTransformations")
+    if not isinstance(ts, list) or not ts:
+        return ds
+    ref = {"input": {"path": ds.get("path")}, "output": {"name": "physical"}}
+    # v0.6 has a single transformation: several become a sequence
+    t = ts[0] if len(ts) == 1 else {"type": "sequence", "transformations": ts}
+    return {**ds, "coordinateTransformations": [{**t, **ref}]}
+
+
+def _multiscale_to_v06(ms: dict) -> dict:
+    """Convert a v0.5 `multiscales` entry into the equivalent v0.6."""
+    out = {}
+    if "axes" in ms:
+        out["coordinateSystems"] = [{"name": "physical", "axes": ms["axes"]}]
+    out.update({k: v for k, v in ms.items() if k != "axes"})
+    if isinstance(ms.get("datasets"), list):
+        out["datasets"] = [_dataset_to_v06(ds) for ds in ms["datasets"]]
+    return out
+
+
+def to_v06_store(files: dict[str, dict]) -> dict[str, dict]:
+    """Convert a v0.5 (zarr v3) store example into the equivalent v0.6."""
+    out: dict[str, dict] = {}
+    for path, meta in files.items():
+        ome = meta.get("attributes", {}).get("ome")
+        if ome is None:
+            out[path] = meta
+            continue
+        ome: dict[str, Any] = {**ome, "version": "0.6"}
+        if "multiscales" in ome:
+            ome["multiscales"] = [_multiscale_to_v06(m) for m in ome["multiscales"]]
+        attrs = {**meta["attributes"], "ome": ome}
+        out[path] = {**meta, "attributes": attrs}
+    return out
+
+
+def example_for(rule: Rule, version: str) -> Example | None:
+    """Return `rule`'s example for `version`, in that version's format."""
+    if version in rule.examples:
+        return rule.examples[version]
+    if (ex := rule.example) is None:
+        return None
+    if ex.store is not None:
+        convert = {"0.4": to_v04_store, "0.6": to_v06_store}.get(version)
+        files = convert(ex.files) if convert else ex.files
+        return replace(ex, store=json.dumps(files, indent=2))
+    if version == "0.6" and ex.model in ("Multiscale", "Dataset"):
+        fn = _multiscale_to_v06 if ex.model == "Multiscale" else _dataset_to_v06
+        return replace(ex, json=json.dumps(fn(cast("dict", ex.data)), indent=2))
+    return ex
+
+
 def _store_codes(files: dict[str, dict]) -> set[str]:
     """Write `files` to a temporary store, validate it, and return emitted codes."""
     with tempfile.TemporaryDirectory(suffix=".zarr") as tmp:
@@ -179,20 +236,19 @@ def _store_codes(files: dict[str, dict]) -> set[str]:
 
 
 def emitted_codes(rule: Rule, version: str) -> set[str]:
-    """Codes emitted when validating `rule.example` as spec `version`."""
-    if (ex := rule.example) is None:
+    """Codes emitted when validating `rule`'s example as spec `version`."""
+    if (ex := example_for(rule, version)) is None:
         return set()
     with _default_behavior():
         if ex.store is not None:
-            files = ex.files if version == "0.5" else to_v04_store(ex.files)
-            return _store_codes(files)
+            return _store_codes(ex.files)
         if (model := getattr(MODULES[version], ex.model or "", None)) is None:
             return set()
         codes: set[str] = set()
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             try:
-                model.model_validate(ex.data)
+                model.model_validate_json(ex.json or "null")
             except ValidationError as e:
                 codes.update(err["type"] for err in e.errors())
     codes.update(x.message.code for x in w if isinstance(x.message, RuleWarning))
@@ -291,6 +347,32 @@ def _versions(rule: Rule) -> str:
     return f"{rule.introduced}+"
 
 
+def _rendered_examples(rule: Rule, checked: list[str]) -> list[tuple[str, str]]:
+    """(introduction, JSON) of `rule`'s examples, one for each distinct document."""
+    by_doc: dict[tuple[str | None, str], list[str]] = {}
+    for version in checked or list(MODULES):
+        if (ex := example_for(rule, version)) is not None:
+            is_store = ex.store is not None
+            body = ex.store if is_store else ex.json
+            key = (None if is_store else ex.model, (body or "").strip())
+            by_doc.setdefault(key, []).append(version)
+        if not checked and by_doc:
+            break
+    out = []
+    for (model, body), versions in by_doc.items():
+        if model is None:
+            names = ", ".join(f"v{v}" for v in versions)
+            intro = (
+                f"This {names} store (metadata files only) fails "
+                "`yaozarrs.validate_zarr_store`:"
+            )
+        else:
+            names = " or ".join(f"`{MODULES[v].__name__}.{model}`" for v in versions)
+            intro = f"This document fails validation as {names}:"
+        out.append((intro, body))
+    return out
+
+
 def render_rule(rule: Rule, checked: list[str]) -> str:
     """Markdown page for one rule."""
     lines = [f"# {rule.code}: `{rule.slug}`", ""]
@@ -318,30 +400,10 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
     lines.append("")
     if rule.notes:
         lines += ["## Notes", "", rule.notes, ""]
-    if (ex := rule.example) and ex.store is not None:
-        lines += [
-            "## Example",
-            "",
-            "This v0.5 store (metadata files only) fails "
-            "`yaozarrs.validate_zarr_store`:",
-            "",
-            "```json",
-            ex.store.strip(),
-            "```",
-            "",
-        ]
-    elif ex and ex.json is not None:
-        models = " or ".join(f"`{MODULES[v].__name__}.{ex.model}`" for v in checked)
-        lines += [
-            "## Example",
-            "",
-            f"This document fails validation as {models or ex.model}:",
-            "",
-            "```json",
-            ex.json.strip(),
-            "```",
-            "",
-        ]
+    if examples := _rendered_examples(rule, checked):
+        lines += ["## Example", ""]
+        for intro, body in examples:
+            lines += [intro, "", "```json", body, "```", ""]
     if rule.sources:
         lines += ["## Spec text", ""]
         for src in reversed(rule.sources):
