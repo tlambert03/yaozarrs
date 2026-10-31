@@ -7,6 +7,8 @@
 - `yaozarrs._common` holds building blocks shared across versions.  It must not
   import any version module (or `yaozarrs.write`), and must not contain version
   string literals (i.e. it may not branch on version: "fork, don't flag").
+- `yaozarrs.write._common` is the same for the writers: no version modules, and no
+  version string literals.
 """
 
 from __future__ import annotations
@@ -30,7 +32,8 @@ def _module_name(path: Path) -> str:
     return ".".join(parts)
 
 
-COMMON_FILES = [p for p in PY_FILES if _module_name(p).startswith("yaozarrs._common")]
+COMMON_PACKAGES = ("yaozarrs._common", "yaozarrs.write._common")
+COMMON_FILES = [p for p in PY_FILES if _module_name(p).startswith(COMMON_PACKAGES)]
 
 
 def _version_of(module: str) -> str | None:
@@ -68,6 +71,10 @@ def test_import_boundaries(path: Path) -> None:
 
     if module.startswith("yaozarrs._common"):
         bad = [m for m in imported if _version_of(m) or m.startswith("yaozarrs.write")]
+        assert not bad, f"{module} imports version-specific modules: {bad}"
+
+    if module.startswith("yaozarrs.write._common"):
+        bad = [m for m in imported if _version_of(m)]
         assert not bad, f"{module} imports version-specific modules: {bad}"
 
 

@@ -1,3 +1,4 @@
+import math
 from collections.abc import Sequence
 from typing import Annotated, Literal, TypeAlias
 
@@ -6,7 +7,7 @@ from pydantic import AfterValidator, Field, WrapValidator, model_validator
 from typing_extensions import Self
 
 from yaozarrs._axis import AxesList
-from yaozarrs._base import _BaseModel
+from yaozarrs._base import _BaseModel, _OMEDocument
 from yaozarrs._common._omero import Omero
 from yaozarrs._dim_spec import DimSpec
 from yaozarrs._rules import RuleCodes, rule_error
@@ -296,6 +297,8 @@ class Multiscale(_BaseModel):
 
         # The "paths" of the datasets MUST be be ordered from the highest resolution to
         # the lowest resolution (i.e. largest to smallest
+        # (checked per spatial axis: a scale may not shrink from one level to the next,
+        # allowing for float noise)
         spatial_indices: dict[int, str] = {
             i: ax.name for i, ax in enumerate(self.axes) if ax.type == "space"
         }
@@ -303,7 +306,11 @@ class Multiscale(_BaseModel):
             tuple(ds.scale_transform.scale[idx] for idx in spatial_indices)
             for ds in self.datasets
         ]
-        if spatial_scales != sorted(spatial_scales):
+        if any(
+            b < a and not math.isclose(a, b, rel_tol=1e-6)
+            for prev, cur in zip(spatial_scales, spatial_scales[1:])
+            for a, b in zip(prev, cur)
+        ):
             raise rule_error(
                 "NGFF-DS-001",
                 "The datasets are not ordered from highest to lowest resolution. "
@@ -363,7 +370,7 @@ class Multiscale(_BaseModel):
 # ------------------------------------------------------------------------------
 
 
-class Image(_BaseModel):
+class Image(_OMEDocument):
     """Top-level OME-NGFF image metadata.
 
     This model corresponds to the `zarr.json` file in an image group.

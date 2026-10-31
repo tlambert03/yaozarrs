@@ -1,0 +1,453 @@
+import math
+import warnings
+from collections.abc import Sequence
+from typing import Annotated, Any, TypeAlias, cast
+
+from annotated_types import Len, MinLen
+from pydantic import Discriminator, Field, model_validator
+from typing_extensions import Self
+
+from yaozarrs._base import _BaseModel, _OMEDocument
+from yaozarrs._common._omero import Omero
+from yaozarrs._dim_spec import DimSpec
+from yaozarrs._types import UniqueList
+from yaozarrs._util import SuggestDatasetPath
+from yaozarrs._validation_warning import ValidationWarning
+
+from ._axes import Axis, validate_multiscale_axes
+from ._coordinate_systems import CoordinateSystem, CoordinateSystemsList
+from ._transforms import (
+    CoordinateTransformation,
+    IdentityTransformation,
+    ScaleTransformation,
+    SequenceTransformation,
+    TranslationTransformation,
+    check_transform_ndim,
+)
+from ._version import VersionStr
+
+__all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
+    "Image",
+    "Multiscale",
+    "Dataset",
+]
+
+# ------------------------------------------------------------------------------
+# Dataset model
+# ------------------------------------------------------------------------------
+
+# The transformation MUST be one of the following:
+# - A single scale or identity transformation
+# - A sequence transformation containing one scale and one translation transformation.
+DatasetTransformation: TypeAlias = Annotated[
+    ScaleTransformation | IdentityTransformation | SequenceTransformation,
+    Discriminator("type"),
+]
+
+
+class Dataset(_BaseModel):
+    """A single resolution level in a multiscale image pyramid.
+
+    Points to a Zarr array, and maps its array coordinates to the multiscale's
+    "intrinsic" coordinate system with a single transformation.
+    """
+
+    path: Annotated[str, SuggestDatasetPath] = Field(
+        description=(
+            "Path to the Zarr array for this resolution level, relative to the "
+            "multiscale group."
+        )
+    )
+    coordinateTransformations: Annotated[
+        list[DatasetTransformation], Len(min_length=1, max_length=1)
+    ] = Field(
+        description=(
+            "Exactly one transformation (scale, identity, or a sequence of a scale "
+            "followed by a translation) from the array to the intrinsic coordinate "
+            "system."
+        )
+    )
+
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
+        t = self.transform
+        # [coordinateTransformations herein MUST] be restricted to a single `scale`,
+        # `identity` or `sequence` of a scale followed by a translation transformation.
+        if isinstance(t, SequenceTransformation):
+            types = [step.type for step in t.transformations]
+            if types != ["scale", "translation"]:
+                raise ValueError(
+                    "A dataset's sequence transformation must be a scale followed by "
+                    f"a translation, got {types}."
+                )
+        # The `input` object MUST specify a `path` field matching the `path` field of
+        # the dataset.
+        if t.input is None or t.input.path is None:
+            raise ValueError(
+                f"Dataset {self.path!r}: the transformation's 'input' must specify "
+                "the dataset 'path'."
+            )
+        if t.input.path != self.path:
+            raise ValueError(
+                f"Dataset {self.path!r}: the transformation's input path "
+                f"{t.input.path!r} does not match the dataset path."
+            )
+        # The `name` field of `output` MUST be the `name` of a coordinate system.
+        # (that it exists is checked by the Multiscale)
+        if t.output is None or t.output.name is None:
+            raise ValueError(
+                f"Dataset {self.path!r}: the transformation's 'output' must specify "
+                "the 'name' of the intrinsic coordinate system."
+            )
+        # NOTE: dataset scales are pixel sizes: the schema requires them to be > 0 and
+        # the spec editor confirmed "only positive scale values in multi scale
+        # transforms" (ome/ngff#637), while the prose only says "SHOULD be non-zero",
+        # so a negative value only warns.
+        if (scale := self.scale_transform) is not None and any(
+            v < 0 for v in scale.scale
+        ):
+            warnings.warn(
+                f"Dataset {self.path!r}: scale values SHOULD be positive (they are "
+                f"pixel sizes), got {scale.scale}.",
+                ValidationWarning,
+                stacklevel=2,
+            )
+        # The `name` field under `input` SHOULD be omitted. ... The `path` field of
+        # `output` SHOULD be omitted.
+        # NOTE: another section says "MUST ... omit", so we only warn.
+        if t.input.name is not None or t.output.path is not None:
+            warnings.warn(
+                f"Dataset {self.path!r}: the transformation's input 'name' and output "
+                "'path' SHOULD be omitted.",
+                ValidationWarning,
+                stacklevel=2,
+            )
+        return self
+
+    @property
+    def transform(self) -> DatasetTransformation:
+        """The transformation from this dataset's array to the intrinsic system."""
+        return self.coordinateTransformations[0]
+
+    @property
+    def output_name(self) -> str:
+        """Name of the (intrinsic) coordinate system this dataset maps into."""
+        # (guaranteed to be set by `_validate`)
+        output = self.transform.output
+        return cast("str", output.name if output else None)
+
+    @property
+    def scale_transform(self) -> ScaleTransformation | None:
+        """The scale transformation (alone or in a sequence), if any."""
+        t = self.transform
+        if isinstance(t, SequenceTransformation):
+            t = t.transformations[0]
+        return t if isinstance(t, ScaleTransformation) else None
+
+    @property
+    def translation_transform(self) -> TranslationTransformation | None:
+        """The translation transformation (in a sequence), if any."""
+        t = self.transform
+        if isinstance(t, SequenceTransformation):
+            last = t.transformations[-1]
+            return last if isinstance(last, TranslationTransformation) else None
+        return None
+
+
+# ------------------------------------------------------------------------------
+# Multiscale model
+# ------------------------------------------------------------------------------
+
+
+# types allowed when transforming to a coordinate system in a child labels group
+# (see also `_is_label_transform`)
+_LABEL_TRANSFORM_TYPES = ("identity", "scale", "translation")
+
+
+class Multiscale(_BaseModel):
+    """A multi-resolution image pyramid, with its coordinate systems.
+
+    All datasets (resolution levels) map into the same "intrinsic" coordinate system,
+    which represents the image in its native physical coordinates. Additional
+    `coordinateTransformations` may link the intrinsic coordinate system to other
+    coordinate systems of this multiscale, or to those of its label images.
+    """
+
+    name: str | None = Field(default=None, description="Name of the multiscale image.")
+    coordinateSystems: Annotated[CoordinateSystemsList, MinLen(1)] = Field(
+        description="Coordinate systems of this multiscale image."
+    )
+    # (entries are unique as in v05, although neither the schema nor the prose says so)
+    datasets: Annotated[UniqueList[Dataset], MinLen(1)] = Field(
+        description="Resolution levels, ordered from highest to lowest resolution."
+    )
+    coordinateTransformations: (
+        Annotated[list[CoordinateTransformation], MinLen(1)] | None
+    ) = Field(
+        default=None,
+        description=(
+            "Transformations between the intrinsic coordinate system and other "
+            "coordinate systems (of this multiscale or of its label images)."
+        ),
+    )
+    type: str | None = Field(
+        default=None,
+        description="Downsampling method used to generate the multiscale image.",
+    )
+    metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="Additional metadata about the downsampling method.",
+    )
+
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
+        systems = {cs.name: cs for cs in self.coordinateSystems}
+
+        # The following conditions apply to all coordinate systems inside multiscales
+        # metadata: ...
+        for cs in self.coordinateSystems:
+            try:
+                validate_multiscale_axes(cs.axes)
+            except ValueError as e:
+                raise ValueError(f"coordinateSystems[{cs.name!r}]: {e}") from None
+
+        # The `name` field of `output` MUST be the `name` of a coordinate system. It
+        # MUST be the same value for every resolution level in a single multiscales
+        names = {ds.output_name for ds in self.datasets}
+        if len(names) != 1:
+            raise ValueError(
+                "All datasets must output to the same (intrinsic) coordinate system, "
+                f"found {sorted(names)}."
+            )
+        intrinsic = names.pop()
+        if intrinsic not in systems:
+            raise ValueError(
+                f"The datasets' output coordinate system {intrinsic!r} is not "
+                f"declared in coordinateSystems ({list(systems)})."
+            )
+        ndim = systems[intrinsic].ndim
+        for i, ds in enumerate(self.datasets):
+            try:
+                check_transform_ndim(ds.transform, ndim, ndim)
+            except ValueError as e:
+                raise ValueError(f"datasets[{i}] ({ds.path!r}): {e}") from None
+
+        self._validate_coordinate_transformations(systems, intrinsic)
+        # NOTE: "The graph MUST be connected" applies to the coordinate systems of the
+        # multiscales and scene metadata combined (a scene may link coordinate systems
+        # within one image), so it's checked in storage validation.
+        self._validate_resolution_order(systems[intrinsic])
+        return self
+
+    def _validate_coordinate_transformations(
+        self, systems: dict[str, CoordinateSystem], intrinsic: str
+    ) -> None:
+        for i, t in enumerate(self.coordinateTransformations or ()):
+            loc = f"coordinateTransformations[{i}] ({t.type})"
+            if t.input is None or t.output is None:
+                raise ValueError(f"{loc}: must have both an 'input' and an 'output'.")
+            if t.input.name is None or t.output.name is None:
+                raise ValueError(f"{loc}: input and output must specify a 'name'.")
+
+            # One of `input` or `output` MUST reference the "intrinsic" coordinate
+            # system by `name` (`path` MAY be omitted or null).
+            in_intrinsic = t.input.path is None and t.input.name == intrinsic
+            out_intrinsic = t.output.path is None and t.output.name == intrinsic
+            if not (in_intrinsic or out_intrinsic):
+                raise ValueError(
+                    f"{loc}: one of input or output must reference the intrinsic "
+                    f"coordinate system {intrinsic!r}."
+                )
+            other = t.output if in_intrinsic else t.input
+
+            if other.path is None:
+                # The other MUST reference a named coordinate system in the same
+                # multiscales group (by `name`, `path` MAY be omitted or null)
+                # NOTE: we resolve names within this multiscale entry only (names need
+                # not be unique across the multiscales of a group).
+                if other.name not in systems:
+                    raise ValueError(
+                        f"{loc}: coordinate system {other.name!r} is not declared in "
+                        f"this multiscale's coordinateSystems ({list(systems)})."
+                    )
+                n_in = systems[t.input.name].ndim
+                n_out = systems[t.output.name].ndim
+            else:
+                # ... or in a child labels group (by `name` and `path`).
+                # When referencing a child labels group, the transformation MUST be
+                # `identity`, `scale`, or `translation`.
+                # NOTE: the labels section also allows "a sequence of a scale and a
+                # translation transformation", so we accept that too (ome/ngff#639).
+                if not _is_label_transform(t):
+                    raise ValueError(
+                        f"{loc}: a transformation to a child label image must be "
+                        "identity, scale, translation, or a sequence of a scale and "
+                        "a translation (in either order)."
+                    )
+                # (these all preserve dimensionality)
+                n_in = n_out = systems[intrinsic].ndim
+            try:
+                check_transform_ndim(t, n_in, n_out)
+            except ValueError as e:
+                raise ValueError(f"{loc}: {e}") from None
+
+    def _validate_resolution_order(self, intrinsic: CoordinateSystem) -> None:
+        # The `path`s MUST be ordered from largest (i.e. highest resolution) to
+        # smallest.
+        # (Really a storage-level rule; like v05, we also check it on the scales of
+        # the spatial axes, when every level has one: per axis, a scale may not shrink
+        # from one level to the next, allowing for float noise. Scales may be negative
+        # (flips), so we compare magnitudes.)
+        scales = [ds.scale_transform for ds in self.datasets]
+        if any(s is None for s in scales):
+            return
+        space = [i for i, ax in enumerate(intrinsic.axes) if ax.type == "space"]
+        spatial = [tuple(abs(s.scale[i]) for i in space) for s in scales]
+        if any(
+            b < a and not math.isclose(a, b, rel_tol=1e-6)
+            for prev, cur in zip(spatial, spatial[1:])
+            for a, b in zip(prev, cur)
+        ):
+            raise ValueError(
+                "The datasets are not ordered from highest to lowest resolution. "
+                f"Found spatial scales: {spatial}"
+            )
+
+    @property
+    def intrinsic_coordinate_system(self) -> CoordinateSystem:
+        """The coordinate system that all datasets map into."""
+        name = self.datasets[0].output_name
+        return next(cs for cs in self.coordinateSystems if cs.name == name)
+
+    @property
+    def axes(self) -> list[Axis]:
+        """Axes of the intrinsic coordinate system (one per array dimension)."""
+        return list(self.intrinsic_coordinate_system.axes)
+
+    @property
+    def ndim(self) -> int:
+        """Number of dimensions of the image."""
+        return self.intrinsic_coordinate_system.ndim
+
+    @classmethod
+    def from_dims(
+        cls,
+        dims: Sequence[DimSpec],
+        name: str | None = None,
+        n_levels: int = 1,
+        coordinate_system: str = "intrinsic",
+    ) -> Self:
+        """Convenience constructor: Create Multiscale from a sequence of DimSpec.
+
+        Parameters
+        ----------
+        dims : Sequence[DimSpec]
+            A sequence of dimension specifications defining the image dimensions.
+            Must follow OME-Zarr axis ordering: `[time,] [channel,] space...`
+        name : str | None, optional
+            Name for the multiscale. Default is None.
+        n_levels : int, optional
+            Number of resolution levels in the pyramid. Default is 1.
+        coordinate_system : str, optional
+            Name of the (intrinsic) coordinate system that all resolution levels map
+            into. Default is "intrinsic".
+
+        Returns
+        -------
+        Multiscale
+            A fully configured Multiscale model.
+
+        Examples
+        --------
+        >>> from yaozarrs import DimSpec, v06
+        >>> dims = [
+        ...     DimSpec(name="t", size=512, unit="second"),
+        ...     DimSpec(
+        ...         name="z", size=50, scale=2.0, unit="micrometer", scale_factor=1.0
+        ...     ),
+        ...     DimSpec(name="y", size=512, scale=0.5, unit="micrometer"),
+        ...     DimSpec(name="x", size=512, scale=0.5, unit="micrometer"),
+        ... ]
+        >>> v06.Multiscale.from_dims(dims, name="my_multiscale", n_levels=3)
+        """
+        layout = _coordinate_systems_datasets(dims, n_levels, coordinate_system)
+        return cls.model_validate({"name": name, **layout})
+
+
+def _coordinate_systems_datasets(
+    dims: Sequence[DimSpec], n_levels: int, coordinate_system: str
+) -> dict[str, list[dict]]:
+    """`coordinateSystems` and `datasets` (as dicts) for `Multiscale.from_dims`."""
+    axes = [{"name": d.name, "type": d.infer_type(), "unit": d.unit} for d in dims]
+    datasets = []
+    for level in range(n_levels):
+        path = str(level)
+        factors = [d.scale * d.infer_scale_factor() ** level for d in dims]
+        transform: dict = {"type": "scale", "scale": factors}
+        # [Translations] are expected to consistently align the datasets across all
+        # scales ... for classical binning, translations should be
+        # (pixel-size-at-resolution-N - pixel-size-at-resolution-0) / 2.
+        translation = [
+            (d.translation or 0.0) + (s - d.scale) / 2 for d, s in zip(dims, factors)
+        ]
+        if any(translation):
+            # a scale and a translation must be a sequence (scale first)
+            transform = {
+                "type": "sequence",
+                "transformations": [
+                    transform,
+                    {"type": "translation", "translation": translation},
+                ],
+            }
+        transform["input"] = {"path": path}
+        transform["output"] = {"name": coordinate_system}
+        datasets.append({"path": path, "coordinateTransformations": [transform]})
+    return {
+        "coordinateSystems": [{"name": coordinate_system, "axes": axes}],
+        "datasets": datasets,
+    }
+
+
+def _is_label_transform(t: CoordinateTransformation) -> bool:
+    if isinstance(t, SequenceTransformation):
+        # (no order is given here, unlike for dataset transformations)
+        return sorted(step.type for step in t.transformations) == [
+            "scale",
+            "translation",
+        ]
+    return t.type in _LABEL_TRANSFORM_TYPES
+
+
+# ------------------------------------------------------------------------------
+# Image model
+# ------------------------------------------------------------------------------
+
+
+class Image(_OMEDocument):
+    """Top-level OME-NGFF image metadata (`ome` in an image group's `zarr.json`).
+
+    Contains one or more multiscale pyramids, plus optional OMERO rendering hints.
+
+    !!! example "Typical Structure"
+        ```
+        my_image/
+        ├── zarr.json          # contains ["ome"]["multiscales"]
+        ├── 0/                 # Highest resolution array
+        ├── 1/                 # Next resolution level
+        └── labels/            # Optional segmentation masks
+            ├── zarr.json      # contains ["ome"]["labels"]
+            └── 0              # Multiscale, labeled image.
+        ```
+
+    !!! note
+        For the optional `labels` group, see [LabelsGroup][yaozarrs.v06.LabelsGroup].
+    """
+
+    version: VersionStr = Field(default="0.6", description="OME-NGFF version")
+    multiscales: Annotated[UniqueList[Multiscale], MinLen(1)] = Field(
+        description="One or more multiscale image pyramids in this group"
+    )
+    omero: Omero | None = Field(
+        default=None,
+        description="Optional OMERO rendering metadata for visualization",
+    )

@@ -85,6 +85,7 @@ You may also implement and pass in your own `writer` function.  See the
         show_root_heading: true
         summary: false
         show_overloads: false
+        inherited_members: true
 
 ## Custom Writers
 

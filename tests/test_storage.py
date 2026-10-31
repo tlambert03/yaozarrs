@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pytest
+from pydantic import ValidationError
 
 from yaozarrs._zarr import open_group
 
@@ -197,6 +198,82 @@ def test_validate_valid_demo_storage_bf2raw_ome_group(write_demo_ome: Callable) 
         validate_zarr_store(path)
 
 
+def _strip_version(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _strip_version(v) for k, v in obj.items() if k != "version"}
+    return [_strip_version(v) for v in obj] if isinstance(obj, list) else obj
+
+
+@pytest.mark.parametrize("type", ["image", "labels", "plate", "image-with-labels"])
+def test_validate_v04_without_version(type: str, write_demo_ome: Callable) -> None:
+    """`version` is only a SHOULD in v0.4."""
+    path = write_demo_ome(type, version="0.4")
+    for zattrs in path.rglob(".zattrs"):
+        zattrs.write_text(json.dumps(_strip_version(json.loads(zattrs.read_text()))))
+
+    group = validate_zarr_store(path)
+    assert group.ome_version() == "0.4"
+
+
+def test_ome_version_ignores_top_level_keys_in_zarr_v3(tmp_path: Path) -> None:
+    """v0.4 is zarr v2 only, so these aren't OME metadata in a zarr v3 group."""
+    meta = {"zarr_format": 3, "node_type": "group", "attributes": {"plate": {}}}
+    (tmp_path / "zarr.json").write_text(json.dumps(meta))
+    assert open_group(tmp_path).ome_version() is None
+
+
+def test_validate_unknown_version(write_demo_ome: Callable) -> None:
+    path = write_demo_ome("image", version="0.4")
+    zattrs = path / ".zattrs"
+    attrs = json.loads(zattrs.read_text())
+    attrs["multiscales"][0]["version"] = "0.3"
+    zattrs.write_text(json.dumps(attrs))
+
+    with pytest.raises(StorageValidationError, match=r"version '0\.3'") as exc_info:
+        validate_zarr_store(path)
+    assert exc_info.value.errors()[0]["type"] == "unsupported_version"
+
+
+def _coerce_scale(zarr_json: Path) -> None:
+    """Make a scale in this image a string, which is only accepted by coercion."""
+    meta = json.loads(zarr_json.read_text())
+    dataset = meta["attributes"]["ome"]["multiscales"][0]["datasets"][0]
+    dataset["coordinateTransformations"][0]["scale"][0] = "1"
+    zarr_json.write_text(json.dumps(meta))
+
+
+def test_validate_strict_rejects_coerced_root_metadata(
+    write_demo_ome: Callable,
+) -> None:
+    path = write_demo_ome("image", version="0.5")
+    _coerce_scale(path / "zarr.json")
+
+    validate_zarr_store(path)
+    with pytest.raises(ValidationError):
+        validate_zarr_store(path, strict=True)
+
+
+def test_validate_strict_rejects_coerced_child_metadata(
+    write_demo_ome: Callable,
+) -> None:
+    path = write_demo_ome("plate", version="0.5")
+    _coerce_scale(path / "A" / "1" / "0" / "zarr.json")
+
+    # (the same group, to check that the cached result isn't reused)
+    group = open_group(path)
+    group.validate()
+    with pytest.raises(StorageValidationError):
+        group.validate(strict=True)
+
+
+@pytest.mark.parametrize("version", ["0.4", "0.5"])
+@pytest.mark.parametrize("type", ["image", "labels", "plate", "image-with-labels"])
+def test_validate_strict_accepts_valid_stores(
+    type: str, version: str, write_demo_ome: Callable
+) -> None:
+    validate_zarr_store(write_demo_ome(type, version=version), strict=True)
+
+
 def test_validate_null_storage(tmp_path: Path) -> None:
     """Test validation with intentionally broken storage."""
     with pytest.raises(OSError, match="No zarr metadata found"):
@@ -302,6 +379,22 @@ IMAGE_META = {"version": "0.5", "multiscales": [MULTI_SCALE]}
             update_meta(("A", "1"), ("attributes", "ome"), {}),
         ),
         StorageTestCase(
+            # the plate has several acquisitions, but the fields don't say which
+            StorageErrorType.field_acquisition_missing,
+            {"type": "plate"},
+            update_meta(
+                (),
+                ("attributes", "ome", "plate", "acquisitions"),
+                [{"id": 0}, {"id": 1}],
+            ),
+        ),
+        StorageTestCase(
+            # no "ome" key at all
+            StorageErrorType.well_invalid,
+            {"type": "plate"},
+            update_meta(("A", "1"), ("attributes",), {}),
+        ),
+        StorageTestCase(
             StorageErrorType.field_path_not_found,
             {"type": "plate"},
             lambda p: shutil.rmtree(p / "A" / "1" / "0"),
@@ -330,6 +423,12 @@ IMAGE_META = {"version": "0.5", "multiscales": [MULTI_SCALE]}
             StorageErrorType.label_image_invalid,
             {"type": "labels"},
             update_meta("annotations", ("attributes", "ome"), {}),
+        ),
+        StorageTestCase(
+            # no "ome" key at all
+            StorageErrorType.label_image_invalid,
+            {"type": "labels"},
+            update_meta("annotations", ("attributes",), {}),
         ),
         StorageTestCase(
             StorageErrorType.label_multiscale_count_mismatch,

@@ -1,0 +1,149 @@
+"""v0.6 documents are recognized by the version-agnostic entry points."""
+
+from __future__ import annotations
+
+import json
+from typing import TYPE_CHECKING
+
+import pytest
+
+import yaozarrs
+from yaozarrs import v05, v06
+from yaozarrs._storage import StorageValidationError
+from yaozarrs._tree import render_tree
+from yaozarrs._validation_warning import ValidationWarning
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+IMAGE_OME = {
+    "version": "0.6",
+    "multiscales": [
+        {
+            "coordinateSystems": [
+                {
+                    "name": "physical",
+                    "axes": [
+                        {"name": "y", "type": "space"},
+                        {"name": "x", "type": "space"},
+                    ],
+                }
+            ],
+            "datasets": [
+                {
+                    "path": "s0",
+                    "coordinateTransformations": [
+                        {
+                            "type": "scale",
+                            "scale": [1, 1],
+                            "input": {"path": "s0"},
+                            "output": {"name": "physical"},
+                        }
+                    ],
+                }
+            ],
+        }
+    ],
+}
+ZARR_JSON = {"zarr_format": 3, "node_type": "group", "attributes": {"ome": IMAGE_OME}}
+V05_AXES = [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]
+V05_DATASETS = [
+    {"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}
+]
+
+
+def test_validate_ome_json() -> None:
+    doc = yaozarrs.validate_ome_json(json.dumps(ZARR_JSON))
+    assert isinstance(doc, v06.OMEZarrGroupJSON)
+    assert isinstance(doc.attributes.ome, v06.Image)
+
+
+def test_validate_ome_object() -> None:
+    assert isinstance(yaozarrs.validate_ome_object(IMAGE_OME), v06.Image)
+    plate = {
+        "version": "0.6",
+        "plate": {
+            "columns": [{"name": "1"}],
+            "rows": [{"name": "A"}],
+            "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+        },
+    }
+    assert isinstance(yaozarrs.validate_ome_object(plate), v06.Plate)
+    # a v0.5 document still resolves to v05
+    v05_plate = {**plate, "version": "0.5"}
+    assert isinstance(yaozarrs.validate_ome_object(v05_plate), v05.Plate)
+    assert isinstance(yaozarrs.validate_ome_object({"ome": plate}), v06.OMEAttributes)
+
+
+def test_shared_class_warns_once() -> None:
+    # (v05 and v06 share PlateDef; validating against both would warn twice)
+    plate = {
+        "version": "0.6",
+        "plate": {
+            "columns": [{"name": "1"}],
+            "rows": [{"name": "A"}, {"name": "a"}],
+            "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+        },
+    }
+    with pytest.warns(ValidationWarning, match="differ only by case") as record:
+        assert isinstance(yaozarrs.validate_ome_object(plate), v06.Plate)
+    assert len(record) == 1
+
+
+@pytest.fixture
+def v06_store(tmp_path: Path) -> Path:
+    path = tmp_path / "image.zarr"
+    path.mkdir()
+    (path / "zarr.json").write_text(json.dumps(ZARR_JSON))
+    return path
+
+
+def test_zarr_group_ome_metadata(v06_store: Path) -> None:
+    pytest.importorskip("fsspec")
+    group = yaozarrs.open_group(v06_store)
+    assert group.ome_version() == "0.6"
+    assert isinstance(group.ome_metadata(), v06.Image)
+
+
+def test_zarr_group_prerelease_version(v06_store: Path) -> None:
+    pytest.importorskip("fsspec")
+    doc = {**ZARR_JSON, "attributes": {"ome": {**IMAGE_OME, "version": "0.6rc0"}}}
+    (v06_store / "zarr.json").write_text(json.dumps(doc))
+    with pytest.warns(ValidationWarning, match="pre-release"):
+        meta = yaozarrs.open_group(v06_store).ome_metadata()
+    assert isinstance(meta, v06.Image)
+
+
+def test_tree_annotation(v06_store: Path) -> None:
+    pytest.importorskip("fsspec")
+    assert "<- v06.Image" in render_tree(yaozarrs.open_group(v06_store))
+
+
+def test_storage_validation(v06_store: Path) -> None:
+    pytest.importorskip("fsspec")
+    # (the store holds metadata only, so the v0.6 validator finds no arrays)
+    with pytest.raises(StorageValidationError, match="dataset_path_not_found"):
+        yaozarrs.validate_zarr_store(v06_store)
+
+
+def test_dev4_dispatches_to_v06() -> None:
+    doc = {**ZARR_JSON, "attributes": {"ome": {**IMAGE_OME, "version": "0.6.dev4"}}}
+    with pytest.warns(ValidationWarning, match="pre-release"):
+        obj = yaozarrs.validate_ome_json(json.dumps(doc))
+    assert isinstance(obj, v06.OMEZarrGroupJSON)
+
+
+def test_version_required_in_json() -> None:
+    # [The `ome` object] MUST contain a `version` key
+    ome = {k: v for k, v in IMAGE_OME.items() if k != "version"}
+    with pytest.raises(ValueError, match="MUST contain a 'version' key"):
+        v06.Image.model_validate_json(json.dumps(ome))
+    with pytest.raises(ValueError, match="MUST contain a 'version' key"):
+        yaozarrs.validate_ome_json(json.dumps(ome), v06.Image)
+    # ... but in Python it has a default, and dumps always include it
+    image = v06.Image.model_validate(ome)
+    assert image.model_dump(exclude_unset=True)["version"] == "0.6"
+    v05_image = v05.Image.model_validate(
+        {"multiscales": [{"axes": V05_AXES, "datasets": V05_DATASETS}]}
+    )
+    assert json.loads(v05_image.model_dump_json(exclude_unset=True))["version"] == "0.5"

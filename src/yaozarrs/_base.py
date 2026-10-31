@@ -2,15 +2,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from pydantic import VERSION, BaseModel, ConfigDict, Field
+from pydantic import (
+    VERSION,
+    BaseModel,
+    ConfigDict,
+    Field,
+    model_serializer,
+    model_validator,
+)
 
 from yaozarrs._rules._fields import with_field_rules
 
 if TYPE_CHECKING:
-    from pydantic import GetCoreSchemaHandler
+    from pydantic import (
+        GetCoreSchemaHandler,
+        SerializerFunctionWrapHandler,
+        ValidationInfo,
+    )
     from pydantic_core import CoreSchema
 
-__all__ = ["_BaseModel"]
+__all__ = ["_BaseModel", "_OMEDocument"]
 
 # populate_by_name is deprecated in pydantic v2.11+ (removed in v3).
 # For >=2.11 use validate_by_name + validate_by_alias instead.
@@ -62,15 +73,39 @@ class _BaseModel(BaseModel):
             return super().model_dump(**kwargs)
 
 
+class _OMEDocument(_BaseModel):
+    """A top-level OME metadata document (the value of the "ome" key), with a version.
+
+    Its `version` has a default, so documents can be created in Python without one,
+    but JSON being validated must declare it.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _require_version_in_json(cls, data: Any, info: ValidationInfo) -> Any:
+        # [The `ome` object] MUST contain a `version` key
+        if info.mode == "json" and isinstance(data, dict) and "version" not in data:
+            raise ValueError("OME metadata MUST contain a 'version' key.")
+        return data
+
+    @model_serializer(mode="wrap")
+    def _always_dump_version(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        # (so that documents dumped with `exclude_unset` still declare their version)
+        return {"version": self.version, **handler(self)}
+
+
 class ZarrGroupModel(_BaseModel):
     """Base class for models that have a direct mapping to a file or URI.
 
-    e.g. v04 .zattrs or v05 zarr.json
+    e.g. v04 .zattrs or v05/v06 zarr.json
 
     See Also
     --------
-    v04.ZarrGroupJSON
-    v05.ZarrGroupJSON
+    v04.OMEZarrGroupJSON
+    v05.OMEZarrGroupJSON
+    v06.OMEZarrGroupJSON
     """
 
     uri: str | None = Field(

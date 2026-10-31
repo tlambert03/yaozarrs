@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AfterValidator, ConfigDict, Field
 
 from yaozarrs._base import _BaseModel
-from yaozarrs._rules import RuleCodes, rule_error
+from yaozarrs._rules import RuleCodes, rule_error, warn_rule
 
 
 class OmeroWindow(_BaseModel):
@@ -28,14 +28,29 @@ class OmeroWindow(_BaseModel):
     )
 
 
+_HEX6 = re.compile(r"[0-9A-Fa-f]{6}")
+
+
 def _valid_hex(value: str) -> str:
-    """Ensure a string is a valid 6-character hex color code."""
-    value = value.lstrip("#").upper()
-    if len(value) == 3:
-        value = "".join(2 * c for c in value)
-    if len(value) != 6 or not re.fullmatch(r"[0-9A-F]{6}", value):
-        raise rule_error("NGFF-OM-001", f"Invalid hex color code: {value}")
-    return value
+    """Ensure a string is a 6-digit hex color code, repairing obvious variants.
+
+    [color] is a string of 6 hexadecimal digits.  Valid values are returned unchanged
+    (case is preserved); obvious variants like "#ff0000" or "f00" are normalized, with
+    a warning (they don't conform to the spec).
+    """
+    if _HEX6.fullmatch(value):
+        return value
+    fixed = value.lstrip("#")
+    if len(fixed) == 3:
+        fixed = "".join(2 * c for c in fixed)
+    if not _HEX6.fullmatch(fixed):
+        raise rule_error("NGFF-OM-001", f"Invalid hex color code: {value!r}")
+    warn_rule(
+        "NGFF-OM-001",
+        f"Omero color {value!r} is not 6 hexadecimal digits; using {fixed!r}.",
+        stacklevel=2,
+    )
+    return fixed
 
 
 class OmeroChannel(_BaseModel):

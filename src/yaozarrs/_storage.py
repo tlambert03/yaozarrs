@@ -12,12 +12,15 @@ from typing_extensions import NotRequired, TypedDict
 from yaozarrs._rules import RuleWarning, rule_url
 from yaozarrs._validation_warning import ValidationWarning
 from yaozarrs._zarr import ZarrGroup, open_group
+from yaozarrs.v06._version import VERSIONS as V06_VERSIONS
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def validate_zarr_store(obj: ZarrGroup | str | Path | Any) -> ZarrGroup:
+def validate_zarr_store(
+    obj: ZarrGroup | str | Path | Any, *, strict: bool | None = None
+) -> ZarrGroup:
     """Validate both structure and metadata of an OME-Zarr hierarchy.
 
     !!!important
@@ -27,7 +30,7 @@ def validate_zarr_store(obj: ZarrGroup | str | Path | Any) -> ZarrGroup:
     of a complete OME-Zarr store.  This is the function used by the `yaozarrs validate`
     CLI command.
 
-    Currently only supports OME-Zarr version 0.5.
+    Supports OME-Zarr versions 0.4, 0.5 and 0.6.
 
     Parameters
     ----------
@@ -35,6 +38,9 @@ def validate_zarr_store(obj: ZarrGroup | str | Path | Any) -> ZarrGroup:
         The zarr store to validate. Can be a URI string, a Path, a parsed
         OMEZarrGroupJSON object, a ZarrGroup instance, or a zarr.Group object
         (for backwards compatibility).
+    strict : bool | None
+        If `True`, reject metadata that would otherwise be coerced to the right type
+        (e.g. `"1"` for an integer). By default, such metadata is accepted.
 
     Returns
     -------
@@ -62,18 +68,25 @@ def validate_zarr_store(obj: ZarrGroup | str | Path | Any) -> ZarrGroup:
         from yaozarrs.v04._storage import StorageValidatorV04
 
         Validator = StorageValidatorV04
+    elif ome_version in V06_VERSIONS:
+        from yaozarrs.v06._storage import StorageValidatorV06
+
+        Validator = StorageValidatorV06
 
     else:
-        raise NotImplementedError(
-            f"Structural validation for OME-Zarr version {ome_version} is "
-            "not implemented."
+        error = ValidationResult().add_error(
+            StorageErrorType.unsupported_version,
+            "YZ-000",
+            ("version",),
+            f"Unsupported OME-Zarr version {ome_version!r}",
         )
+        raise StorageValidationError(error.errors)
 
     # Capture RuntimeWarnings from pydantic validators during validation
     # and convert them to StorageValidationWarning
     with warnings.catch_warnings(record=True) as captured_warnings:
         warnings.filterwarnings("always", category=ValidationWarning)
-        result = Validator.validate_group(zarr_group)
+        result = Validator.validate_group(zarr_group, strict=strict)
 
     # prepend captured warnings to the result
     for w in captured_warnings:
@@ -335,14 +348,21 @@ class StorageErrorType(Enum):
     bf2raw_invalid_image = auto()
     bf2raw_no_images = auto()
     bf2raw_path_not_group = auto()
+    coordinate_system_not_found = auto()
+    coordinate_system_path_invalid = auto()
+    coordinate_system_path_not_found = auto()
     dataset_dimension_mismatch = auto()
+    dataset_dtype_mismatch = auto()
     dataset_not_array = auto()
     dataset_path_not_found = auto()
     dimension_names_missing = auto()
     dimension_names_mismatch = auto()
+    field_acquisition_invalid = auto()
+    field_acquisition_missing = auto()
     field_image_invalid = auto()
     field_path_not_found = auto()
     field_path_not_group = auto()
+    graph_not_connected = auto()
     label_dataset_count_mismatch = auto()
     label_image_invalid = auto()
     label_image_source_invalid = auto()
@@ -356,6 +376,11 @@ class StorageErrorType(Enum):
     series_invalid_image = auto()
     series_path_not_found = auto()
     series_path_not_group = auto()
+    transform_dimension_mismatch = auto()
+    transform_parameters_invalid = auto()
+    transform_parameters_location = auto()
+    transform_parameters_not_found = auto()
+    unsupported_version = auto()
     well_invalid = auto()
     well_path_not_found = auto()
     well_path_not_group = auto()

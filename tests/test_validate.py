@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 import yaozarrs
-from yaozarrs import v04, v05
+from yaozarrs import v04, v05, v06
 from yaozarrs._validation_warning import ValidationWarning
 
 AXES = [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]
@@ -26,6 +26,27 @@ V05_PLATE = {
     },
 }
 V04_IMAGE = {"multiscales": [{"version": "0.4", "axes": AXES, "datasets": DATASETS}]}
+V06_IMAGE = {
+    "version": "0.6",
+    "multiscales": [
+        {
+            "coordinateSystems": [{"name": "physical", "axes": AXES}],
+            "datasets": [
+                {
+                    "path": "0",
+                    "coordinateTransformations": [
+                        {
+                            "type": "scale",
+                            "scale": [1, 1],
+                            "input": {"path": "0"},
+                            "output": {"name": "physical"},
+                        }
+                    ],
+                }
+            ],
+        }
+    ],
+}
 
 
 def _zarr_json(ome: dict) -> dict:
@@ -50,6 +71,21 @@ def _zarr_json(ome: dict) -> dict:
 def test_dispatch(obj: dict, cls: type) -> None:
     assert isinstance(yaozarrs.validate_ome_object(obj), cls)
     assert isinstance(yaozarrs.validate_ome_json(json.dumps(obj)), cls)
+
+
+@pytest.mark.parametrize(
+    "obj, cls",
+    [
+        ({**V04_IMAGE, "image-label": {}}, v04.LabelImage),
+        ({**V05_IMAGE, "image-label": {}}, v05.LabelImage),
+        ({**V06_IMAGE, "image-label": {}}, v06.LabelImage),
+    ],
+    ids=["v04", "v05", "v06"],
+)
+def test_label_image_dumped_by_field_name(obj: dict, cls: type) -> None:
+    dumped = yaozarrs.validate_ome_object(obj).model_dump(by_alias=False)
+    assert "image_label" in dumped
+    assert isinstance(yaozarrs.validate_ome_object(dumped), cls)
 
 
 def test_validate_ome_uri(tmp_path: Any) -> None:
@@ -80,6 +116,27 @@ def test_errors_only_for_declared_version() -> None:
 @pytest.mark.parametrize(
     "obj",
     [
+        {"multiscales": [{"version": "0.3", "axes": AXES, "datasets": DATASETS}]},
+        {"well": {"version": "foo", "images": [{"path": "0"}]}},
+        {"version": "9.9", "well": {"images": [{"path": "0"}]}},
+        {"ome": {"version": "9.9", "well": {"images": [{"path": "0"}]}}},
+        {
+            "zarr_format": 3,
+            "node_type": "group",
+            "attributes": {"ome": {"version": "9.9", "series": ["0"]}},
+        },
+    ],
+)
+def test_unknown_version_is_rejected(obj: dict) -> None:
+    # (rather than being tried against other versions, which may ignore it)
+    with pytest.raises(ValidationError) as exc_info:
+        yaozarrs.validate_ome_object(obj)
+    assert exc_info.value.errors()[0]["type"] == "union_tag_invalid"
+
+
+@pytest.mark.parametrize(
+    "obj",
+    [
         None,
         [],
         "0.5",
@@ -94,3 +151,48 @@ def test_errors_only_for_declared_version() -> None:
 def test_malformed(obj: Any) -> None:
     with pytest.raises(ValidationError):
         yaozarrs.validate_ome_object(obj)
+
+
+COERCIBLE = [
+    {"well": {"images": [{"acquisition": "0", "path": "0"}]}},
+    {"version": "0.5", "well": {"images": [{"acquisition": "0", "path": "0"}]}},
+    {
+        "ome": {
+            "version": "0.6",
+            "well": {"images": [{"acquisition": "0", "path": "0"}]},
+        }
+    },
+    {
+        **V05_IMAGE,
+        "omero": {
+            "channels": [
+                {
+                    "color": "ff0000",
+                    "window": {"start": 0, "min": 0, "end": "100", "max": 255},
+                }
+            ]
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("obj", COERCIBLE)
+def test_strict_rejects_what_is_coerced_by_default(obj: dict) -> None:
+    yaozarrs.validate_ome_object(obj)
+    yaozarrs.validate_ome_json(json.dumps(obj))
+    with pytest.raises(ValidationError):
+        yaozarrs.validate_ome_object(obj, strict=True)
+    with pytest.raises(ValidationError):
+        yaozarrs.validate_ome_json(json.dumps(obj), strict=True)
+
+
+@pytest.mark.parametrize("obj", COERCIBLE)
+def test_coerced_input_is_never_output(obj: dict) -> None:
+    dumped = yaozarrs.validate_ome_object(obj).model_dump_json(exclude_unset=True)
+    yaozarrs.validate_ome_json(dumped, strict=True)
+
+
+@pytest.mark.parametrize("obj", [V04_IMAGE, V05_IMAGE, V05_PLATE, V06_IMAGE])
+def test_strict_accepts_valid_documents(obj: dict) -> None:
+    yaozarrs.validate_ome_object(obj, strict=True)
+    yaozarrs.validate_ome_json(json.dumps(obj), strict=True)

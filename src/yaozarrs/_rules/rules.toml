@@ -2433,3 +2433,35 @@ store = '''
   }
 }
 '''
+
+# TEMPORARY: placeholder for checks that came in with the merge of main.
+[rules.YZ-000]
+slug = 'unassigned'
+summary = 'A check that has no rule code yet.'
+severity = 'error'
+
+[rules.YZ-000.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "columns": [{"name": "1"}],
+          "rows": [{"name": "A"}],
+          "acquisitions": [{"id": 0}, {"id": 1}],
+          "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+        }
+      }
+    }
+  },
+  "A/1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "well": {"images": [{"path": "0"}]}}}
+  }
+}
+'''

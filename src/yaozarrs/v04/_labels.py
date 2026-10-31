@@ -142,7 +142,7 @@ class LabelsGroup(_BaseModel):
         ```
     """
 
-    labels: Annotated[list[str], MinLen(1), RuleCodes(missing="NGFF-LB-001")] = Field(
+    labels: Annotated[list[str], RuleCodes(missing="NGFF-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

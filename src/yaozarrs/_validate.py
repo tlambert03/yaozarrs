@@ -3,18 +3,30 @@ from typing import Annotated, Any, TypeAlias, TypeVar, overload
 
 from pydantic import Discriminator, Tag, TypeAdapter
 
-from . import v04, v05
+from . import v04, v05, v06
+from .v06._version import VERSIONS as V06_VERSIONS
 
-AnyOMEGroup: TypeAlias = v04.OMEZarrGroupJSON | v05.OMEZarrGroupJSON
-AnyOME: TypeAlias = AnyOMEGroup | v05.OMEMetadata | v05.OMEAttributes
+AnyOMEGroup: TypeAlias = (
+    v04.OMEZarrGroupJSON | v05.OMEZarrGroupJSON | v06.OMEZarrGroupJSON
+)
+AnyOME: TypeAlias = (
+    AnyOMEGroup
+    | v05.OMEMetadata
+    | v05.OMEAttributes
+    | v06.OMEMetadata
+    | v06.OMEAttributes
+)
 T = TypeVar("T", bound=AnyOME)
 
 # OME version strings -> the package that models them
-_VERSIONS = {"0.4": "v04", "0.5": "v05"}
+_VERSIONS = {"0.4": "v04", "0.5": "v05", **dict.fromkeys(V06_VERSIONS, "v06")}
 
 
 def _declared_version(obj: Any) -> str | None:
-    """Return the package for the OME version that `obj` declares (if known)."""
+    """Return the package for the OME version that `obj` declares (if any).
+
+    An unknown version returns a tag that matches no model, so that it gets rejected.
+    """
     if isinstance(obj, dict) and isinstance(obj.get("attributes"), dict):
         obj = obj["attributes"].get("ome")  # a zarr.json document
     elif isinstance(obj, dict) and "ome" in obj:
@@ -31,7 +43,9 @@ def _declared_version(obj: Any) -> str | None:
             if isinstance(inner, dict) and "version" in inner:
                 version = inner["version"]
                 break
-    return _VERSIONS.get(version) if isinstance(version, str) else None
+    if version is None:
+        return None
+    return _VERSIONS.get(str(version), f"version {version!r}")
 
 
 def _discriminate_group(obj: Any) -> str:
@@ -40,7 +54,7 @@ def _discriminate_group(obj: Any) -> str:
 
 def _discriminate_any(obj: Any) -> str:
     version = _declared_version(obj)
-    if version in (None, "v04"):
+    if version not in ("v05", "v06"):
         return version or "unknown"
     if "attributes" in obj:
         return f"{version}-group"
@@ -50,11 +64,12 @@ def _discriminate_any(obj: Any) -> str:
 # The default validation targets.  A document that declares a version is validated
 # only against that version's models: in a plain union, pydantic validates it against
 # every member (running their validators, and warnings, even for members that end up
-# failing), and lists every member's errors.  Documents without a (known) version are
-# tried against all of them.
+# failing), and lists every member's errors.  Documents without a version are tried
+# against all of them.
 _AnyOMEGroupByVersion: TypeAlias = Annotated[
     Annotated[v04.OMEZarrGroupJSON, Tag("v04")]
     | Annotated[v05.OMEZarrGroupJSON, Tag("v05")]
+    | Annotated[v06.OMEZarrGroupJSON, Tag("v06")]
     | Annotated[AnyOMEGroup, Tag("unknown")],
     Discriminator(_discriminate_group),
 ]
@@ -63,16 +78,23 @@ _AnyOMEByVersion: TypeAlias = Annotated[
     | Annotated[v05.OMEZarrGroupJSON, Tag("v05-group")]
     | Annotated[v05.OMEAttributes, Tag("v05-attributes")]
     | Annotated[v05.OMEMetadata, Tag("v05-metadata")]
+    | Annotated[v06.OMEZarrGroupJSON, Tag("v06-group")]
+    | Annotated[v06.OMEAttributes, Tag("v06-attributes")]
+    | Annotated[v06.OMEMetadata, Tag("v06-metadata")]
     | Annotated[AnyOME, Tag("unknown")],
     Discriminator(_discriminate_any),
 ]
 
 
 @overload
-def validate_ome_object(node: Any, cls: type[T]) -> T: ...
+def validate_ome_object(
+    node: Any, cls: type[T], *, strict: bool | None = None
+) -> T: ...
 @overload
-def validate_ome_object(node: Any) -> AnyOME: ...
-def validate_ome_object(node: Any, cls: type[T] | Any = None) -> T | AnyOME:
+def validate_ome_object(node: Any, *, strict: bool | None = None) -> AnyOME: ...
+def validate_ome_object(
+    node: Any, cls: type[T] | Any = None, *, strict: bool | None = None
+) -> T | AnyOME:
     """Validate any python object representing an OME-Zarr document or node.
 
     Parameters
@@ -82,6 +104,9 @@ def validate_ome_object(node: Any, cls: type[T] | Any = None) -> T | AnyOME:
     cls : type[T]
         The class to validate against. Must be a subclass of `BaseModel`.
         If not provided, defaults to `AnyOME`, meaning "any valid OME node object".
+    strict : bool | None
+        If `True`, reject input that would otherwise be coerced to the right type
+        (e.g. `"1"` for an integer). By default, such input is accepted.
 
     Returns
     -------
@@ -94,23 +119,30 @@ def validate_ome_object(node: Any, cls: type[T] | Any = None) -> T | AnyOME:
         If the validation fails.
     """
     adapter: TypeAdapter[T | AnyOME] = TypeAdapter(cls or _AnyOMEByVersion)
-    return adapter.validate_python(node)
+    return adapter.validate_python(node, strict=strict)
 
 
 @overload
-def validate_ome_json(data: str | bytes | bytearray, cls: type[T]) -> T: ...
-@overload
-def validate_ome_json(data: str | bytes | bytearray) -> AnyOME: ...
 def validate_ome_json(
-    data: str | bytes | bytearray, cls: type[T] | Any = None
+    data: str | bytes | bytearray, cls: type[T], *, strict: bool | None = None
+) -> T: ...
+@overload
+def validate_ome_json(
+    data: str | bytes | bytearray, *, strict: bool | None = None
+) -> AnyOME: ...
+def validate_ome_json(
+    data: str | bytes | bytearray,
+    cls: type[T] | Any = None,
+    *,
+    strict: bool | None = None,
 ) -> T | AnyOME:
     """Validate any ome-zarr JSON string or bytes literal.
 
     By default, this will validate `data` against all known OME JSON documents.
     This includes ome-zarr group documents for v04 (found at .zattrs in the zarr group)
-    and v05 (found at zarr.json in the zarr group).  For v05 objects, it also detects
-    data that would valid as the value of the `data["attributes"]["ome"]` key inside
-    a v05 zarr.json document.
+    and v05/v06 (found at zarr.json in the zarr group).  For v05 and v06 objects, it
+    also detects data that would be valid as the value of the
+    `data["attributes"]["ome"]` key inside a zarr.json document.
 
     Parameters
     ----------
@@ -119,6 +151,9 @@ def validate_ome_json(
     cls : type[T]
         The class to validate against. Must be a subclass of `BaseModel`.
         If not provided, defaults to `OMENode`, meaning any valid OME node object
+    strict : bool | None
+        If `True`, reject input that would otherwise be coerced to the right type
+        (e.g. `"1"` for an integer). By default, such input is accepted.
 
     Returns
     -------
@@ -131,15 +166,19 @@ def validate_ome_json(
         If the validation fails.
     """
     adapter: TypeAdapter[T | AnyOME] = TypeAdapter(cls or _AnyOMEByVersion)
-    return adapter.validate_json(data)
+    return adapter.validate_json(data, strict=strict)
 
 
 @overload
-def validate_ome_uri(uri: str | os.PathLike, cls: type[T]) -> T: ...
-@overload
-def validate_ome_uri(uri: str | os.PathLike) -> AnyOMEGroup: ...
 def validate_ome_uri(
-    uri: str | os.PathLike, cls: type[T] | Any = None
+    uri: str | os.PathLike, cls: type[T], *, strict: bool | None = None
+) -> T: ...
+@overload
+def validate_ome_uri(
+    uri: str | os.PathLike, *, strict: bool | None = None
+) -> AnyOMEGroup: ...
+def validate_ome_uri(
+    uri: str | os.PathLike, cls: type[T] | Any = None, *, strict: bool | None = None
 ) -> T | AnyOMEGroup:
     """Load and validate root metadata in a OME-Zarr group from a URI or local path.
 
@@ -163,12 +202,16 @@ def validate_ome_uri(
         a directory path, or a URL.
     cls : type[T]
         The class to validate against. Must be a subclass of `BaseModel`.
+    strict : bool | None
+        If `True`, reject input that would otherwise be coerced to the right type
+        (e.g. `"1"` for an integer). By default, such input is accepted.
 
     Returns
     -------
     AnyOME: T
-        An instance of `v05.OMEZarrGroupJSON`, `v04.OMEZarrGroupJSON`, or another
-        valid OME-Zarr node type, depending on the object detected.
+        An instance of `v06.OMEZarrGroupJSON`, `v05.OMEZarrGroupJSON`,
+        `v04.OMEZarrGroupJSON`, or another valid OME-Zarr node type, depending on the
+        object detected.
 
     Raises
     ------
@@ -180,6 +223,7 @@ def validate_ome_uri(
     from ._io import read_json_from_uri
 
     json_content, uri_str = read_json_from_uri(uri)
-    obj = validate_ome_json(json_content, cls or _AnyOMEGroupByVersion)  # type: ignore
+    cls = cls or _AnyOMEGroupByVersion
+    obj = validate_ome_json(json_content, cls, strict=strict)  # type: ignore
     obj.uri = uri_str
     return obj
