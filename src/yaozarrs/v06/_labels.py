@@ -42,7 +42,11 @@ class ImageLabel(_BaseModel):
     # JSON array describing color information for the unique label values.
     colors: Annotated[
         Annotated[UniqueList[LabelColor], MinLen(1)] | None,
-        RuleCodes(list="NGFF-IL-005"),
+        RuleCodes(
+            list="NGFF-IL-005",
+            too_short="NGFF-IL-014",
+            listItemsNotUnique="NGFF-IL-015",
+        ),
     ] = Field(
         default=None,
         description="Color mappings for label values, used for visualization",
@@ -50,7 +54,12 @@ class ImageLabel(_BaseModel):
     # the value of the `properties` key MUST be an array of JSON objects
     properties: Annotated[
         Annotated[UniqueList[LabelProperty], MinLen(1)] | None,
-        RuleCodes(list="NGFF-IL-009", object="NGFF-IL-009"),
+        RuleCodes(
+            list="NGFF-IL-009",
+            object="NGFF-IL-009",
+            too_short="NGFF-IL-016",
+            listItemsNotUnique="NGFF-IL-017",
+        ),
     ] = Field(
         default=None,
         description="Arbitrary metadata properties for individual label values",

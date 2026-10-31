@@ -91,7 +91,11 @@ class Column(_BaseModel):
 
     name: Annotated[
         str,
-        RuleCodes(missing="NGFF-PL-017", string_pattern_mismatch="NGFF-PL-018"),
+        RuleCodes(
+            missing="NGFF-PL-017",
+            str="NGFF-PL-036",
+            string_pattern_mismatch="NGFF-PL-018",
+        ),
     ] = Field(
         description="Column identifier (typically numeric, e.g., '1', '2', '3')",
         pattern=r"^[A-Za-z0-9]+$",
@@ -185,6 +189,7 @@ class PlateDef(_BaseModel):
             missing="NGFF-PL-015",
             list="NGFF-PL-016",
             object="NGFF-PL-016",
+            too_short="NGFF-PL-037",
             listItemsNotUnique="NGFF-PL-019",
         ),
     ] = Field(description="Column definitions for the plate grid")
@@ -195,13 +200,20 @@ class PlateDef(_BaseModel):
             missing="NGFF-PL-022",
             list="NGFF-PL-023",
             object="NGFF-PL-023",
+            too_short="NGFF-PL-038",
             listItemsNotUnique="NGFF-PL-027",
         ),
     ] = Field(description="Row definitions for the plate grid")
     wells: Annotated[
         UniqueList[PlateWell],
         MinLen(1),
-        RuleCodes(missing="NGFF-PL-028", list="NGFF-PL-029", object="NGFF-PL-029"),
+        RuleCodes(
+            missing="NGFF-PL-028",
+            list="NGFF-PL-029",
+            object="NGFF-PL-029",
+            too_short="NGFF-PL-039",
+            listItemsNotUnique="NGFF-PL-040",
+        ),
     ] = Field(
         description="List of all wells present in this plate with their grid positions"
     )
@@ -277,7 +289,13 @@ class WellDef(_BaseModel):
     images: Annotated[
         UniqueList[FieldOfView],
         MinLen(1),
-        RuleCodes(missing="NGFF-WL-004", list="NGFF-WL-005", object="NGFF-WL-005"),
+        RuleCodes(
+            missing="NGFF-WL-004",
+            list="NGFF-WL-005",
+            object="NGFF-WL-005",
+            too_short="NGFF-WL-012",
+            listItemsNotUnique="NGFF-WL-002",
+        ),
     ] = Field(
         description="List of all fields-of-view imaged in this well",
     )

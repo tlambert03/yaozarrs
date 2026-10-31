@@ -2671,6 +2671,42 @@ store = '''
 }
 '''
 
+[rules.NGFF-CT-044]
+slug = 'scale-positive'
+level = 'MUST'
+summary = 'Values in a `scale` array must be greater than 0.'
+introduced = '0.6'
+severity = 'warning'
+notes = 'The JSON schema requires this of every `scale`, but the prose only says values SHOULD be non-zero (NGFF-CT-022) and allows negative ones. The spec editor confirmed that only positive values are meant for dataset scales (ome/ngff#637), so yaozarrs warns, and only for those.'
+
+[[rules.NGFF-CT-044.sources]]
+quote = '"type": "number", "exclusiveMinimum": 0'
+schema = 'coordinate_transformations.schema'
+lines = { "0.6" = [195, 196] }
+
+[rules.NGFF-CT-044.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [-1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
+'''
+
+[rules.NGFF-CT-045]
+slug = 'project-axis-fields'
+level = 'MUST'
+summary = 'A `projectAxis` transformation must have `droppedInputs` or `createdOutputs`.'
+introduced = '0.6'
+
+[[rules.NGFF-CT-045.sources]]
+quote = '"anyOf": [ {"required": ["droppedInputs"]}, {"required": ["createdOutputs"]} ]'
+schema = 'coordinate_transformations.schema'
+lines = { "0.6" = [176, 179] }
+
+[rules.NGFF-CT-045.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-OM
 # ------------------------------------------------------------------------------
@@ -2703,8 +2739,8 @@ json = '''
 slug = 'omero-channels-present'
 level = 'MUST'
 summary = '`omero` metadata, if present, must contain `channels`.'
-introduced = '0.5'
-notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+introduced = '0.4'
+notes = 'The 0.4 spec only shows the omero fields in an example; its JSON schema states this requirement.'
 
 [[rules.NGFF-OM-002.sources]]
 quote = 'The "omero" metadata is optional, but if present it MUST contain the field "channels"'
@@ -2713,6 +2749,11 @@ lines = { "0.5" = [384, 384] }
 [[rules.NGFF-OM-002.sources]]
 quote = 'The `omero` metadata is optional, but if present it MUST contain the field `channels`'
 lines = { "0.6" = [1454, 1454] }
+
+[[rules.NGFF-OM-002.sources]]
+quote = '"required": [ "channels" ]'
+schema = 'image.schema'
+lines = { "0.4" = [104, 106] }
 
 [rules.NGFF-OM-002.example]
 model = 'Omero'
@@ -2724,8 +2765,8 @@ json = '''
 slug = 'omero-channel-color-present'
 level = 'MUST'
 summary = 'Each omero channel must contain `color`.'
-introduced = '0.5'
-notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+introduced = '0.4'
+notes = 'The 0.4 spec only shows the omero fields in an example; its JSON schema states this requirement.'
 
 [[rules.NGFF-OM-003.sources]]
 quote = 'Each dictionary in "channels" MUST contain the field "color"'
@@ -2734,6 +2775,11 @@ lines = { "0.5" = [385, 385] }
 [[rules.NGFF-OM-003.sources]]
 quote = 'Each object in `channels` MUST contain the field `color`'
 lines = { "0.6" = [1456, 1456] }
+
+[[rules.NGFF-OM-003.sources]]
+quote = '"required": [ "window", "color" ]'
+schema = 'image.schema'
+lines = { "0.4" = [97, 100] }
 
 [rules.NGFF-OM-003.example]
 model = 'OmeroChannel'
@@ -2745,8 +2791,8 @@ json = '''
 slug = 'omero-channel-window-present'
 level = 'MUST'
 summary = 'Each omero channel must contain `window`.'
-introduced = '0.5'
-notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+introduced = '0.4'
+notes = 'The 0.4 spec only shows the omero fields in an example; its JSON schema states this requirement.'
 
 [[rules.NGFF-OM-004.sources]]
 quote = 'Each dictionary in "channels" MUST contain the field "window"'
@@ -2755,6 +2801,11 @@ lines = { "0.5" = [386, 386] }
 [[rules.NGFF-OM-004.sources]]
 quote = 'Each object in `channels` MUST contain the field `window`'
 lines = { "0.6" = [1458, 1458] }
+
+[[rules.NGFF-OM-004.sources]]
+quote = '"required": [ "window", "color" ]'
+schema = 'image.schema'
+lines = { "0.4" = [97, 100] }
 
 [rules.NGFF-OM-004.example]
 model = 'OmeroChannel'
@@ -2766,8 +2817,8 @@ json = '''
 slug = 'omero-window-min-max-present'
 level = 'MUST'
 summary = 'An omero channel `window` must contain `min` and `max`.'
-introduced = '0.5'
-notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+introduced = '0.4'
+notes = 'The 0.4 spec only shows the omero fields in an example; its JSON schema states this requirement.'
 
 [[rules.NGFF-OM-005.sources]]
 quote = 'The field "window" MUST contain the fields "min" and "max"'
@@ -2776,6 +2827,11 @@ lines = { "0.5" = [387, 387] }
 [[rules.NGFF-OM-005.sources]]
 quote = 'The field `window` MUST contain the fields `min` and `max`'
 lines = { "0.6" = [1460, 1460] }
+
+[[rules.NGFF-OM-005.sources]]
+quote = '"required": [ "start", "min", "end", "max" ]'
+schema = 'image.schema'
+lines = { "0.4" = [77, 82] }
 
 [rules.NGFF-OM-005.example]
 model = 'OmeroWindow'
@@ -2787,8 +2843,8 @@ json = '''
 slug = 'omero-window-start-end-present'
 level = 'MUST'
 summary = 'An omero channel `window` must contain `start` and `end`.'
-introduced = '0.5'
-notes = 'The 0.4 spec describes the omero fields without RFC 2119 keywords, but yaozarrs uses the same omero model for 0.4 documents.'
+introduced = '0.4'
+notes = 'The 0.4 spec only shows the omero fields in an example; its JSON schema states this requirement.'
 
 [[rules.NGFF-OM-006.sources]]
 quote = 'It MUST also contain the fields "start" and "end"'
@@ -2797,6 +2853,11 @@ lines = { "0.5" = [388, 388] }
 [[rules.NGFF-OM-006.sources]]
 quote = 'It MUST also contain the fields `start` and `end`'
 lines = { "0.6" = [1462, 1462] }
+
+[[rules.NGFF-OM-006.sources]]
+quote = '"required": [ "start", "min", "end", "max" ]'
+schema = 'image.schema'
+lines = { "0.4" = [77, 82] }
 
 [rules.NGFF-OM-006.example]
 model = 'OmeroWindow'
@@ -3130,7 +3191,7 @@ slug = 'plate-columns-array'
 level = 'MUST'
 summary = 'Plate `columns` must be a list of objects.'
 introduced = '0.4'
-notes = "yaozarrs also requires at least one entry (from the JSON schema); those errors don't carry this code."
+notes = 'An empty list is NGFF-PL-037.'
 
 [[rules.NGFF-PL-016.sources]]
 quote = '`columns` key whose value MUST be a list of JSON objects defining the columns of the plate'
@@ -3284,7 +3345,7 @@ slug = 'plate-rows-array'
 level = 'MUST'
 summary = 'Plate `rows` must be a list of objects.'
 introduced = '0.4'
-notes = "yaozarrs also requires at least one entry (from the JSON schema); those errors don't carry this code."
+notes = 'An empty list is NGFF-PL-038.'
 
 [[rules.NGFF-PL-023.sources]]
 quote = '`rows` key whose value MUST be a list of JSON objects defining the rows of the plate'
@@ -3401,7 +3462,7 @@ slug = 'plate-wells-array'
 level = 'MUST'
 summary = 'Plate `wells` must be a list of objects.'
 introduced = '0.4'
-notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+notes = 'An empty list is NGFF-PL-039, and identical entries are NGFF-PL-040.'
 
 [[rules.NGFF-PL-029.sources]]
 quote = '`wells` key whose value MUST be a list of JSON objects defining the wells of the plate'
@@ -3532,6 +3593,90 @@ json = '''
 {"path": "A/1", "rowIndex": 0, "columnIndex": "A"}
 '''
 
+[rules.NGFF-PL-036]
+slug = 'column-name-string'
+level = 'MUST'
+summary = 'A plate column `name` must be a string.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-036.sources]]
+quote = 'Each column object MUST contain a `name` key whose value is a string specifying the column name.'
+lines = { "0.4" = [545, 546], "0.5" = [480, 481], "0.6" = [1613, 1613] }
+
+[rules.NGFF-PL-036.example]
+model = 'Column'
+json = '''
+{"name": 1}
+'''
+
+[rules.NGFF-PL-037]
+slug = 'plate-columns-nonempty'
+level = 'MUST'
+summary = 'Plate `columns` must have at least one entry.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-037.sources]]
+quote = '"required": [ "name" ] }, "minItems": 1, "uniqueItems": true }, "rows": {'
+schema = 'plate.schema'
+lines = { "0.4" = [79, 86], "0.5" = [76, 83], "0.6" = [76, 83] }
+
+[rules.NGFF-PL-037.example]
+model = 'PlateDef'
+json = '''
+{"columns": [], "rows": [{"name": "A"}], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
+'''
+
+[rules.NGFF-PL-038]
+slug = 'plate-rows-nonempty'
+level = 'MUST'
+summary = 'Plate `rows` must have at least one entry.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-038.sources]]
+quote = '"required": [ "name" ] }, "minItems": 1, "uniqueItems": true }, "wells": {'
+schema = 'plate.schema'
+lines = { "0.4" = [98, 105], "0.5" = [95, 102], "0.6" = [95, 102] }
+
+[rules.NGFF-PL-038.example]
+model = 'PlateDef'
+json = '''
+{"columns": [{"name": "1"}], "rows": [], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
+'''
+
+[rules.NGFF-PL-039]
+slug = 'plate-wells-nonempty'
+level = 'MUST'
+summary = 'Plate `wells` must have at least one entry.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-039.sources]]
+quote = '"columnIndex" ] }, "minItems": 1, "uniqueItems": true }'
+schema = 'plate.schema'
+lines = { "0.4" = [128, 133], "0.5" = [127, 132], "0.6" = [127, 132] }
+
+[rules.NGFF-PL-039.example]
+model = 'PlateDef'
+json = '''
+{"columns": [{"name": "1"}], "rows": [{"name": "A"}], "wells": []}
+'''
+
+[rules.NGFF-PL-040]
+slug = 'plate-wells-unique'
+level = 'MUST'
+summary = 'Plate `wells` must not contain identical entries.'
+introduced = '0.4'
+
+[[rules.NGFF-PL-040.sources]]
+quote = '"columnIndex" ] }, "minItems": 1, "uniqueItems": true }'
+schema = 'plate.schema'
+lines = { "0.4" = [128, 133], "0.5" = [127, 132], "0.6" = [127, 132] }
+
+[rules.NGFF-PL-040.example]
+model = 'PlateDef'
+json = '''
+{"columns": [{"name": "1"}], "rows": [{"name": "A"}], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}, {"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
+'''
+
 # ------------------------------------------------------------------------------
 # NGFF-WL
 # ------------------------------------------------------------------------------
@@ -3616,7 +3761,7 @@ slug = 'well-images-array'
 level = 'MUST'
 summary = 'Well `images` must be a list of objects.'
 introduced = '0.4'
-notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+notes = 'An empty list is NGFF-WL-012, and identical entries are NGFF-WL-002.'
 
 [[rules.NGFF-WL-005.sources]]
 quote = '`images` key whose value MUST be a list of JSON objects specifying all fields of views for a given well'
@@ -3837,6 +3982,23 @@ lines = { "0.6" = [1682, 1682] }
 model = 'FieldOfView'
 json = '''
 {"path": "__x"}
+'''
+
+[rules.NGFF-WL-012]
+slug = 'well-images-nonempty'
+level = 'MUST'
+summary = 'Well `images` must have at least one entry.'
+introduced = '0.4'
+
+[[rules.NGFF-WL-012.sources]]
+quote = '"required": [ "path" ] }, "minItems": 1, "uniqueItems": true }'
+schema = 'well.schema'
+lines = { "0.4" = [27, 33], "0.5" = [31, 37], "0.6" = [38, 44] }
+
+[rules.NGFF-WL-012.example]
+model = 'WellDef'
+json = '''
+{"images": []}
 '''
 
 # ------------------------------------------------------------------------------
@@ -4510,12 +4672,17 @@ store = '''
 slug = 'image-label-colors-array'
 level = 'MUST'
 summary = '`image-label` `colors` must be an array.'
-introduced = '0.5'
-notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+introduced = '0.4'
+notes = 'The 0.4 spec states this without a keyword. An empty list is NGFF-IL-014, and identical entries are NGFF-IL-015.'
 
 [[rules.NGFF-IL-005.sources]]
 quote = 'a `colors` key, whose value MUST be a JSON array'
 lines = { "0.5" = [426, 427], "0.6" = [1503, 1504] }
+
+[[rules.NGFF-IL-005.sources]]
+quote = 'The `colors` key defines a list of JSON objects describing the unique label values.'
+implied = true
+lines = { "0.4" = [465, 466] }
 
 [rules.NGFF-IL-005.example]
 model = 'ImageLabel'
@@ -4563,11 +4730,17 @@ json = '''
 slug = 'label-color-rgba'
 level = 'MUST'
 summary = "A `colors` entry's `rgba`, if present, must be an array of four integers from 0 to 255."
-introduced = '0.5'
+introduced = '0.4'
+notes = 'The 0.4 spec states this value without a binding keyword: its MAY is about the key being present.'
 
 [[rules.NGFF-IL-008.sources]]
 quote = 'the objects in this array MAY contain an `rgba` key whose value MUST be an array of four integers between 0 and 255, inclusive.'
 lines = { "0.5" = [432, 433], "0.6" = [1509, 1510] }
+
+[[rules.NGFF-IL-008.sources]]
+quote = 'the "rgba" key MAY be present, the value for which is an RGBA unsigned-int 4-tuple: `[uint8, uint8, uint8, uint8]`'
+implied = true
+lines = { "0.4" = [467, 468] }
 
 [rules.NGFF-IL-008.example]
 model = 'LabelColor'
@@ -4579,12 +4752,17 @@ json = '''
 slug = 'image-label-properties-array'
 level = 'MUST'
 summary = '`image-label` `properties` must be an array of objects.'
-introduced = '0.5'
-notes = "yaozarrs also requires at least one entry, and unique entries (from the JSON schema); those errors don't carry this code."
+introduced = '0.4'
+notes = 'The 0.4 spec states this without a keyword. An empty list is NGFF-IL-016, and identical entries are NGFF-IL-017.'
 
 [[rules.NGFF-IL-009.sources]]
 quote = 'the value of the `properties` key MUST be an array of JSON objects'
 lines = { "0.5" = [439, 439], "0.6" = [1517, 1517] }
+
+[[rules.NGFF-IL-009.sources]]
+quote = 'The `properties` key defines a list of JSON objects which also describes the unique label values.'
+implied = true
+lines = { "0.4" = [475, 476] }
 
 [rules.NGFF-IL-009.example]
 model = 'ImageLabel'
@@ -4632,11 +4810,17 @@ json = '''
 slug = 'image-label-source-object'
 level = 'MUST'
 summary = '`image-label` `source` must be an object.'
-introduced = '0.5'
+introduced = '0.4'
+notes = 'The 0.4 spec states this without a keyword.'
 
 [[rules.NGFF-IL-012.sources]]
 quote = 'The value of the `source` key MUST be a JSON object'
 lines = { "0.5" = [444, 444], "0.6" = [1524, 1524] }
+
+[[rules.NGFF-IL-012.sources]]
+quote = 'The `source` key is an optional dictionary which contains information on the image the label is associated with.'
+implied = true
+lines = { "0.4" = [481, 482] }
 
 [rules.NGFF-IL-012.example]
 model = 'ImageLabel'
@@ -4648,16 +4832,90 @@ json = '''
 slug = 'image-label-source-image-string'
 level = 'MUST'
 summary = '`image-label` `source.image`, if present, must be a string.'
-introduced = '0.5'
+introduced = '0.4'
+notes = 'The 0.4 spec states this without a binding keyword: its MAY is about the key being present.'
 
 [[rules.NGFF-IL-013.sources]]
 quote = 'This object MAY include a key `image`, whose value MUST be a string'
 lines = { "0.5" = [445, 445], "0.6" = [1525, 1525] }
 
+[[rules.NGFF-IL-013.sources]]
+quote = 'If included it MAY include a key `image` whose value is the relative path to a Zarr image group.'
+implied = true
+lines = { "0.4" = [482, 483] }
+
 [rules.NGFF-IL-013.example]
 model = 'LabelSource'
 json = '''
 {"image": 1}
+'''
+
+[rules.NGFF-IL-014]
+slug = 'image-label-colors-nonempty'
+level = 'MUST'
+summary = '`image-label` `colors`, if present, must have at least one entry.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-014.sources]]
+quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, "properties": {'
+schema = 'label.schema'
+lines = { "0.5" = [54, 61], "0.6" = [54, 61] }
+
+[rules.NGFF-IL-014.example]
+model = 'ImageLabel'
+json = '''
+{"colors": []}
+'''
+
+[rules.NGFF-IL-015]
+slug = 'image-label-colors-unique'
+level = 'MUST'
+summary = '`image-label` `colors` must not contain identical entries.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-015.sources]]
+quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, "properties": {'
+schema = 'label.schema'
+lines = { "0.5" = [54, 61], "0.6" = [54, 61] }
+
+[rules.NGFF-IL-015.example]
+model = 'ImageLabel'
+json = '''
+{"colors": [{"label-value": 1}, {"label-value": 1}]}
+'''
+
+[rules.NGFF-IL-016]
+slug = 'image-label-properties-nonempty'
+level = 'MUST'
+summary = '`image-label` `properties`, if present, must have at least one entry.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-016.sources]]
+quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, "source": {'
+schema = 'label.schema'
+lines = { "0.5" = [72, 79], "0.6" = [72, 79] }
+
+[rules.NGFF-IL-016.example]
+model = 'ImageLabel'
+json = '''
+{"properties": []}
+'''
+
+[rules.NGFF-IL-017]
+slug = 'image-label-properties-unique'
+level = 'MUST'
+summary = '`image-label` `properties` must not contain identical entries.'
+introduced = '0.5'
+
+[[rules.NGFF-IL-017.sources]]
+quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, "source": {'
+schema = 'label.schema'
+lines = { "0.5" = [72, 79], "0.6" = [72, 79] }
+
+[rules.NGFF-IL-017.example]
+model = 'ImageLabel'
+json = '''
+{"properties": [{"label-value": 1}, {"label-value": 1}]}
 '''
 
 # ------------------------------------------------------------------------------
@@ -4830,12 +5088,17 @@ store = '''
 slug = 'ome-version-present'
 level = 'MUST'
 summary = 'The `ome` object must contain a `version` key.'
-introduced = '0.6'
-notes = 'yaozarrs also requires it in JSON documents for 0.5, where the spec only says that the version is denoted by this attribute.'
+introduced = '0.5'
+notes = 'The 0.5 spec only says that the version is denoted by this attribute, without a keyword.'
 
 [[rules.NGFF-GN-001.sources]]
 quote = 'object that MUST contain a `version` key,'
 lines = { "0.6" = [181, 181] }
+
+[[rules.NGFF-GN-001.sources]]
+quote = 'The version of the OME-Zarr Metadata is denoted as a string in the `version` attribute within the `ome` namespace.'
+implied = true
+lines = { "0.5" = [163, 163] }
 
 [rules.NGFF-GN-001.example]
 model = 'Image'
@@ -4968,18 +5231,6 @@ store = '''
 }
 '''
 
-[rules.YZ-004]
-slug = 'dataset-scale-positive'
-summary = "A dataset's `scale` values should be positive, as they are pixel sizes."
-severity = 'warning'
-notes = 'The 0.6 JSON schema requires values > 0, and the spec editor confirmed that only positive values are meant (ome/ngff#637), but the prose only says they should be non-zero (NGFF-CT-022).'
-
-[rules.YZ-004.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [-1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
-'''
-
 [rules.YZ-005]
 slug = 'version-prerelease'
 summary = 'The document declares a pre-release of a spec version.'
@@ -5107,14 +5358,3 @@ store = '''
 }
 '''
 
-[rules.YZ-008]
-slug = 'project-axis-fields'
-summary = 'A `projectAxis` transformation must have `droppedInputs` or `createdOutputs`.'
-severity = 'error'
-notes = "Required by the 0.6 JSON schema; the prose doesn't say so."
-
-[rules.YZ-008.examples."0.6"]
-model = 'ProjectAxisTransformation'
-json = '''
-{}
-'''

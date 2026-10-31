@@ -273,7 +273,8 @@ def _download(url: str) -> str:
 def cmd_fetch(_: argparse.Namespace) -> int:
     """Download the pinned spec sources into `tests/spec_sources/`."""
     SPEC_SOURCES.mkdir(parents=True, exist_ok=True)
-    for doc in SPEC_DOCS.values():
+    cited = {src.doc for rule in RULES.values() for src in rule.sources}
+    for doc in sorted({*SPEC_DOCS.values(), *cited}, key=lambda d: d.cache_name):
         dest = SPEC_SOURCES / doc.cache_name
         if dest.exists():
             print(f"exists: {dest.relative_to(ROOT)}")
@@ -301,7 +302,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     for code, entry in doc["rules"].items():  # type: ignore[union-attr]
         for src in entry.get("sources", []):
             for version in list(src["lines"]):
-                spans = find_quote(spec_text(SPEC_DOCS[version]), src["quote"])
+                spec = SPEC_DOCS[version]
+                if "schema" in src:
+                    spec = spec.schema(src["schema"])
+                spans = find_quote(spec_text(spec), src["quote"])
                 if len(spans) == 1:
                     src["lines"][version] = list(spans[0])
                 else:
@@ -317,9 +321,10 @@ def cmd_relocate(args: argparse.Namespace) -> int:
         f"https://raw.githubusercontent.com/{args.repo}/{args.ref}/{args.path}"
     )
     for rule in RULES.values():
-        if not rule.sources or rule.removed:
+        prose = [src for src in rule.sources if not src.is_schema]
+        if not prose or rule.removed:
             continue
-        src = rule.sources[-1]
+        src = prose[-1]
         spans = find_quote(text, src.quote)
         status = f"found at {spans}" if spans else "NOT FOUND (changed or removed?)"
         print(f"{rule.code} ({src.doc.version} quote): {status}")
@@ -419,6 +424,7 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
                     if src.implied
                     else []
                 ),
+                *(["*Stated in the JSON schema.*", ""] if src.is_schema else []),
                 f"[`{src.doc.repo}@{src.doc.tag}` · `{src.doc.path}` {where}]"
                 f"({src.permalink})",
                 "",
@@ -437,7 +443,8 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "[NGFF specification](https://ngff.openmicroscopy.org/). Each code links to "
         "the exact text in the spec that supports it, for each spec version.",
         "",
-        "- `NGFF-<AREA>-<NNN>` codes refer to statements in the NGFF spec.",
+        "- `NGFF-<AREA>-<NNN>` codes refer to statements in the NGFF spec or its JSON "
+        "schemas.",
         "- `YZ-<NNN>` codes are checks that yaozarrs adds beyond the spec.",
         "",
         "Codes are permanent: a code is never renumbered or reused. If a statement "

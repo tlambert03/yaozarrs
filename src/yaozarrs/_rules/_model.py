@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 Level = Literal["MUST", "MUST NOT", "SHOULD", "SHOULD NOT", "MAY"]
@@ -30,8 +30,17 @@ class SpecDoc:
     @property
     def cache_name(self) -> str:
         """File name of the vendored copy in `tests/spec_sources/`."""
+        repo = self.repo.replace("/", "-")
+        if self.path.endswith(".schema"):
+            return f"{repo}-{self.tag}-{self.path.rsplit('/', 1)[-1]}"
         suffix = self.path.rsplit(".", 1)[-1]
-        return f"{self.repo.replace('/', '-')}-{self.tag}.{suffix}"
+        return f"{repo}-{self.tag}.{suffix}"
+
+    def schema(self, name: str) -> SpecDoc:
+        """Return the JSON schema file `name` of this spec version."""
+        folder = self.path.rpartition("/")[0]
+        path = f"{folder}/schemas/{name}" if folder else f"schemas/{name}"
+        return replace(self, path=path)
 
 
 @dataclass(frozen=True)
@@ -44,6 +53,11 @@ class SpecSource:
     # the statement is a requirement, but this version states it without an
     # RFC 2119 keyword (the rule's `notes` say why it counts)
     implied: bool = False
+
+    @property
+    def is_schema(self) -> bool:
+        """Whether this quotes one of the spec's JSON schemas, rather than its prose."""
+        return self.doc.path.endswith(".schema")
 
     @property
     def permalink(self) -> str:

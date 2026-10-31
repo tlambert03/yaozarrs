@@ -51,15 +51,8 @@ KNOWN_GAPS = {
 }
 # yaozarrs checks the rule in a version whose spec doesn't state it.
 KNOWN_OVERREACH = {
-    # shared omero model; 0.4 describes omero without RFC 2119 keywords
+    # shared omero model; the 0.4 schema only requires `color` to be a string
     ("NGFF-OM-001", "0.4"),
-    ("NGFF-OM-002", "0.4"),
-    ("NGFF-OM-003", "0.4"),
-    ("NGFF-OM-004", "0.4"),
-    ("NGFF-OM-005", "0.4"),
-    ("NGFF-OM-006", "0.4"),
-    # shared base model; 0.5 only says the version "is denoted as a string"
-    ("NGFF-GN-001", "0.5"),
 }
 
 
@@ -91,7 +84,11 @@ def test_rule_fields(rule: Rule) -> None:
         assert all(v < Version(rule.removed) for v in versions)
     for src in rule.sources:
         assert src.doc.version in TRACKED_VERSIONS
-        if src.implied:
+        if src.is_schema:
+            # schemas have no keywords: base schemas are MUST, strict schemas SHOULD
+            strict = src.doc.path.rsplit("/", 1)[-1].startswith("strict_")
+            assert rule.level == ("SHOULD" if strict else "MUST")
+        elif src.implied:
             assert rule.notes, "explain in `notes` why a keyword-less quote counts"
         else:
             assert re.search(rf"\b{rule.level}\b", src.quote), (
@@ -172,6 +169,16 @@ def test_known_exceptions_have_examples() -> None:
 # ---------------------------------------------------------------------------
 # messages and docs
 # ---------------------------------------------------------------------------
+
+
+def test_schema_source() -> None:
+    src = next(s for s in get_rule("NGFF-CT-045").sources)
+    assert src.is_schema
+    assert src.doc.path == "schemas/coordinate_transformations.schema"
+    assert f"/blob/{src.doc.sha}/schemas/coordinate" in src.permalink
+    v4 = next(s for s in get_rule("NGFF-PL-037").sources if s.doc.version == "0.4")
+    assert v4.doc.path == "0.4/schemas/plate.schema"
+    assert v4.doc.cache_name == "ome-ngff-0.4.1-plate.schema"
 
 
 def test_rule_warning_filterable() -> None:

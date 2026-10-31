@@ -19,7 +19,7 @@ points at one normative statement in the NGFF spec. The pieces are:
   or a wrong type, a rule code; see "Field-shape rules" below).
 - `scripts/ngff_rules.py`: `fetch`, `check [--fix]`, `relocate`, `coverage`, and
   `docs`.
-- `tests/spec_sources/`: vendored spec files at the pinned commits.
+- `tests/spec_sources/`: vendored spec files and cited JSON schemas at the pinned commits.
 - `tests/test_rules.py`: integrity tests, and the coverage test. The coverage test runs
   every example against every version module and expects it to fire exactly in the
   versions whose spec states the rule, except for the `KNOWN_GAPS` and
@@ -64,6 +64,13 @@ add `[rules.<CODE>.examples."<version>"]`, in that version's own format. A rule 
 only exists in one version has only that entry. Model examples are validated as JSON
 (`model_validate_json`), so documents with a `version` field need one in the example.
 
+A requirement that only a JSON schema in the spec repo states is still an `NGFF-` rule.
+Add `schema = '<file>.schema'` to its `sources` block, and quote the schema (the file is
+found in that version's `schemas/` folder, and `fetch` vendors it). A base schema means
+`level = 'MUST'`, and a `strict_*.schema` means `level = 'SHOULD'`. If a schema and the
+prose disagree, keep yaozarrs' behavior (use `severity` if it only warns), and describe
+the disagreement in `notes`.
+
 Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error`),
 `status` (`stable` by default), `removed`, `supersedes`, `aliases`, `examples`, and
 `checkable = false`.
@@ -86,9 +93,9 @@ id: Annotated[
 
 - Keys are pydantic error types (`missing`, `string_pattern_mismatch`, `too_short`,
   `literal_error`, `listItemsNotUnique`, ...), or the shorthands `int`, `str`, `list`,
-  `object`. Only map the errors the statement covers: if yaozarrs is stricter than the
-  spec (e.g. `MinLen(1)` from the JSON schema), leave that error untagged and say so in
-  `notes`.
+  `object`. Only map the errors the statement covers. A constraint from a JSON schema
+  (e.g. `MinLen(1)` from `minItems`) gets its own rule citing that schema. If neither
+  the prose nor a schema states it, leave that error untagged and say so in `notes`.
 - Use exactly one `RuleCodes` per field, at the top level of the type
   (`Annotated[X | None, RuleCodes(...)]`, not `Annotated[X, RuleCodes(...)] | None`).
   pydantic < 2.6 keeps only one metadata object of each type.
@@ -100,7 +107,8 @@ id: Annotated[
   fine, and `union_tag_invalid` can be tagged.
 - Presence and value type are separate statements, so separate codes
   (`well-path-present`, `well-path-string`). If a statement has no RFC 2119 keyword in a
-  version (e.g. 0.4's "whose value is a string"), don't tag that version's model.
+  version (e.g. 0.4's "whose value is a string"), cite it with `implied = true` (see
+  invariant 3).
   `src/yaozarrs/_axis.py` and `src/yaozarrs/_common/` are shared by several versions, so
   a tag there applies to all of them (record any overreach in `KNOWN_OVERREACH`).
 - Don't tag `version` fields: their `Literal` selects the model for a version.
@@ -121,13 +129,13 @@ id: Annotated[
    ambiguous, extend it until it is unique.
 
    Exception: some versions state a requirement without a keyword ("contains the key
-   `labels`"), usually through loose writing rather than intent. Cite such a quote with
-   `implied = true` on its `sources` block only when there is evidence the authors
-   meant it as a requirement (e.g. a later version adds the keyword in a change
-   described as a rewording; cite the PR, or a field table says "Required: yes"), and
-   explain it in `notes`. Without such evidence, don't cite the version, and list any
-   check yaozarrs does there in `KNOWN_OVERREACH`.
-4. **`NGFF-` codes only cite spec text.** Checks that yaozarrs adds go in `YZ-NNN`
+   `labels`", "Required: yes" in a field table, a lowercase "must"). If the spec text
+   implies the requirement, it is still attributed to NGFF: cite the quote with
+   `implied = true` on its `sources` block, and explain it in `notes`. If no text in
+   that version implies it, don't cite the version, and list any check yaozarrs does
+   there in `KNOWN_OVERREACH`.
+4. **`NGFF-` codes only cite the spec's prose or JSON schemas.** Checks with no source
+   there go in `YZ-NNN`
    (no `level`, `introduced`, or `sources`, and `severity` must be set).
 5. **Coverage is computed, never declared.** Every code that yaozarrs emits has an
    `example`, and `scripts/ngff_rules.py coverage` shows where each one fires. If the

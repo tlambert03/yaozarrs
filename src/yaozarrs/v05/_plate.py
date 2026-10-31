@@ -120,7 +120,13 @@ class WellDef(_BaseModel):
     images: Annotated[
         UniqueList[FieldOfView],
         MinLen(1),
-        RuleCodes(missing="NGFF-WL-004", list="NGFF-WL-005", object="NGFF-WL-005"),
+        RuleCodes(
+            missing="NGFF-WL-004",
+            list="NGFF-WL-005",
+            object="NGFF-WL-005",
+            too_short="NGFF-WL-012",
+            listItemsNotUnique="NGFF-WL-002",
+        ),
     ] = Field(
         description="List of all fields-of-view imaged in this well",
     )

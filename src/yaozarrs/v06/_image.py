@@ -118,7 +118,7 @@ class Dataset(_BaseModel):
             v < 0 for v in scale.scale
         ):
             warn_rule(
-                "YZ-004",
+                "NGFF-CT-044",
                 f"Dataset {self.path!r}: scale values SHOULD be positive (they are "
                 f"pixel sizes), got {scale.scale}.",
                 stacklevel=2,

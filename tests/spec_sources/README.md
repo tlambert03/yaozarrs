@@ -1,6 +1,7 @@
 # Vendored NGFF spec sources
 
-Unmodified copies of the NGFF specification source files at the commits pinned in
+Unmodified copies of the NGFF specification source files, and of the JSON schemas that
+rules cite, at the commits pinned in
 `src/yaozarrs/_rules/rules.toml` (`[spec.*]`). `tests/test_rules.py` uses them to
 check that every rule's quote is at the recorded lines, without network access.
 

@@ -18,7 +18,9 @@ def _load_rule(code: str, entry: dict[str, Any], docs: dict[str, SpecDoc]) -> Ru
         sorted(
             (
                 SpecSource(
-                    doc=docs[version],
+                    doc=docs[version].schema(src["schema"])
+                    if "schema" in src
+                    else docs[version],
                     lines=(start, end),
                     quote=src["quote"],
                     implied=src.get("implied", False),

@@ -130,7 +130,7 @@ class ProjectAxisTransformation(_TransformBase):
         # (schema: at least one of the two is required)
         if self.droppedInputs is None and self.createdOutputs is None:
             raise rule_error(
-                "YZ-008",
+                "NGFF-CT-045",
                 "projectAxis requires at least one of 'droppedInputs' or "
                 "'createdOutputs'",
             )
