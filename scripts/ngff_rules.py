@@ -9,6 +9,7 @@ Usage (from the repo root):
     uv run python scripts/ngff_rules.py uncited [v]    # keywords without a rule
     uv run python scripts/ngff_rules.py site           # pins match the website?
     uv run python scripts/ngff_rules.py docs           # generate docs/rules/
+    uv run python scripts/ngff_rules.py review <v> [-o FILE]  # checklist, spec order
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import os
 import re
 import sys
 import tempfile
+import textwrap
 import tomllib
 import urllib.request
 import warnings
@@ -363,6 +365,116 @@ def coverage(rule: Rule) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# review: every rule and skip entry of one version, in the order of the spec
+# ---------------------------------------------------------------------------
+
+
+def _excerpt(lines: list[str], span: tuple[int, int], quote: str) -> list[str]:
+    """The spec lines at `span`, with `quote` in bold, as a Markdown blockquote."""
+    text = "\n".join(lines[span[0] - 1 : span[1]]).strip()
+    pattern = r"\s+".join(map(re.escape, quote.split()))
+    text = re.sub(pattern, lambda m: f"**{m[0]}**", text, count=1)
+    return [f"> {line}".rstrip() for line in text.splitlines()]
+
+
+def _review_item(head: str, body: list[str]) -> list[str]:
+    return [f"- [ ] {head}", "", *(f"  {b}".rstrip() for b in body), ""]
+
+
+def review(version: str) -> str:
+    """Markdown checklist of `version`'s rules and skip entries, in spec order."""
+    doc = SPEC_DOCS[version]
+    text = spec_text(doc)
+    lines = text.splitlines()
+    norm, line_of = _normalized(text)
+
+    def offset(quote: str, span: tuple[int, int]) -> int:
+        found = [s for s, _, at in _quote_spans(norm, line_of, quote) if at == span]
+        if not found:
+            raise ValueError(f"{quote!r} is not at {span}: run `check --fix`")
+        return found[0]
+
+    def link(span: tuple[int, int], permalink: str) -> str:
+        start, end = span
+        return f"[L{start}{f'-{end}' if end != start else ''}]({permalink})"
+
+    prose: list[tuple[int, tuple[int, int], list[str]]] = []
+    schema: list[tuple[str, int, list[str]]] = []
+    n_rules = 0
+    for rule in RULES.values():
+        here = [s for s in rule.sources if s.doc.version == version]
+        if not here:
+            continue
+        n_rules += 1
+        checked = version in MODULES and rule.code in emitted_codes(rule, version)
+        about = [rule.summary, ""]
+        if rule.notes:
+            # rule pages aren't next to this file: keep the code, drop the link
+            notes = re.sub(r"\[(YZ-[A-Z0-9-]+)\]\(\1\.md\)", r"\1", rule.notes)
+            about += [f"*Notes:* {notes}", ""]
+        flags = ["code reported" if checked else "code not reported"]
+        if not rule.checkable:
+            flags = ["about software behavior"]
+        if rule.removed:
+            flags.append(f"removed in {rule.removed}")
+        for src in here:
+            kind = "schema" if src.is_schema else "implied" if src.implied else ""
+            head = f"**{rule.code}** · {rule.level}" + (f" · {kind}" if kind else "")
+            head += f" · `{rule.slug}` · {link(src.lines, src.permalink)}"
+            tail = [f"*{'; '.join(flags)}*"]
+            if src.is_schema:
+                name = src.doc.path.rsplit("/", 1)[-1]
+                cited = spec_text(src.doc).splitlines()[src.lines[0] - 1 : src.lines[1]]
+                cited = textwrap.dedent("\n".join(cited)).splitlines()
+                body = [f"`{name}`:", "", "```json", *cited, "```", "", *about]
+                schema.append((name, src.lines[0], _review_item(head, body + tail)))
+            else:
+                body = [*_excerpt(lines, src.lines, src.quote), "", *about, *tail]
+                pos = offset(src.quote, src.lines)
+                prose.append((pos, src.lines, _review_item(head, body)))
+    skips = [s for s in load_skips() if s.version == version]
+    for skip in skips:
+        head = f"skipped · {skip.reason} · {link(skip.lines, doc.line_url(skip.lines))}"
+        body = _excerpt(lines, skip.lines, skip.quote)
+        body += ["", skip.note or SKIP_REASONS[skip.reason]]
+        prose.append(
+            (offset(skip.quote, skip.lines), skip.lines, _review_item(head, body))
+        )
+
+    out = [
+        f"# NGFF {version}: rule review",
+        "",
+        f"Every rule and skip entry for {version}, in the order the spec states them, "
+        f"from [`{doc.repo}@{doc.ref}` `{doc.path}`]"
+        f"(https://github.com/{doc.repo}/blob/{doc.sha}/{doc.path}) "
+        f"(commit `{doc.sha[:9]}`, as published on ngff.openmicroscopy.org).",
+        "",
+        "For each item, check that the bold quote is the statement, that the level "
+        "(MUST / SHOULD / MAY) is the one that governs it, that the summary says what "
+        "the spec says (no more, no less), and for a skip, that its reason holds. "
+        "Rules from the JSON schemas are at the end.",
+        "",
+        REPORTED_NOTE,
+        "",
+        f"{n_rules} rules ({len(prose) - len(skips)} prose quotes, "
+        f"{len(schema)} schema quotes), {len(skips)} skip entries.",
+        "",
+    ]
+    section = None
+    for _, span, item in sorted(prose, key=lambda e: e[0]):
+        heading = _heading(lines, span[0])
+        if heading != section:
+            out += [f"## {heading or '(top)'}", ""]
+            section = heading
+        out += item
+    if schema:
+        out += ["## JSON schemas", ""]
+        for *_, item in sorted(schema, key=lambda e: e[:2]):
+            out += item
+    return "\n".join(out).rstrip() + "\n"
+
+
+# ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
 
@@ -540,12 +652,19 @@ def _rendered_examples(rule: Rule, checked: list[str]) -> list[tuple[str, str]]:
     return out
 
 
+# what "reported" means, for the docs and the review checklist
+REPORTED_NOTE = (
+    "*Reported* means yaozarrs reports the rule's code for its example. A rule "
+    "whose code isn't reported may still be enforced, under another code or none."
+)
+
+
 def _checked_in(rule: Rule, checked: list[str]) -> str:
     if checked:
         return ", ".join(checked)
     if not rule.checkable:
         return "— (about software behavior: no document can violate it)"
-    return "not checked yet"
+    return "—"
 
 
 def render_rule(rule: Rule, checked: list[str]) -> str:
@@ -557,7 +676,7 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
         ("yaozarrs severity", rule.default_severity),
         ("Status", rule.status),
         ("Spec versions", _versions(rule)),
-        ("Checked by yaozarrs in", _checked_in(rule, checked)),
+        ("Reported by yaozarrs in", _checked_in(rule, checked)),
     ]
     if rule.supersedes:
         meta.append(
@@ -630,9 +749,11 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "inside the quote of a rule here, or of an entry (with a reason) in "
         "`skipped.toml`.",
         "",
+        REPORTED_NOTE,
+        "",
         "## Spec rules",
         "",
-        "| Code | Name | Level | Severity | Versions | Checked in | Summary |",
+        "| Code | Name | Level | Severity | Versions | Reported in | Summary |",
         "|---|---|---|---|---|---|---|",
     ]
     for r in RULES.values():
@@ -646,7 +767,7 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "",
         "## yaozarrs checks",
         "",
-        "| Code | Name | Severity | Checked in | Summary |",
+        "| Code | Name | Severity | Reported in | Summary |",
         "|---|---|---|---|---|",
     ]
     for r in RULES.values():
@@ -665,6 +786,17 @@ def expected_docs() -> dict[str, str]:
     files = {"index.md": render_index(checked)}
     files.update({f"{c}.md": render_rule(r, checked[c]) for c, r in RULES.items()})
     return files
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    """Write a review checklist of one version's rules, in spec order."""
+    content = review(args.version)
+    if args.output:
+        Path(args.output).write_text(content, encoding="utf-8")
+        print(f"wrote {args.output}")
+    else:
+        sys.stdout.write(content)
+    return 0
 
 
 def cmd_docs(_: argparse.Namespace) -> int:
@@ -698,6 +830,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("versions", nargs="*", help="spec versions (default: all)")
     p.set_defaults(func=cmd_uncited)
     sub.add_parser("docs").set_defaults(func=cmd_docs)
+    p = sub.add_parser("review")
+    p.add_argument("version", choices=list(SPEC_DOCS))
+    p.add_argument("-o", "--output", help="file to write (default: stdout)")
+    p.set_defaults(func=cmd_review)
     args = parser.parse_args(argv)
     return args.func(args)
 

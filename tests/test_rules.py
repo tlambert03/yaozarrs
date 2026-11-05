@@ -161,6 +161,15 @@ def test_skip_entries(skip: object) -> None:
         assert cited and all(c in RULES for c in cited), skip.note
 
 
+@pytest.mark.parametrize("version", TRACKED_VERSIONS)
+def test_review(version: str) -> None:
+    """The review checklist has an item for every source and skip entry."""
+    text = ngff_rules.review(version)
+    sources = [s for r in RULES.values() for s in r.sources if s.doc.version == version]
+    skips = [s for s in ngff_rules.load_skips() if s.version == version]
+    assert text.count("\n- [ ] ") == len(sources) + len(skips)
+
+
 def test_examples_have_rules() -> None:
     """Every example in `rule_examples.toml` belongs to a registered rule."""
     assert set(_load_examples()) - set(RULES) == set()
@@ -209,11 +218,18 @@ def test_known_exceptions_have_examples() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_prose_permalink() -> None:
+    # GitHub renders Markdown, without line numbers, unless asked for the plain view
+    src = next(s for s in get_rule("YZ-GN-002").sources if s.doc.version == "0.5")
+    assert src.permalink.endswith("index.md?plain=1#L43-L44")
+
+
 def test_schema_source() -> None:
     src = next(s for s in get_rule("YZ-CT-045").sources)
     assert src.is_schema
     assert src.doc.path == "schemas/coordinate_transformations.schema"
     assert f"/blob/{src.doc.sha}/schemas/coordinate" in src.permalink
+    assert "?plain=1" not in src.permalink
     v4 = next(s for s in get_rule("YZ-PL-037").sources if s.doc.version == "0.4")
     assert v4.doc.path == "schemas/plate.schema"
     assert v4.doc.cache_name == "ome-ngff-spec-0.4-plate.schema"

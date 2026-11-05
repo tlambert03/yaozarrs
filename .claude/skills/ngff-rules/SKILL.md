@@ -98,9 +98,10 @@ Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error
 Every RFC 2119 keyword (MUST, SHOULD, MAY, REQUIRED, RECOMMENDED, OPTIONAL, SHALL) in
 a tracked spec version is inside a rule's quote, or inside the quote of an entry in
 `skipped.toml`. This is checked per keyword, not per line: a quote that covers one
-clause of a line doesn't account for a second keyword on the same line. A rule doesn't need yaozarrs to check it: an unchecked rule has no
-example, and its docs page says it isn't checked yet. `test_every_statement_catalogued`
-enforces this, and `scripts/ngff_rules.py uncited` lists the keywords still missing.
+clause of a line doesn't account for a second keyword on the same line. A rule
+doesn't need yaozarrs to check it: a rule without an example is listed as not
+reported (yaozarrs may still reject such input, under another code or none).
+`test_every_statement_catalogued` enforces this, and `scripts/ngff_rules.py uncited` lists the keywords still missing.
 
 - Statements about software behavior (what readers, writers, or viewers do) are rules
   with `checkable = false`: no document can violate them.
@@ -210,6 +211,10 @@ user before adding a new area.
    should violate only the rule it illustrates, apart from errors that can't be
    avoided. Report gaps and overreach rather than fixing them silently.
 4. Report what you found. Don't change validation behavior without asking.
+
+For a review by a person, `scripts/ngff_rules.py review <version> -o <file>` writes a
+Markdown checklist of every rule source and skip entry for that version, in the order
+the spec states them, with the cited lines and the quote in bold.
 
 yaozarrs is deliberately lenient when input is not strictly correct but can be
 interpreted unambiguously: lax type coercion (`"1"` or `1.0` for an integer), defaults

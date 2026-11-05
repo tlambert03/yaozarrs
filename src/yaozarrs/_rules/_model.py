@@ -43,6 +43,14 @@ class SpecDoc:
         suffix = self.path.rsplit(".", 1)[-1]
         return f"{repo}-{self.ref}.{suffix}"
 
+    def line_url(self, lines: tuple[int, int]) -> str:
+        """GitHub permalink to `lines` of this file, at the pinned commit."""
+        start, end = lines
+        anchor = f"L{start}" if start == end else f"L{start}-L{end}"
+        # a rendered (Markdown) file only shows line numbers in its plain view
+        plain = "" if self.path.endswith(".schema") else "?plain=1"
+        return f"https://github.com/{self.repo}/blob/{self.sha}/{self.path}{plain}#{anchor}"
+
     def schema(self, name: str) -> SpecDoc:
         """Return the JSON schema file `name` of this spec version."""
         folder = self.path.rpartition("/")[0]
@@ -68,12 +76,7 @@ class SpecSource:
 
     @property
     def permalink(self) -> str:
-        start, end = self.lines
-        anchor = f"L{start}" if start == end else f"L{start}-L{end}"
-        return (
-            f"https://github.com/{self.doc.repo}/blob/{self.doc.sha}/"
-            f"{self.doc.path}#{anchor}"
-        )
+        return self.doc.line_url(self.lines)
 
 
 @dataclass(frozen=True)
