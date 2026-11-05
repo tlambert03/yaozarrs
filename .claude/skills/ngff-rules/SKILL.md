@@ -95,11 +95,12 @@ Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error
 
 ## Every statement is catalogued
 
-Every line of a tracked spec version that contains an RFC 2119 keyword (MUST, SHOULD,
-MAY, REQUIRED, RECOMMENDED, OPTIONAL, SHALL) is covered by a rule's quote, or listed in
-`skipped.toml`. A rule doesn't need yaozarrs to check it: an unchecked rule has no
+Every RFC 2119 keyword (MUST, SHOULD, MAY, REQUIRED, RECOMMENDED, OPTIONAL, SHALL) in
+a tracked spec version is inside a rule's quote, or inside the quote of an entry in
+`skipped.toml`. This is checked per keyword, not per line: a quote that covers one
+clause of a line doesn't account for a second keyword on the same line. A rule doesn't need yaozarrs to check it: an unchecked rule has no
 example, and its docs page says it isn't checked yet. `test_every_statement_catalogued`
-enforces this, and `scripts/ngff_rules.py uncited` lists the lines still missing.
+enforces this, and `scripts/ngff_rules.py uncited` lists the keywords still missing.
 
 - Statements about software behavior (what readers, writers, or viewers do) are rules
   with `checkable = false`: no document can violate them.
@@ -231,7 +232,7 @@ the pins periodically, and before every release:
    Read the upstream diff (`<old sha>...<new sha>`), and investigate every quote that
    is no longer found: a reworded statement keeps its code, a changed meaning gets a
    new one (see step 3 below).
-3. `uncited <version>`, and catalogue every line it lists.
+3. `uncited <version>`, and catalogue every keyword it lists.
 
 ## Workflow: a new spec version is published
 
@@ -255,7 +256,7 @@ the pins periodically, and before every release:
       - **removed**: set `removed="<new version>"`;
       - **changed meaning**: set `removed`, and mint a new code with `supersedes`.
       Ask the user when it's unclear whether the meaning changed.
-   4. Run `scripts/ngff_rules.py uncited <version>`, and catalogue every line it
+   4. Run `scripts/ngff_rules.py uncited <version>`, and catalogue every keyword it
       lists (see "Every statement is catalogued"): a new rule, a new source on an
       existing rule, or a `skipped.toml` entry. Rules that yaozarrs doesn't check get
       no `example`.

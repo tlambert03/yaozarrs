@@ -6,7 +6,7 @@ Usage (from the repo root):
     uv run python scripts/ngff_rules.py check [--fix]  # verify quotes are at `lines`
     uv run python scripts/ngff_rules.py relocate <repo> <ref> <path>
     uv run python scripts/ngff_rules.py coverage       # where each example fires
-    uv run python scripts/ngff_rules.py uncited [v]    # keyword lines without a rule
+    uv run python scripts/ngff_rules.py uncited [v]    # keywords without a rule
     uv run python scripts/ngff_rules.py site           # pins match the website?
     uv run python scripts/ngff_rules.py docs           # generate docs/rules/
 """
@@ -60,8 +60,8 @@ BEHAVIOR_ENV_VARS = (
 # ---------------------------------------------------------------------------
 
 
-def find_quote(text: str, quote: str) -> list[tuple[int, int]]:
-    """Return the (start, end) line spans where `quote` occurs, ignoring whitespace."""
+def _normalized(text: str) -> tuple[str, list[int]]:
+    """`text` with each whitespace run as one space, and the line of each character."""
     chars: list[str] = []
     line_of: list[int] = []
     prev_space = True
@@ -75,14 +75,26 @@ def find_quote(text: str, quote: str) -> list[tuple[int, int]]:
                 prev_space = False
             chars.append(ch)
             line_of.append(lineno)
-    norm = "".join(chars)
+    return "".join(chars), line_of
+
+
+def _quote_spans(
+    norm: str, line_of: list[int], quote: str
+) -> list[tuple[int, int, tuple[int, int]]]:
+    """(start, end, lines) of each occurrence of `quote` in a `_normalized` text."""
     needle = " ".join(quote.split())
-    spans = []
+    found = []
     idx = norm.find(needle)
     while idx != -1:
-        spans.append((line_of[idx], line_of[idx + len(needle) - 1]))
+        end = idx + len(needle)
+        found.append((idx, end, (line_of[idx], line_of[end - 1])))
         idx = norm.find(needle, idx + 1)
-    return spans
+    return found
+
+
+def find_quote(text: str, quote: str) -> list[tuple[int, int]]:
+    """Return the (start, end) line spans where `quote` occurs, ignoring whitespace."""
+    return [lines for *_, lines in _quote_spans(*_normalized(text), quote)]
 
 
 def spec_text(doc: SpecDoc) -> str:
@@ -104,11 +116,11 @@ def check_quote(doc: SpecDoc, quote: str, lines: tuple[int, int]) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# completeness: every spec line with a keyword is cited by a rule, or skipped
+# completeness: every keyword in the spec is quoted by a rule, or skipped
 # ---------------------------------------------------------------------------
 
 KEYWORD = re.compile(r"\b(MUST|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL|SHALL)\b")
-# why a spec line with a keyword has no rule
+# why a keyword in the spec has no rule
 SKIP_REASONS = {
     "permission": "a MAY that only grants permission: nothing can violate it",
     "boilerplate": "RFC 2119 definitions and other text about the document itself",
@@ -119,7 +131,7 @@ SKIP_REASONS = {
 
 @dataclass(frozen=True)
 class Skip:
-    """A spec line with a keyword that deliberately has no rule (`skipped.toml`)."""
+    """Spec text with a keyword that deliberately has no rule (`skipped.toml`)."""
 
     version: str
     quote: str
@@ -143,16 +155,15 @@ def load_skips() -> list[Skip]:
     ]
 
 
-def _cited_lines(version: str) -> set[int]:
-    """Lines of `version`'s spec (prose) cited by a rule or a skip entry."""
-    cited: set[int] = set()
-    for rule in RULES.values():
-        for src in rule.sources:
-            if src.doc.version == version and not src.is_schema:
-                cited.update(range(src.lines[0], src.lines[1] + 1))
-    for skip in load_skips():
-        if skip.version == version:
-            cited.update(range(skip.lines[0], skip.lines[1] + 1))
+def _citations(version: str) -> list[tuple[str, tuple[int, int]]]:
+    """(quote, lines) of each rule source and skip entry for `version`'s spec prose."""
+    cited = [
+        (src.quote, src.lines)
+        for rule in RULES.values()
+        for src in rule.sources
+        if src.doc.version == version and not src.is_schema
+    ]
+    cited += [(s.quote, s.lines) for s in load_skips() if s.version == version]
     return cited
 
 
@@ -169,14 +180,24 @@ def _heading(lines: list[str], n: int) -> str:
 
 
 def uncited(version: str) -> list[tuple[int, str, str]]:
-    """(line, section, text) of keyword lines that no rule or skip entry cites."""
-    lines = spec_text(SPEC_DOCS[version]).splitlines()
-    cited = _cited_lines(version)
-    return [
-        (n, _heading(lines, n), line.strip())
-        for n, line in enumerate(lines, 1)
-        if KEYWORD.search(line) and n not in cited
+    """(line, section, context) of each keyword that no rule or skip entry quotes."""
+    text = spec_text(SPEC_DOCS[version])
+    norm, line_of = _normalized(text)
+    # a quote counts only at its recorded lines (`check` reports any that moved)
+    quoted = [
+        (start, end)
+        for quote, lines in _citations(version)
+        for start, end, at in _quote_spans(norm, line_of, quote)
+        if at == lines
     ]
+    found = []
+    for m in KEYWORD.finditer(norm):
+        if not any(start <= m.start() < end for start, end in quoted):
+            n = line_of[m.start()]
+            context = f"{norm[max(0, m.start() - 60) : m.start()]}<<{m[0]}>>"
+            context += norm[m.end() : m.end() + 40]
+            found.append((n, _heading(text.splitlines(), n), context.strip()))
+    return found
 
 
 # ---------------------------------------------------------------------------
@@ -605,8 +626,8 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "specification itself (see "
         "[ome/ngff#646](https://github.com/ome/ngff/issues/646)). If official codes "
         "are adopted, each spec rule will record its official code. Spec versions "
-        f"audited so far: {tracked}. Every line of those versions with an RFC 2119 "
-        "keyword is either cited by a rule here, or listed with a reason in "
+        f"audited so far: {tracked}. Every RFC 2119 keyword in those versions is "
+        "inside the quote of a rule here, or of an entry (with a reason) in "
         "`skipped.toml`.",
         "",
         "## Spec rules",

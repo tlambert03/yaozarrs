@@ -411,6 +411,18 @@ lines = { "0.4" = [390, 390], "0.5" = [324, 324] }
 quote = 'Each `multiscales` object SHOULD contain the field `metadata`, which contains a object with additional information about the downscaling method.'
 lines = { "0.6" = [1393, 1394] }
 
+[rules.YZ-MS-008]
+slug = 'multiscales-version'
+level = 'SHOULD'
+summary = 'Each "multiscales" dictionary should contain the field "version", the version of its metadata.'
+introduced = '0.4'
+removed = '0.5'
+notes = 'yaozarrs reads a v0.4 image without `version` as 0.4, without a warning. From 0.5 on, the version is in the `ome` object (YZ-GN-001).'
+
+[[rules.YZ-MS-008.sources]]
+quote = 'It SHOULD contain the field "version", which indicates the version of the multiscale metadata of this image'
+lines = { "0.4" = [387, 387] }
+
 # ------------------------------------------------------------------------------
 # YZ-DS
 # ------------------------------------------------------------------------------
@@ -1466,8 +1478,8 @@ introduced = '0.4'
 notes = "yaozarrs also requires them to be greater than or equal to 0, which the spec doesn't state; that error doesn't carry this code."
 
 [[rules.YZ-PL-014.sources]]
-quote = 'a `starttime` and/or `endtime` key whose values MUST be integer epoch timestamps'
-lines = { "0.4" = [524, 524], "0.5" = [470, 470], "0.6" = [1605, 1606] }
+quote = 'Each acquisition object MAY contain a `starttime` and/or `endtime` key whose values MUST be integer epoch timestamps'
+lines = { "0.4" = [523, 524], "0.5" = [469, 470], "0.6" = [1605, 1606] }
 
 [rules.YZ-PL-015]
 slug = 'plate-columns-present'

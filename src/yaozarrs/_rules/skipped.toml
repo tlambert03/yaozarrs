@@ -1,6 +1,6 @@
-# Spec lines with an RFC 2119 keyword that deliberately have no rule, so that every
-# such line is accounted for: each one is either cited by a rule in `rules.toml`, or
-# listed here with a reason. `tests/test_rules.py` checks both the quotes and the
+# Spec text with an RFC 2119 keyword that deliberately has no rule, so that every
+# keyword is accounted for: each one is inside the quote of a rule in `rules.toml`, or
+# of an entry here, with a reason. `tests/test_rules.py` checks both the quotes and the
 # completeness; `scripts/ngff_rules.py uncited` lists what's still missing.
 #
 # reason:
@@ -70,6 +70,13 @@ quote = 'MAY ignore other groups or arrays under the root of the hierarchy.'
 lines = [338, 338]
 reason = 'permission'
 
+
+[[skip]]
+version = '0.4'
+quote = 'The order of the entries MUST correspond to the order of dimensions of the zarr arrays.'
+lines = [368, 368]
+reason = 'duplicate'
+note = 'restates YZ-DS-010'
 
 [[skip]]
 version = '0.4'
@@ -155,6 +162,13 @@ reason = 'permission'
 
 [[skip]]
 version = '0.5'
+quote = 'The order of the entries MUST correspond to the order of dimensions of the zarr arrays.'
+lines = [302, 302]
+reason = 'duplicate'
+note = 'restates YZ-DS-010'
+
+[[skip]]
+version = '0.5'
 quote = 'Additionally, an arbitrary number of key-value pairs MAY be present for each label value, denoting arbitrary metadata associated with that label.'
 lines = [437, 437]
 reason = 'permission'
@@ -205,6 +219,13 @@ lines = [261, 261]
 reason = 'duplicate'
 note = 'restates YZ-DS-005'
 
+
+[[skip]]
+version = '0.6'
+quote = 'The matrix MUST be stored as a 2D nested array (an array of arrays of numbers)'
+lines = [974, 974]
+reason = 'duplicate'
+note = 'restates YZ-CT-030 (the same sentence continues with its quote)'
 
 [[skip]]
 version = '0.6'
@@ -336,7 +357,7 @@ version = '0.6'
 quote = 'The matrix MUST be stored as 2D nested array (an array of arrays of numbers)'
 lines = [885, 885]
 reason = 'duplicate'
-note = 'restates YZ-CT-025 (the same sentence continues with its quote; the rotation equivalent is inside the span of YZ-CT-030)'
+note = 'restates YZ-CT-025 (the same sentence continues with its quote)'
 
 
 [[skip]]
