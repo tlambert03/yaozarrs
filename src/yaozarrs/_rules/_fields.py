@@ -12,9 +12,10 @@ from pydantic_core.core_schema import ErrorType
 from yaozarrs._rules._registry import RULES
 
 if TYPE_CHECKING:
+    from typing import LiteralString
+
     from pydantic import BaseModel
     from pydantic_core import CoreSchema, ErrorDetails
-    from typing_extensions import LiteralString
 
 _BUILTIN_TYPES = frozenset(get_args(ErrorType))
 
@@ -93,7 +94,7 @@ def tag_field_errors(cls: type[BaseModel], exc: ValidationError) -> ValidationEr
         return exc
 
     details: list[InitErrorDetails] = []
-    for err, code in zip(errors, codes):
+    for err, code in zip(errors, codes, strict=True):
         type_, ctx = err["type"], err.get("ctx")
         detail: InitErrorDetails = {
             "type": type_,

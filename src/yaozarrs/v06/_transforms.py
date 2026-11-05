@@ -1,5 +1,5 @@
 import math
-from typing import Annotated, Any, Literal, NoReturn, TypeAlias
+from typing import Annotated, Any, Literal, NoReturn, Self, TypeAlias
 
 from annotated_types import MinLen
 from pydantic import (
@@ -8,7 +8,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._rules import RuleCodes, rewrap_error, rule_error, warn_rule
