@@ -69,9 +69,11 @@ class LabelProperty(_BaseModel):
     # "an arbitrary number of key-value pairs MAY be present for each label value"
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
-    label_value: Annotated[int, RuleCodes(missing="YZ-IL-010")] = Field(
-        description="Integer label value from the segmentation image",
-        alias="label-value",
+    label_value: Annotated[int, RuleCodes(missing="YZ-IL-010", int="YZ-IL-011")] = (
+        Field(
+            description="Integer label value from the segmentation image",
+            alias="label-value",
+        )
     )
 
 

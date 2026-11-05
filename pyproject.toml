@@ -183,9 +183,6 @@ ignore = [
 [tool.typos.default]
 extend-ignore-identifiers-re = ["(?i)ome", "AIMD"]
 
-[tool.typos.default.extend-words]
-indentifying = "indentifying"  # quoted verbatim from the NGFF 0.4 spec
-
 [tool.ty.environment]
 python = "./.venv"
 

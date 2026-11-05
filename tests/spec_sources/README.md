@@ -7,7 +7,9 @@ check that every rule's quote is at the recorded lines, without network access.
 
 Refresh with `uv run python scripts/ngff_rules.py fetch`.
 
-Copyright © the OME-NGFF contributors. The 0.4 and 0.5 files are licensed under the
-[W3C Software and Document License](https://www.w3.org/Consortium/Legal/2015/copyright-software-and-document);
-see <https://github.com/ome/ngff/blob/main/LICENSE.md>. The 0.6 file states its terms in
-its "License" section.
+These are the files that https://ngff.openmicroscopy.org publishes: its source repo,
+`ome/ngff`, includes each spec version as a submodule of `ome/ngff-spec`, and renders
+the version's `index.md`. `uv run python scripts/ngff_rules.py site` checks that the
+pins still match.
+
+Copyright © the OME-NGFF contributors.

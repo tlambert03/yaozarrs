@@ -6,6 +6,8 @@ Usage (from the repo root):
     uv run python scripts/ngff_rules.py check [--fix]  # verify quotes are at `lines`
     uv run python scripts/ngff_rules.py relocate <repo> <ref> <path>
     uv run python scripts/ngff_rules.py coverage       # where each example fires
+    uv run python scripts/ngff_rules.py uncited [v]    # keyword lines without a rule
+    uv run python scripts/ngff_rules.py site           # pins match the website?
     uv run python scripts/ngff_rules.py docs           # generate docs/rules/
 """
 
@@ -14,12 +16,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
+import tomllib
 import urllib.request
 import warnings
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -39,6 +43,7 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_SOURCES = ROOT / "tests" / "spec_sources"
 DOCS_DIR = ROOT / "docs" / "rules"
+SKIPPED_FILE = REGISTRY_FILE.parent / "skipped.toml"
 
 # yaozarrs model module for each spec version it implements
 MODULES: dict[str, ModuleType] = {"0.4": v04, "0.5": v05, "0.6": v06}
@@ -96,6 +101,82 @@ def check_quote(doc: SpecDoc, quote: str, lines: tuple[int, int]) -> str | None:
     if not spans:
         return "quote not found"
     return f"quote found at {spans}, not at {lines}"
+
+
+# ---------------------------------------------------------------------------
+# completeness: every spec line with a keyword is cited by a rule, or skipped
+# ---------------------------------------------------------------------------
+
+KEYWORD = re.compile(r"\b(MUST|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL|SHALL)\b")
+# why a spec line with a keyword has no rule
+SKIP_REASONS = {
+    "permission": "a MAY that only grants permission: nothing can violate it",
+    "boilerplate": "RFC 2119 definitions and other text about the document itself",
+    "duplicate": "restates a requirement that has a rule (name it in `note`)",
+    "illustration": "the keyword is in an example, diagram, or code comment",
+}
+
+
+@dataclass(frozen=True)
+class Skip:
+    """A spec line with a keyword that deliberately has no rule (`skipped.toml`)."""
+
+    version: str
+    quote: str
+    lines: tuple[int, int]
+    reason: str
+    note: str = ""
+
+
+def load_skips() -> list[Skip]:
+    """Load `skipped.toml`."""
+    data = tomllib.loads(SKIPPED_FILE.read_text(encoding="utf-8"))
+    return [
+        Skip(
+            version=s["version"],
+            quote=s["quote"],
+            lines=(s["lines"][0], s["lines"][1]),
+            reason=s["reason"],
+            note=s.get("note", ""),
+        )
+        for s in data.get("skip", [])
+    ]
+
+
+def _cited_lines(version: str) -> set[int]:
+    """Lines of `version`'s spec (prose) cited by a rule or a skip entry."""
+    cited: set[int] = set()
+    for rule in RULES.values():
+        for src in rule.sources:
+            if src.doc.version == version and not src.is_schema:
+                cited.update(range(src.lines[0], src.lines[1] + 1))
+    for skip in load_skips():
+        if skip.version == version:
+            cited.update(range(skip.lines[0], skip.lines[1] + 1))
+    return cited
+
+
+def _heading(lines: list[str], n: int) -> str:
+    """The heading of the section that contains line `n` (1-based)."""
+    for i in range(n - 1, -1, -1):
+        line = lines[i].strip()
+        if line.startswith("#"):
+            return line.lstrip("#").strip()
+        nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        if line and nxt and set(nxt) <= {"-", "="} and len(nxt) >= 3:
+            return line
+    return ""
+
+
+def uncited(version: str) -> list[tuple[int, str, str]]:
+    """(line, section, text) of keyword lines that no rule or skip entry cites."""
+    lines = spec_text(SPEC_DOCS[version]).splitlines()
+    cited = _cited_lines(version)
+    return [
+        (n, _heading(lines, n), line.strip())
+        for n, line in enumerate(lines, 1)
+        if KEYWORD.search(line) and n not in cited
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +347,10 @@ def coverage(rule: Rule) -> list[str]:
 
 
 def _download(url: str) -> str:
-    with urllib.request.urlopen(url) as resp:
+    # a token (e.g. in CI) avoids GitHub's unauthenticated API rate limit
+    token = os.environ.get("GITHUB_TOKEN")
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
         return resp.read().decode("utf-8")
 
 
@@ -292,6 +376,10 @@ def cmd_check(args: argparse.Namespace) -> int:
             if msg := check_quote(src.doc, src.quote, src.lines):
                 problems += 1
                 print(f"{rule.code} [{src.doc.version}]: {msg}")
+    for skip in load_skips():
+        if msg := check_quote(SPEC_DOCS[skip.version], skip.quote, skip.lines):
+            problems += 1
+            print(f"skip {skip.quote[:40]!r} [{skip.version}]: {msg}")
     if not (args.fix and problems):
         return 1 if problems else 0
 
@@ -311,8 +399,28 @@ def cmd_check(args: argparse.Namespace) -> int:
                 else:
                     print(f"{code} [{version}]: cannot fix, quote found at {spans}")
     REGISTRY_FILE.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    skipped = tomlkit.parse(SKIPPED_FILE.read_text(encoding="utf-8"))
+    for skip in skipped.get("skip", []):
+        spans = find_quote(spec_text(SPEC_DOCS[skip["version"]]), skip["quote"])
+        if len(spans) == 1:
+            skip["lines"] = list(spans[0])
+        else:
+            print(f"skip {skip['quote'][:40]!r}: cannot fix, quote found at {spans}")
+    SKIPPED_FILE.write_text(tomlkit.dumps(skipped), encoding="utf-8")
     print("updated line numbers where the quote was found exactly once")
     return 0
+
+
+def cmd_uncited(args: argparse.Namespace) -> int:
+    """List spec lines with a keyword that no rule or skip entry covers."""
+    total = 0
+    for version in args.versions or TRACKED_VERSIONS:
+        found = uncited(version)
+        total += len(found)
+        print(f"== {version}: {len(found)} uncited")
+        for n, section, text in found:
+            print(f"L{n} [{section[:40]}] {text}")
+    return 1 if total else 0
 
 
 def cmd_relocate(args: argparse.Namespace) -> int:
@@ -329,6 +437,39 @@ def cmd_relocate(args: argparse.Namespace) -> int:
         status = f"found at {spans}" if spans else "NOT FOUND (changed or removed?)"
         print(f"{rule.code} ({src.doc.version} quote): {status}")
     return 0
+
+
+# the repo that ngff.openmicroscopy.org is built from, and its spec submodules
+SITE_REPO = "ome/ngff"
+SITE_SUBMODULE = "specifications/{version}"
+
+
+def published_pins() -> dict[str, tuple[str, str]]:
+    """{version: (repo, sha)} that the website's `ome/ngff` main pins, per version."""
+    pins = {}
+    for version in SPEC_DOCS:
+        path = SITE_SUBMODULE.format(version=version)
+        url = f"https://api.github.com/repos/{SITE_REPO}/contents/{path}?ref=main"
+        info = json.loads(_download(url))
+        if info.get("type") != "submodule":
+            raise ValueError(
+                f"{SITE_REPO}:{path} is a {info.get('type')}, not a submodule"
+            )
+        repo = info["submodule_git_url"].removeprefix("https://github.com/")
+        pins[version] = (repo.removesuffix(".git"), info["sha"])
+    return pins
+
+
+def cmd_site(_: argparse.Namespace) -> int:
+    """Check that each pinned spec is the commit ngff.openmicroscopy.org publishes."""
+    problems = 0
+    for version, (repo, sha) in published_pins().items():
+        doc = SPEC_DOCS[version]
+        ok = (doc.repo, doc.sha) == (repo, sha)
+        problems += not ok
+        status = "ok" if ok else f"MOVED: the site publishes {repo}@{sha}"
+        print(f"{version}: {doc.repo}@{doc.sha[:9]} {status}")
+    return 1 if problems else 0
 
 
 def cmd_coverage(_: argparse.Namespace) -> int:
@@ -378,6 +519,14 @@ def _rendered_examples(rule: Rule, checked: list[str]) -> list[tuple[str, str]]:
     return out
 
 
+def _checked_in(rule: Rule, checked: list[str]) -> str:
+    if checked:
+        return ", ".join(checked)
+    if not rule.checkable:
+        return "— (about software behavior: no document can violate it)"
+    return "not checked yet"
+
+
 def render_rule(rule: Rule, checked: list[str]) -> str:
     """Markdown page for one rule."""
     lines = [f"# {rule.code}: `{rule.slug}`", ""]
@@ -387,7 +536,7 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
         ("yaozarrs severity", rule.default_severity),
         ("Status", rule.status),
         ("Spec versions", _versions(rule)),
-        ("Checked by yaozarrs in", ", ".join(checked) or "not checked yet"),
+        ("Checked by yaozarrs in", _checked_in(rule, checked)),
     ]
     if rule.supersedes:
         meta.append(
@@ -425,7 +574,7 @@ def render_rule(rule: Rule, checked: list[str]) -> str:
                     else []
                 ),
                 *(["*Stated in the JSON schema.*", ""] if src.is_schema else []),
-                f"[`{src.doc.repo}@{src.doc.tag}` · `{src.doc.path}` {where}]"
+                f"[`{src.doc.repo}@{src.doc.ref}` · `{src.doc.path}` {where}]"
                 f"({src.permalink})",
                 "",
             ]
@@ -456,8 +605,9 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "specification itself (see "
         "[ome/ngff#646](https://github.com/ome/ngff/issues/646)). If official codes "
         "are adopted, each spec rule will record its official code. Spec versions "
-        f"audited so far: {tracked}. The registry does not yet cover every normative "
-        "statement in those versions.",
+        f"audited so far: {tracked}. Every line of those versions with an RFC 2119 "
+        "keyword is either cited by a rule here, or listed with a reason in "
+        "`skipped.toml`.",
         "",
         "## Spec rules",
         "",
@@ -522,6 +672,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("path", help="spec file path in the repo, e.g. index.md")
     p.set_defaults(func=cmd_relocate)
     sub.add_parser("coverage").set_defaults(func=cmd_coverage)
+    sub.add_parser("site").set_defaults(func=cmd_site)
+    p = sub.add_parser("uncited")
+    p.add_argument("versions", nargs="*", help="spec versions (default: all)")
+    p.set_defaults(func=cmd_uncited)
     sub.add_parser("docs").set_defaults(func=cmd_docs)
     args = parser.parse_args(argv)
     return args.func(args)

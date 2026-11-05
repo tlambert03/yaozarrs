@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 import warnings
 from pathlib import Path
 from typing import get_args
@@ -32,8 +33,15 @@ _spec = importlib.util.spec_from_file_location(
 )
 assert _spec and _spec.loader
 ngff_rules = importlib.util.module_from_spec(_spec)
+sys.modules["ngff_rules"] = ngff_rules  # (for its dataclasses)
 _spec.loader.exec_module(ngff_rules)
 
+# RFC 2119 keywords that have the same strength as each level
+SYNONYMS = {
+    "MUST": "MUST|REQUIRED|SHALL",
+    "SHOULD": "SHOULD|RECOMMENDED",
+    "MAY": "MAY|OPTIONAL",
+}
 CODE_RE = re.compile(r"^YZ-([A-Z]{2}-)?\d{3}$")
 SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
@@ -41,6 +49,9 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 # spec states the rule". Both sets are verified, so stale entries fail the test.
 # Spec states the rule, but yaozarrs doesn't check it (yet).
 KNOWN_GAPS = {
+    # v0.4 accepts any number for a color's `label-value` (the 0.4 schema says
+    # "number"), while the published 0.4 prose says it MUST be an integer
+    ("YZ-IL-007", "0.4"),
     ("YZ-PL-002", "0.4"),
     ("YZ-PL-003", "0.4"),
     # each dataset's transformation is checked against the axes instead (YZ-CT-004),
@@ -89,7 +100,8 @@ def test_rule_fields(rule: Rule) -> None:
         elif src.implied:
             assert rule.notes, "explain in `notes` why a keyword-less quote counts"
         else:
-            assert re.search(rf"\b{rule.level}\b", src.quote), (
+            assert rule.level
+            assert re.search(rf"\b({SYNONYMS[rule.level]})\b", src.quote), (
                 f"quote for {rule.code} does not contain {rule.level!r}"
             )
 
@@ -124,6 +136,29 @@ def test_codes_in_source_exist() -> None:
         used.update(pattern.findall(path.read_text(encoding="utf-8")))
     assert used - set(RULES) == set()
     assert {c for c in used if not (RULES[c].example or RULES[c].examples)} == set()
+
+
+@pytest.mark.parametrize("version", TRACKED_VERSIONS)
+def test_every_statement_catalogued(version: str) -> None:
+    """Every spec line with a keyword is cited by a rule, or skipped with a reason."""
+    found = ngff_rules.uncited(version)
+    assert not found, "\n".join(f"L{n}: {text}" for n, _, text in found)
+
+
+@pytest.mark.parametrize(
+    "skip",
+    ngff_rules.load_skips(),
+    ids=lambda s: f"{s.version}-L{s.lines[0]}",
+)
+def test_skip_entries(skip: object) -> None:
+    assert isinstance(skip, ngff_rules.Skip)
+    assert skip.reason in ngff_rules.SKIP_REASONS
+    doc = ngff_rules.SPEC_DOCS[skip.version]
+    assert ngff_rules.check_quote(doc, skip.quote, skip.lines) is None
+    assert ngff_rules.KEYWORD.search(skip.quote)
+    if skip.reason == "duplicate":
+        cited = re.findall(r"YZ-(?:[A-Z]{2}-)?\d{3}", skip.note)
+        assert cited and all(c in RULES for c in cited), skip.note
 
 
 def test_examples_have_rules() -> None:
@@ -180,8 +215,8 @@ def test_schema_source() -> None:
     assert src.doc.path == "schemas/coordinate_transformations.schema"
     assert f"/blob/{src.doc.sha}/schemas/coordinate" in src.permalink
     v4 = next(s for s in get_rule("YZ-PL-037").sources if s.doc.version == "0.4")
-    assert v4.doc.path == "0.4/schemas/plate.schema"
-    assert v4.doc.cache_name == "ome-ngff-0.4.1-plate.schema"
+    assert v4.doc.path == "schemas/plate.schema"
+    assert v4.doc.cache_name == "ome-ngff-spec-0.4-plate.schema"
 
 
 def test_rule_warning_filterable() -> None:

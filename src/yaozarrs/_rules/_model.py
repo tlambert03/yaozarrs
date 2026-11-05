@@ -23,9 +23,11 @@ class SpecDoc:
     """One version of the spec source file, pinned to an immutable commit."""
 
     version: str
-    tag: str
+    ref: str
+    """The tag or branch the commit belongs to (for display; `sha` is the pin)."""
     repo: str
     sha: str
+    """The commit the published spec (ngff.openmicroscopy.org) is built from."""
     path: str
 
     @property
@@ -37,9 +39,9 @@ class SpecDoc:
         """File name of the vendored copy in `tests/spec_sources/`."""
         repo = self.repo.replace("/", "-")
         if self.path.endswith(".schema"):
-            return f"{repo}-{self.tag}-{self.path.rsplit('/', 1)[-1]}"
+            return f"{repo}-{self.ref}-{self.path.rsplit('/', 1)[-1]}"
         suffix = self.path.rsplit(".", 1)[-1]
-        return f"{repo}-{self.tag}.{suffix}"
+        return f"{repo}-{self.ref}.{suffix}"
 
     def schema(self, name: str) -> SpecDoc:
         """Return the JSON schema file `name` of this spec version."""

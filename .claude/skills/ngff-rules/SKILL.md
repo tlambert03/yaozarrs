@@ -1,6 +1,6 @@
 ---
 name: ngff-rules
-description: Audit, add, change, or retire yaozarrs rule codes (YZ-<AREA>-NNN for spec rules, YZ-NNN for yaozarrs-only checks). Use when a new NGFF spec version (release, patch, or dev tag) comes out, when adding or changing a validation check, or when asked to verify that existing rule codes, quotes, line numbers, examples, or coverage are correct.
+description: Audit, add, change, or retire yaozarrs rule codes (YZ-<AREA>-NNN for spec rules, YZ-NNN for yaozarrs-only checks). Use when a new NGFF spec version (release, patch, or dev tag) comes out, when the published spec changes (`ngff_rules.py site`), when adding or changing a validation check, or when asked to verify that existing rule codes, quotes, line numbers, examples, or coverage are correct.
 ---
 
 # NGFF rule codes
@@ -29,8 +29,10 @@ The pieces are:
   (add context to an error's message and keep its code), `error_code(e)`, and
   `RuleCodes` (field metadata that gives pydantic's own errors, such as a missing field
   or a wrong type, a rule code; see "Field-shape rules" below).
-- `scripts/ngff_rules.py`: `fetch`, `check [--fix]`, `relocate`, `coverage`, and
-  `docs`.
+- `scripts/ngff_rules.py`: `fetch`, `check [--fix]`, `relocate`, `coverage`,
+  `uncited`, and `docs`.
+- `src/yaozarrs/_rules/skipped.toml`: spec lines with a keyword that deliberately have
+  no rule, each with a `reason` (see "Every statement is catalogued" below).
 - `tests/spec_sources/`: vendored spec files and cited JSON schemas at the pinned commits.
 - `tests/test_rules.py`: integrity tests, and the coverage test. The coverage test runs
   every example against every version module and expects it to fire exactly in the
@@ -90,6 +92,27 @@ the disagreement in `notes`.
 Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error`),
 `status` (`stable` by default), `removed`, `supersedes`, `aliases`, and
 `checkable = false`.
+
+## Every statement is catalogued
+
+Every line of a tracked spec version that contains an RFC 2119 keyword (MUST, SHOULD,
+MAY, REQUIRED, RECOMMENDED, OPTIONAL, SHALL) is covered by a rule's quote, or listed in
+`skipped.toml`. A rule doesn't need yaozarrs to check it: an unchecked rule has no
+example, and its docs page says it isn't checked yet. `test_every_statement_catalogued`
+enforces this, and `scripts/ngff_rules.py uncited` lists the lines still missing.
+
+- Statements about software behavior (what readers, writers, or viewers do) are rules
+  with `checkable = false`: no document can violate them.
+- MAY: a MAY that sets a limit ("MAY contain one additional entry of `type:time`") is a
+  rule with level `MAY`. A MAY that offers a choice whose value is constrained ("MAY
+  contain `longName`. The value MUST be a string") is covered by the MUST's rule. A MAY
+  that only grants permission ("The interpolation attributes MAY be provided") is
+  skipped as `permission`.
+- Skip reasons (`[[skip]]` entries have `version`, `quote`, `lines`, `reason`, `note`):
+  `permission`, `boilerplate` (RFC 2119 definitions and other text about the document
+  itself), `duplicate` (restates a requirement that has a rule: name its code in
+  `note`), `illustration` (the keyword is in an example, a diagram, a code comment, or
+  a version history table). Skip quotes are checked and line-fixed like rule quotes.
 
 ## Field-shape rules
 
@@ -190,16 +213,33 @@ user before adding a new area.
 yaozarrs is deliberately lenient when input is not strictly correct but can be
 interpreted unambiguously: lax type coercion (`"1"` or `1.0` for an integer), defaults
 (a transformation without `type`), or `str()` on a path. That isn't a gap, so don't
-propose errors or warnings for it, and don't mint codes for those statements.
+propose errors or warnings for it. The statements still get rules (every statement is
+catalogued): say in `notes` that yaozarrs accepts the interpretable input.
 
-## Workflow: a new spec version is tagged
+## Workflow: the published spec changed
 
-1. Find the immutable commit: `git ls-remote --tags https://github.com/<repo>` (use the
-   `^{}` peeled sha). Versions ≥ 0.6 live in `ome/ngff-spec` (`index.md`, MyST); 0.4
-   and 0.5 live in `ome/ngff` (`<v>/index.bs`, Bikeshed).
-2. Patch release of a tracked version (e.g. 0.5.3): update that version's `SpecDoc`
-   tag and sha, run `fetch` (delete the old vendored file), then `check --fix`.
-   Investigate every quote that is no longer found.
+Each pin in `rules.toml` (`[spec.*]`) is the commit that ngff.openmicroscopy.org
+publishes, not a release tag. The site is built (Read the Docs) from `ome/ngff` main,
+which includes each version as a submodule `specifications/<v>` of `ome/ngff-spec`,
+rendered from its `index.md`. Fixes land on those branches without new tags, so check
+the pins periodically, and before every release:
+
+1. `uv run python scripts/ngff_rules.py site` compares each pin with the submodule
+   commit on `ome/ngff` main, and exits 1 if any moved.
+2. For a moved pin, update that version's `sha` (and `ref`, if the branch changed),
+   run `fetch` (`git rm` the old vendored file if its name changed), then `check --fix`.
+   Read the upstream diff (`<old sha>...<new sha>`), and investigate every quote that
+   is no longer found: a reworded statement keeps its code, a changed meaning gets a
+   new one (see step 3 below).
+3. `uncited <version>`, and catalogue every line it lists.
+
+## Workflow: a new spec version is published
+
+1. Find the commit the site publishes: run `site` after adding the version (it reads
+   the `specifications/<v>` submodule on `ome/ngff` main), or before the site has it,
+   use the release tag (`git ls-remote --tags https://github.com/ome/ngff-spec`, the
+   `^{}` peeled sha).
+2. A patch release of a tracked version follows "the published spec changed" above.
 3. New minor or dev version:
    1. Add a `[spec."<version>"]` table to `rules.toml`, then run `fetch`.
       If yaozarrs gains a module for the version, add it to `MODULES` in
@@ -215,11 +255,10 @@ propose errors or warnings for it, and don't mint codes for those statements.
       - **removed**: set `removed="<new version>"`;
       - **changed meaning**: set `removed`, and mint a new code with `supersedes`.
       Ask the user when it's unclear whether the meaning changed.
-   4. Grep the new spec for `MUST|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL` and list
-      the statements the registry doesn't cover yet. Propose codes only for ones
-      yaozarrs checks (or that the user wants checked). Unchecked ones can be added
-      without an `example`, or with `checkable = false` for statements about reader or
-      writer behavior.
+   4. Run `scripts/ngff_rules.py uncited <version>`, and catalogue every line it
+      lists (see "Every statement is catalogued"): a new rule, a new source on an
+      existing rule, or a `skipped.toml` entry. Rules that yaozarrs doesn't check get
+      no `example`.
    5. `check --fix`, then the closing steps below.
 
 ## Workflow: add or change a check in code
