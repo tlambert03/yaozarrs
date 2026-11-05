@@ -29,21 +29,19 @@ class _AxisBase(_BaseModel):
     # MUST contain the field `name` ... The value MUST be a non-empty string.
     name: Annotated[
         str,
-        RuleCodes(
-            missing="NGFF-AX-009", str="NGFF-AX-010", string_too_short="NGFF-AX-010"
-        ),
+        RuleCodes(missing="YZ-AX-009", str="YZ-AX-010", string_too_short="YZ-AX-010"),
     ] = Field(min_length=1, description="The name of the axis.")
     # SHOULD contain the field `type`. (narrowed by subclasses)
     type: str | None = Field(default=None, description="The type of the axis.")
     # SHOULD contain the field `unit` (narrowed by subclasses)
     unit: str | None = Field(default=None, description="Physical unit of the axis.")
     # MAY contain the field `longName`. The value MUST be a string
-    longName: Annotated[str | None, RuleCodes(str="NGFF-AX-011")] = Field(
+    longName: Annotated[str | None, RuleCodes(str="YZ-AX-011")] = Field(
         default=None, description="A longer name or description of the axis."
     )
     # MAY contain the field `discrete`. The value MUST be a boolean
     discrete: Annotated[
-        bool | None, RuleCodes(bool_type="NGFF-AX-012", bool_parsing="NGFF-AX-012")
+        bool | None, RuleCodes(bool_type="YZ-AX-012", bool_parsing="YZ-AX-012")
     ] = Field(
         default=None,
         description=(
@@ -132,7 +130,7 @@ def _validate_axes(axes: list[Axis]) -> list[Axis]:
     names = [ax.name for ax in axes]
     if dupes := sorted({n for n in names if names.count(n) > 1}):
         raise rule_error(
-            "NGFF-AX-001",
+            "YZ-AX-001",
             "Axis names must be unique within a coordinate system. "
             f"Duplicates: {dupes}",
         )
@@ -165,7 +163,7 @@ def validate_multiscale_axes(axes: Sequence[Axis]) -> None:
     array_cs = sum(ax.type == "array" for ax in axes) >= 2 and not 2 <= n_space <= 3
     if array_cs:
         warn_rule(
-            "NGFF-AX-002",
+            "YZ-AX-002",
             "Coordinate systems inside multiscales MUST contain 2 or 3 axes of type "
             "'space' according to the spec prose; coordinate systems made of 'array' "
             "axes are only allowed by the JSON schema.",
@@ -175,23 +173,21 @@ def validate_multiscale_axes(axes: Sequence[Axis]) -> None:
     # The length of `axes` must be between 2 and 5
     if not 2 <= len(axes) <= 5:
         raise rule_error(
-            "NGFF-DS-003" if len(axes) > 5 else "NGFF-AX-013",
+            "YZ-DS-003" if len(axes) > 5 else "YZ-AX-013",
             f"There must be between 2 and 5 axes. Found {len(axes)}.",
         )
 
     # `axes` MUST contain 2 or 3 entries of `type:space`
     if not array_cs and not 2 <= n_space <= 3:
-        raise rule_error("NGFF-AX-002", "There must be 2 or 3 axes of type 'space'.")
+        raise rule_error("YZ-AX-002", "There must be 2 or 3 axes of type 'space'.")
     # `axes` MAY contain one additional entry of `type:time`
     if sum(ax.type == "time" for ax in axes) > 1:
-        raise rule_error("NGFF-AX-003", "There can be at most 1 axis of type 'time'.")
+        raise rule_error("YZ-AX-003", "There can be at most 1 axis of type 'time'.")
     # `axes` MAY contain one additional entry of `type:channel` or a null / custom type.
     # NOTE: this sentence is unchanged from v0.5; like v05 we only limit `channel` axes
     # to one, and allow several custom/untyped axes (within the 5-axis limit).
     if sum(ax.type == "channel" for ax in axes) > 1:
-        raise rule_error(
-            "NGFF-AX-004", "There can be at most 1 axis of type 'channel'."
-        )
+        raise rule_error("YZ-AX-004", "There can be at most 1 axis of type 'channel'.")
 
     # `axes` entries MUST be ordered by `type` where the `time` axis must come first
     # (if present), followed by the `channel` or custom axis (if present) and the
@@ -200,7 +196,7 @@ def validate_multiscale_axes(axes: Sequence[Axis]) -> None:
     order = [type_order.get(ax.type or "", 1) for ax in axes]
     if order != sorted(order):
         raise rule_error(
-            "NGFF-AX-005",
+            "YZ-AX-005",
             "Axes are not in the required order by type. "
             "Order must be [time,] [channel or custom,] space.",
         )

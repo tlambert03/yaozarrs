@@ -25,38 +25,36 @@ class Acquisition(_BaseModel):
 
     id: Annotated[
         NonNegativeInt,
-        RuleCodes(
-            missing="NGFF-PL-009", int="NGFF-PL-010", greater_than_equal="NGFF-PL-010"
-        ),
+        RuleCodes(missing="YZ-PL-009", int="YZ-PL-010", greater_than_equal="YZ-PL-010"),
     ] = Field(
         description="Unique identifier within the plate for this acquisition",
     )
     maximumfieldcount: Annotated[
-        PositiveInt | None, RuleCodes(int="NGFF-PL-012", greater_than="NGFF-PL-012")
+        PositiveInt | None, RuleCodes(int="YZ-PL-012", greater_than="YZ-PL-012")
     ] = Field(
         default=None,
         description=(
             "Maximum number of fields-of-view across all wells in this acquisition"
         ),
     )
-    name: Annotated[str | None, RuleCodes(str="NGFF-PL-011")] = Field(
+    name: Annotated[str | None, RuleCodes(str="YZ-PL-011")] = Field(
         default=None,
         description="Human-readable name for this acquisition",
     )
-    description: Annotated[str | None, RuleCodes(str="NGFF-PL-013")] = Field(
+    description: Annotated[str | None, RuleCodes(str="YZ-PL-013")] = Field(
         default=None,
         description="Detailed description of the acquisition parameters or purpose",
     )
     starttime: Annotated[
         NonNegativeInt | None,
-        RuleCodes(int="NGFF-PL-014"),
+        RuleCodes(int="YZ-PL-014"),
     ] = Field(
         default=None,
         description=(
             "Acquisition start time as Unix epoch timestamp (seconds since 1970-01-01)"
         ),
     )
-    endtime: Annotated[NonNegativeInt | None, RuleCodes(int="NGFF-PL-014")] = Field(
+    endtime: Annotated[NonNegativeInt | None, RuleCodes(int="YZ-PL-014")] = Field(
         default=None,
         description=(
             "Acquisition end time as Unix epoch timestamp (seconds since 1970-01-01)"
@@ -79,9 +77,9 @@ class Column(_BaseModel):
     name: Annotated[
         str,
         RuleCodes(
-            missing="NGFF-PL-017",
-            str="NGFF-PL-036",
-            string_pattern_mismatch="NGFF-PL-018",
+            missing="YZ-PL-017",
+            str="YZ-PL-036",
+            string_pattern_mismatch="YZ-PL-018",
         ),
     ] = Field(
         description="Column identifier (typically numeric, e.g., '1', '2', '3')",
@@ -103,9 +101,9 @@ class Row(_BaseModel):
     name: Annotated[
         str,
         RuleCodes(
-            missing="NGFF-PL-024",
-            str="NGFF-PL-025",
-            string_pattern_mismatch="NGFF-PL-026",
+            missing="YZ-PL-024",
+            str="YZ-PL-025",
+            string_pattern_mismatch="YZ-PL-026",
         ),
     ] = Field(
         description="Row identifier (typically alphabetic, e.g., 'A', 'B', 'C')",
@@ -130,9 +128,9 @@ class PlateWell(_BaseModel):
     path: Annotated[
         str,
         RuleCodes(
-            missing="NGFF-PL-030",
-            str="NGFF-PL-031",
-            string_pattern_mismatch="NGFF-PL-032",
+            missing="YZ-PL-030",
+            str="YZ-PL-031",
+            string_pattern_mismatch="YZ-PL-032",
         ),
     ] = Field(
         description=(
@@ -142,17 +140,13 @@ class PlateWell(_BaseModel):
     )
     rowIndex: Annotated[
         NonNegativeInt,
-        RuleCodes(
-            missing="NGFF-PL-033", int="NGFF-PL-034", greater_than_equal="NGFF-PL-004"
-        ),
+        RuleCodes(missing="YZ-PL-033", int="YZ-PL-034", greater_than_equal="YZ-PL-004"),
     ] = Field(
         description="Zero-based index into the plate's rows list",
     )
     columnIndex: Annotated[
         NonNegativeInt,
-        RuleCodes(
-            missing="NGFF-PL-033", int="NGFF-PL-035", greater_than_equal="NGFF-PL-005"
-        ),
+        RuleCodes(missing="YZ-PL-033", int="YZ-PL-035", greater_than_equal="YZ-PL-005"),
     ] = Field(
         description="Zero-based index into the plate's columns list",
     )
@@ -174,51 +168,51 @@ class PlateDef(_BaseModel):
         UniqueList[Column],
         MinLen(1),
         RuleCodes(
-            missing="NGFF-PL-015",
-            list="NGFF-PL-016",
-            object="NGFF-PL-016",
-            too_short="NGFF-PL-037",
-            listItemsNotUnique="NGFF-PL-019",
+            missing="YZ-PL-015",
+            list="YZ-PL-016",
+            object="YZ-PL-016",
+            too_short="YZ-PL-037",
+            listItemsNotUnique="YZ-PL-019",
         ),
     ] = Field(description="Column definitions for the plate grid")
     rows: Annotated[
         UniqueList[Row],
         MinLen(1),
         RuleCodes(
-            missing="NGFF-PL-022",
-            list="NGFF-PL-023",
-            object="NGFF-PL-023",
-            too_short="NGFF-PL-038",
-            listItemsNotUnique="NGFF-PL-027",
+            missing="YZ-PL-022",
+            list="YZ-PL-023",
+            object="YZ-PL-023",
+            too_short="YZ-PL-038",
+            listItemsNotUnique="YZ-PL-027",
         ),
     ] = Field(description="Row definitions for the plate grid")
     wells: Annotated[
         UniqueList[PlateWell],
         MinLen(1),
         RuleCodes(
-            missing="NGFF-PL-028",
-            list="NGFF-PL-029",
-            object="NGFF-PL-029",
-            too_short="NGFF-PL-039",
-            listItemsNotUnique="NGFF-PL-040",
+            missing="YZ-PL-028",
+            list="YZ-PL-029",
+            object="YZ-PL-029",
+            too_short="YZ-PL-039",
+            listItemsNotUnique="YZ-PL-040",
         ),
     ] = Field(
         description="List of all wells present in this plate with their grid positions"
     )
 
     acquisitions: Annotated[
-        list[Acquisition] | None, RuleCodes(list="NGFF-PL-008", object="NGFF-PL-008")
+        list[Acquisition] | None, RuleCodes(list="YZ-PL-008", object="YZ-PL-008")
     ] = Field(
         default=None,
         description="Imaging acquisition runs performed on this plate",
     )
     field_count: Annotated[
-        PositiveInt | None, RuleCodes(int="NGFF-PL-020", greater_than="NGFF-PL-020")
+        PositiveInt | None, RuleCodes(int="YZ-PL-020", greater_than="YZ-PL-020")
     ] = Field(
         default=None,
         description="Maximum number of fields-of-view per well across the entire plate",
     )
-    name: Annotated[str | None, RuleCodes(str="NGFF-PL-021")] = Field(
+    name: Annotated[str | None, RuleCodes(str="YZ-PL-021")] = Field(
         default=None,
         description="Human-readable name for this plate",
     )
@@ -228,13 +222,13 @@ class PlateDef(_BaseModel):
         for well in self.wells:
             if well.rowIndex >= len(self.rows):
                 raise rule_error(
-                    "NGFF-PL-004",
+                    "YZ-PL-004",
                     f"Well {well.path} has rowIndex {well.rowIndex} "
                     f"but only {len(self.rows)} rows exist",
                 )
             if well.columnIndex >= len(self.columns):
                 raise rule_error(
-                    "NGFF-PL-005",
+                    "YZ-PL-005",
                     f"Well {well.path} has columnIndex {well.columnIndex} "
                     f"but only {len(self.columns)} columns exist",
                 )
@@ -244,7 +238,7 @@ class PlateDef(_BaseModel):
             col = self.columns[well.columnIndex].name
             if well.path != f"{row}/{col}":
                 raise rule_error(
-                    "NGFF-PL-006",
+                    "YZ-PL-006",
                     f"Well path {well.path!r} does not match its rowIndex "
                     f"({well.rowIndex}) and columnIndex ({well.columnIndex}), "
                     f"which refer to '{row}/{col}'",
@@ -256,8 +250,8 @@ class PlateDef(_BaseModel):
         # Care SHOULD be taken to avoid collisions on case-insensitive filesystems
         # (e.g. avoid using both `Aa` and `aA`).
         for kind, code, items in (
-            ("row", "NGFF-PL-003", self.rows),
-            ("column", "NGFF-PL-002", self.columns),
+            ("row", "YZ-PL-003", self.rows),
+            ("column", "YZ-PL-002", self.columns),
         ):
             lowered = [x.name.lower() for x in items]
             if clashes := [x.name for x in items if lowered.count(x.name.lower()) > 1]:
@@ -277,7 +271,7 @@ class PlateDef(_BaseModel):
         ids = [acq.id for acq in self.acquisitions or ()]
         if dupes := sorted({i for i in ids if ids.count(i) > 1}):
             raise rule_error(
-                "NGFF-PL-001",
+                "YZ-PL-001",
                 f"Acquisition ids must be unique within a plate. Duplicates: {dupes}",
             )
         return self

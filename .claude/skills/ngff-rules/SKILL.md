@@ -1,12 +1,22 @@
 ---
 name: ngff-rules
-description: Audit, add, change, or retire NGFF rule codes (NGFF-XX-NNN / YZ-NNN) in yaozarrs. Use when a new NGFF spec version (release, patch, or dev tag) comes out, when adding or changing a validation check, or when asked to verify that existing rule codes, quotes, line numbers, examples, or coverage are correct.
+description: Audit, add, change, or retire yaozarrs rule codes (YZ-<AREA>-NNN for spec rules, YZ-NNN for yaozarrs-only checks). Use when a new NGFF spec version (release, patch, or dev tag) comes out, when adding or changing a validation check, or when asked to verify that existing rule codes, quotes, line numbers, examples, or coverage are correct.
 ---
 
 # NGFF rule codes
 
 Every spec-violation error or warning in yaozarrs carries a permanent code that
-points at one normative statement in the NGFF spec. The pieces are:
+points at one normative statement in the NGFF spec. There are two kinds:
+
+- `YZ-<AREA>-NNN` (e.g. `YZ-WL-002`): a spec rule, citing the spec's prose or JSON
+  schemas.
+- `YZ-NNN` (e.g. `YZ-007`): a check yaozarrs adds, with no source in the spec.
+
+The codes belong to yaozarrs: they aren't part of the NGFF spec (see
+<https://github.com/ome/ngff/issues/646>). If official codes are adopted later, a spec
+rule records its official code; it doesn't get renamed.
+
+The pieces are:
 
 - `src/yaozarrs/_rules/rules.toml`: the registry and single source of truth. It holds
   the pinned spec files (`[spec."<version>"]`, whose keys are the tracked versions)
@@ -31,17 +41,17 @@ entry per version. If the wording differs between versions, add another
 `[[rules.<CODE>.sources]]` block.
 
 ```toml
-[rules.NGFF-AX-001]
+[rules.YZ-AX-001]
 slug = 'axis-name-unique'
 level = 'MUST'
 summary = 'Axis names must be unique within `axes`.'
 introduced = '0.4'
 
-[[rules.NGFF-AX-001.sources]]
+[[rules.YZ-AX-001.sources]]
 quote = 'The values MUST be unique across all "name" fields.'
 lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
 
-[rules.NGFF-AX-001.example]
+[rules.YZ-AX-001.example]
 model = 'Multiscale'   # class name in yaozarrs.v04 / yaozarrs.v05
 json = '''
 {"axes": [...], "datasets": [...]}
@@ -64,7 +74,7 @@ add `[rules.<CODE>.examples."<version>"]`, in that version's own format. A rule 
 only exists in one version has only that entry. Model examples are validated as JSON
 (`model_validate_json`), so documents with a `version` field need one in the example.
 
-A requirement that only a JSON schema in the spec repo states is still an `NGFF-` rule.
+A requirement that only a JSON schema in the spec repo states is still a spec rule.
 Add `schema = '<file>.schema'` to its `sources` block, and quote the schema (the file is
 found in that version's `schemas/` folder, and `fetch` vendors it). A base schema means
 `level = 'MUST'`, and a `strict_*.schema` means `level = 'SHOULD'`. If a schema and the
@@ -85,9 +95,7 @@ types to codes:
 ```python
 id: Annotated[
     NonNegativeInt,
-    RuleCodes(
-        missing="NGFF-PL-009", int="NGFF-PL-010", greater_than_equal="NGFF-PL-010"
-    ),
+    RuleCodes(missing="YZ-PL-009", int="YZ-PL-010", greater_than_equal="YZ-PL-010"),
 ] = Field(...)
 ```
 
@@ -133,11 +141,11 @@ id: Annotated[
 
    Exception: some versions state a requirement without a keyword ("contains the key
    `labels`", "Required: yes" in a field table, a lowercase "must"). If the spec text
-   implies the requirement, it is still attributed to NGFF: cite the quote with
+   implies the requirement, it is still a spec rule: cite the quote with
    `implied = true` on its `sources` block, and explain it in `notes`. If no text in
    that version implies it, don't cite the version, and list any check yaozarrs does
    there in `KNOWN_OVERREACH`.
-4. **`NGFF-` codes only cite the spec's prose or JSON schemas.** Checks with no source
+4. **Spec rules only cite the spec's prose or JSON schemas.** Checks with no source
    there go in `YZ-NNN`
    (no `level`, `introduced`, or `sources`, and `severity` must be set).
 5. **Coverage is computed, never declared.** Every code that yaozarrs emits has an
@@ -210,7 +218,7 @@ propose errors or warnings for it, and don't mint codes for those statements.
 
 ## Workflow: add or change a check in code
 
-1. Find the governing statement in the spec. If none exists, use a `YZ-` code.
+1. Find the governing statement in the spec. If none exists, use a `YZ-NNN` code.
 2. Add the rule to `rules.toml` (next free number in the area; `[0, 0]` lines), then
    run `check --fix`.
 3. In the validator, `raise rule_error("<code>", msg)` or

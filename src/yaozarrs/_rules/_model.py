@@ -116,6 +116,11 @@ class Rule:
     examples: dict[str, Example] = field(default_factory=dict, hash=False)
 
     @property
+    def is_spec_rule(self) -> bool:
+        """Whether this cites the spec (`YZ-<AREA>-NNN`), not a yaozarrs check."""
+        return self.code.count("-") == 2
+
+    @property
     def url(self) -> str:
         return DOCS_URL.format(code=self.code)
 

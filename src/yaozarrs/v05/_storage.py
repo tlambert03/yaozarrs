@@ -59,7 +59,7 @@ class StorageValidatorV05(StorageValidator):
             # spec says MUST, but zarr-python omits it by default: warn only
             result.add_warning(
                 StorageErrorType.dimension_names_missing,
-                "NGFF-AX-007",
+                "YZ-AX-007",
                 (*ds_loc, "dimension_names"),
                 f"Array '{dataset.path}' has no dimension_names "
                 f"(expected {expected_names})",
@@ -68,7 +68,7 @@ class StorageValidatorV05(StorageValidator):
         elif dim_names != expected_names:
             result.add_error(
                 StorageErrorType.dimension_names_mismatch,
-                "NGFF-AX-008",
+                "YZ-AX-008",
                 (*ds_loc, "dimension_names"),
                 f"Array dimension_names {dim_names} don't match "
                 f"axes names {expected_names}",

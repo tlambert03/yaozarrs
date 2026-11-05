@@ -443,7 +443,7 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "[NGFF specification](https://ngff.openmicroscopy.org/). Each code links to "
         "the exact text in the spec that supports it, for each spec version.",
         "",
-        "- `NGFF-<AREA>-<NNN>` codes refer to statements in the NGFF spec or its JSON "
+        "- `YZ-<AREA>-<NNN>` codes refer to statements in the NGFF spec or its JSON "
         "schemas.",
         "- `YZ-<NNN>` codes are checks that yaozarrs adds beyond the spec.",
         "",
@@ -453,18 +453,37 @@ def render_index(checked: dict[str, list[str]]) -> str:
         "",
         "!!! note",
         "    These codes are assigned by yaozarrs; they are not (yet) part of the NGFF "
-        f"specification itself. Spec versions audited so far: {tracked}. The "
-        "registry does not yet cover every normative statement in those versions.",
+        "specification itself (see "
+        "[ome/ngff#646](https://github.com/ome/ngff/issues/646)). If official codes "
+        "are adopted, each spec rule will record its official code. Spec versions "
+        f"audited so far: {tracked}. The registry does not yet cover every normative "
+        "statement in those versions.",
+        "",
+        "## Spec rules",
         "",
         "| Code | Name | Level | Severity | Versions | Checked in | Summary |",
         "|---|---|---|---|---|---|---|",
     ]
     for r in RULES.values():
-        lines.append(
-            f"| [{r.code}]({r.code}.md) | `{r.slug}` | {r.level or '—'} | "
-            f"{r.default_severity} | {_versions(r)} | "
-            f"{', '.join(checked[r.code]) or '—'} | {r.summary} |"
-        )
+        if r.is_spec_rule:
+            lines.append(
+                f"| [{r.code}]({r.code}.md) | `{r.slug}` | {r.level} | "
+                f"{r.default_severity} | {_versions(r)} | "
+                f"{', '.join(checked[r.code]) or '—'} | {r.summary} |"
+            )
+    lines += [
+        "",
+        "## yaozarrs checks",
+        "",
+        "| Code | Name | Severity | Checked in | Summary |",
+        "|---|---|---|---|---|",
+    ]
+    for r in RULES.values():
+        if not r.is_spec_rule:
+            lines.append(
+                f"| [{r.code}]({r.code}.md) | `{r.slug}` | {r.default_severity} | "
+                f"{', '.join(checked[r.code]) or '—'} | {r.summary} |"
+            )
     lines.append("")
     return "\n".join(lines)
 

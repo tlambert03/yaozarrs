@@ -70,7 +70,7 @@ _VALID_TIME_UNITS = get_args(ValidTimeUnit)
 def _warn_if_not_space_unit(v: str) -> str:
     if v not in _VALID_SPACE_UNITS:
         warn_rule(
-            "NGFF-AX-006",
+            "YZ-AX-006",
             f"Space axis unit {v!r} SHOULD be one of {_VALID_SPACE_UNITS}",
             stacklevel=3,
         )
@@ -80,7 +80,7 @@ def _warn_if_not_space_unit(v: str) -> str:
 def _warn_if_not_time_unit(v: str) -> str:
     if v not in _VALID_TIME_UNITS:
         warn_rule(
-            "NGFF-AX-006",
+            "YZ-AX-006",
             f"Time axis unit {v!r} SHOULD be one of {_VALID_TIME_UNITS}",
             stacklevel=3,
         )

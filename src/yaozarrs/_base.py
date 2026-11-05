@@ -90,9 +90,7 @@ class _OMEDocument(_BaseModel):
     def _require_version_in_json(cls, data: Any, info: ValidationInfo) -> Any:
         # [The `ome` object] MUST contain a `version` key
         if info.mode == "json" and isinstance(data, dict) and "version" not in data:
-            raise rule_error(
-                "NGFF-GN-001", "OME metadata MUST contain a 'version' key."
-            )
+            raise rule_error("YZ-GN-001", "OME metadata MUST contain a 'version' key.")
         return data
 
     @model_serializer(mode="wrap")

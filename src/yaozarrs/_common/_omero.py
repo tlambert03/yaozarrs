@@ -14,16 +14,16 @@ class OmeroWindow(_BaseModel):
     sets both the current display range (start/end) and the allowed range (min/max).
     """
 
-    start: Annotated[float, RuleCodes(missing="NGFF-OM-006")] = Field(
+    start: Annotated[float, RuleCodes(missing="YZ-OM-006")] = Field(
         description="Lower bound of the current display window"
     )
-    min: Annotated[float, RuleCodes(missing="NGFF-OM-005")] = Field(
+    min: Annotated[float, RuleCodes(missing="YZ-OM-005")] = Field(
         description="Minimum allowed intensity value for this channel"
     )
-    end: Annotated[float, RuleCodes(missing="NGFF-OM-006")] = Field(
+    end: Annotated[float, RuleCodes(missing="YZ-OM-006")] = Field(
         description="Upper bound of the current display window"
     )
-    max: Annotated[float, RuleCodes(missing="NGFF-OM-005")] = Field(
+    max: Annotated[float, RuleCodes(missing="YZ-OM-005")] = Field(
         description="Maximum allowed intensity value for this channel"
     )
 
@@ -44,9 +44,9 @@ def _valid_hex(value: str) -> str:
     if len(fixed) == 3:
         fixed = "".join(2 * c for c in fixed)
     if not _HEX6.fullmatch(fixed):
-        raise rule_error("NGFF-OM-001", f"Invalid hex color code: {value!r}")
+        raise rule_error("YZ-OM-001", f"Invalid hex color code: {value!r}")
     warn_rule(
-        "NGFF-OM-001",
+        "YZ-OM-001",
         f"Omero color {value!r} is not 6 hexadecimal digits; using {fixed!r}.",
         stacklevel=2,
     )
@@ -60,7 +60,7 @@ class OmeroChannel(_BaseModel):
     color mapping, intensity windowing, and visibility.
     """
 
-    window: Annotated[OmeroWindow, RuleCodes(missing="NGFF-OM-004")] = Field(
+    window: Annotated[OmeroWindow, RuleCodes(missing="YZ-OM-004")] = Field(
         description="Intensity window for this channel",
     )
     label: str | None = Field(
@@ -72,7 +72,7 @@ class OmeroChannel(_BaseModel):
         description="Colormap family (typically 'linear' for fluorescence)",
     )
     color: Annotated[
-        str, AfterValidator(_valid_hex), RuleCodes(missing="NGFF-OM-003")
+        str, AfterValidator(_valid_hex), RuleCodes(missing="YZ-OM-003")
     ] = Field(
         description="Display color as hex string without # (e.g., 'FF0000' for red)",
     )
@@ -143,7 +143,7 @@ class Omero(_BaseModel):
 
     channels: Annotated[
         list[OmeroChannel],
-        RuleCodes(missing="NGFF-OM-002"),
+        RuleCodes(missing="YZ-OM-002"),
     ] = Field(description="Rendering settings for each channel in the image")
     id: int | None = Field(
         default=None,

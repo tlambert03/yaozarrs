@@ -86,19 +86,17 @@ def _warn_non_spec_fov_name(path: Any) -> str:
         strict_pattern = r"^[A-Za-z0-9]+$"
         if not re.match(strict_pattern, _path):
             raise rule_error(
-                "NGFF-WL-001", f"String should match pattern {strict_pattern}."
+                "YZ-WL-001", f"String should match pattern {strict_pattern}."
             )
 
     relaxed_pattern = r"^[A-Za-z0-9._-]+$"
     if not re.match(relaxed_pattern, _path):
-        raise rule_error(
-            "NGFF-WL-001", f"String should match pattern {relaxed_pattern}."
-        )
+        raise rule_error("YZ-WL-001", f"String should match pattern {relaxed_pattern}.")
 
     risky_chars = re.findall(r"[^A-Za-z0-9]", _path)
     if risky_chars and not os.getenv("YAOZARRS_IGNORE_RISKY_FOV_NAMES"):
         warn_rule(
-            "NGFF-WL-001",
+            "YZ-WL-001",
             f"The FieldOfView.path {_path!r} contains characters outside of the NGFF "
             f"spec ([A-Za-z0-9]): {set(risky_chars)}.\nWhile yaozarrs DOES allow these "
             "characters, they are not strictly spec-compliant and may cause "

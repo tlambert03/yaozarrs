@@ -75,7 +75,7 @@ class Plate(_OMEDocument):
     )
 
     bioformats2raw_layout: Annotated[
-        Literal[3] | None, RuleCodes(literal_error="NGFF-BF-003")
+        Literal[3] | None, RuleCodes(literal_error="YZ-BF-003")
     ] = Field(
         default=None,
         alias="bioformats2raw.layout",
@@ -94,14 +94,14 @@ class FieldOfView(_BaseModel):
     This class appears within the `images` list of a [`WellDef`][yaozarrs.v05.WellDef].
     """
 
-    path: Annotated[RelaxedFOVPathName, RuleCodes(missing="NGFF-WL-006")] = Field(
+    path: Annotated[RelaxedFOVPathName, RuleCodes(missing="YZ-WL-006")] = Field(
         description=(
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
         ),
         # pattern=r"^[A-Za-z0-9]+$",
     )
-    acquisition: Annotated[int | None, RuleCodes(int="NGFF-WL-007")] = Field(
+    acquisition: Annotated[int | None, RuleCodes(int="YZ-WL-007")] = Field(
         default=None,
         description=(
             "Acquisition ID linking this field to a specific acquisition run. "
@@ -121,11 +121,11 @@ class WellDef(_BaseModel):
         UniqueList[FieldOfView],
         MinLen(1),
         RuleCodes(
-            missing="NGFF-WL-004",
-            list="NGFF-WL-005",
-            object="NGFF-WL-005",
-            too_short="NGFF-WL-012",
-            listItemsNotUnique="NGFF-WL-002",
+            missing="YZ-WL-004",
+            list="YZ-WL-005",
+            object="YZ-WL-005",
+            too_short="YZ-WL-012",
+            listItemsNotUnique="YZ-WL-002",
         ),
     ] = Field(
         description="List of all fields-of-view imaged in this well",
@@ -138,7 +138,7 @@ class WellDef(_BaseModel):
         paths = [img.path for img in self.images]
         if dupes := sorted({p for p in paths if paths.count(p) > 1}):
             raise rule_error(
-                "NGFF-WL-002",
+                "YZ-WL-002",
                 f"Field of view paths must be unique. Duplicates: {dupes}",
             )
         return self

@@ -31,7 +31,7 @@ class RuleCodes:
     """Field metadata: maps pydantic error types on the field to rule codes.
 
     Use in `Annotated`, at the top level of a field's type, e.g.
-    `id: Annotated[int, RuleCodes(missing="NGFF-PL-009", int="NGFF-PL-010")]`.
+    `id: Annotated[int, RuleCodes(missing="YZ-PL-009", int="YZ-PL-010")]`.
 
     Keys are pydantic error types (`missing`, `greater_than`, ...), or one of the
     shorthands `int`, `str`, `list`, `object`. An error gets the code only if it is

@@ -37,9 +37,9 @@ class ImageLabel(_BaseModel):
     colors: Annotated[
         Annotated[UniqueList[LabelColor], MinLen(1)] | None,
         RuleCodes(
-            list="NGFF-IL-005",
-            too_short="NGFF-IL-014",
-            listItemsNotUnique="NGFF-IL-015",
+            list="YZ-IL-005",
+            too_short="YZ-IL-014",
+            listItemsNotUnique="YZ-IL-015",
         ),
     ] = Field(
         default=None,
@@ -48,16 +48,16 @@ class ImageLabel(_BaseModel):
     properties: Annotated[
         Annotated[UniqueList[LabelProperty], MinLen(1)] | None,
         RuleCodes(
-            list="NGFF-IL-009",
-            object="NGFF-IL-009",
-            too_short="NGFF-IL-016",
-            listItemsNotUnique="NGFF-IL-017",
+            list="YZ-IL-009",
+            object="YZ-IL-009",
+            too_short="YZ-IL-016",
+            listItemsNotUnique="YZ-IL-017",
         ),
     ] = Field(
         default=None,
         description="Arbitrary metadata properties for individual label values",
     )
-    source: Annotated[LabelSource | None, RuleCodes(object="NGFF-IL-012")] = Field(
+    source: Annotated[LabelSource | None, RuleCodes(object="YZ-IL-012")] = Field(
         default=None,
         description="Reference to the source intensity image that was segmented",
     )
@@ -95,7 +95,7 @@ class LabelsGroup(_BaseModel):
         default="0.5",
         description="OME-NGFF specification version",
     )
-    labels: Annotated[list[str], RuleCodes(missing="NGFF-LB-001")] = Field(
+    labels: Annotated[list[str], RuleCodes(missing="YZ-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

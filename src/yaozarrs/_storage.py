@@ -150,7 +150,7 @@ class ErrorDetails(TypedDict):
     - error: Exception object
     """
     code: NotRequired[str]
-    """The rule code (e.g. `NGFF-DS-004`) of the spec statement that was violated."""
+    """The rule code (e.g. `YZ-DS-004`) of the spec statement that was violated."""
     url: NotRequired[str]
     """A URL giving information about the error."""
 

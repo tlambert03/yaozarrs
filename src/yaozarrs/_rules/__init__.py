@@ -1,7 +1,7 @@
 """Stable codes for the normative statements yaozarrs checks.
 
 Every error or warning that yaozarrs raises for a spec violation carries a code
-(e.g. `NGFF-AX-002`) that identifies one normative statement in the NGFF spec, and
+(e.g. `YZ-AX-002`) that identifies one normative statement in the NGFF spec, and
 links to a docs page describing it. Checks that go beyond the NGFF spec use the
 `YZ-` namespace. The registry of all codes lives in `rules.toml`.
 """
@@ -41,7 +41,7 @@ class RuleWarning(ValidationWarning, UserWarning):
     r"""A warning tied to a rule code.
 
     The message starts with `[<code>]`, so it can be filtered with e.g.
-    `warnings.filterwarnings("ignore", message=r"\\[NGFF-PL-002\\]")`.
+    `warnings.filterwarnings("ignore", message=r"\\[YZ-PL-002\\]")`.
     """
 
     def __init__(self, code: str, msg: str) -> None:

@@ -65,7 +65,7 @@ class StorageValidatorV04(StorageValidator):
             if dim_names != expected_names:
                 result.add_error(
                     StorageErrorType.dimension_names_mismatch,
-                    "NGFF-AX-008",
+                    "YZ-AX-008",
                     (*ds_loc, "dimension_names"),
                     f"Array dimension_names {dim_names} don't match "
                     f"axes names {expected_names}",

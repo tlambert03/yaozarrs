@@ -43,9 +43,9 @@ class ImageLabel(_BaseModel):
     colors: Annotated[
         Annotated[UniqueList[LabelColor], MinLen(1)] | None,
         RuleCodes(
-            list="NGFF-IL-005",
-            too_short="NGFF-IL-014",
-            listItemsNotUnique="NGFF-IL-015",
+            list="YZ-IL-005",
+            too_short="YZ-IL-014",
+            listItemsNotUnique="YZ-IL-015",
         ),
     ] = Field(
         default=None,
@@ -55,10 +55,10 @@ class ImageLabel(_BaseModel):
     properties: Annotated[
         Annotated[UniqueList[LabelProperty], MinLen(1)] | None,
         RuleCodes(
-            list="NGFF-IL-009",
-            object="NGFF-IL-009",
-            too_short="NGFF-IL-016",
-            listItemsNotUnique="NGFF-IL-017",
+            list="YZ-IL-009",
+            object="YZ-IL-009",
+            too_short="YZ-IL-016",
+            listItemsNotUnique="YZ-IL-017",
         ),
     ] = Field(
         default=None,
@@ -66,7 +66,7 @@ class ImageLabel(_BaseModel):
     )
     # The value of the `source` key MUST be a JSON object containing information about
     # the original image from which the label image derives.
-    source: Annotated[LabelSource | None, RuleCodes(object="NGFF-IL-012")] = Field(
+    source: Annotated[LabelSource | None, RuleCodes(object="YZ-IL-012")] = Field(
         default=None,
         description="Reference to the source intensity image that was segmented",
     )
@@ -98,7 +98,7 @@ class LabelsGroup(_OMEDocument):
     version: VersionStr = Field(default="0.6", description="OME-NGFF version")
     # [The labels group metadata] MUST contain a JSON object with the key `labels`,
     # whose value is a JSON array of paths to the labeled multiscale image(s).
-    labels: Annotated[list[str], RuleCodes(missing="NGFF-LB-001")] = Field(
+    labels: Annotated[list[str], RuleCodes(missing="YZ-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

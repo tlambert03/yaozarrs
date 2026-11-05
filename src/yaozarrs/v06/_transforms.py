@@ -92,7 +92,7 @@ class MapAxisTransformation(_TransformBase):
     mapAxis: Annotated[
         list[NonNegativeInt],
         MinLen(1),
-        RuleCodes(missing="NGFF-CT-016", greater_than_equal="NGFF-CT-018"),
+        RuleCodes(missing="YZ-CT-016", greater_than_equal="YZ-CT-018"),
     ] = Field(description="New axis order, as zero-based indices of the input axes.")
 
     @field_validator("mapAxis")
@@ -105,7 +105,7 @@ class MapAxisTransformation(_TransformBase):
         # (so it must be a permutation of 0..N-1, which we can check without knowing N)
         if sorted(v) != list(range(len(v))):
             raise rule_error(
-                "NGFF-CT-019" if len(set(v)) != len(v) else "NGFF-CT-018",
+                "YZ-CT-019" if len(set(v)) != len(v) else "YZ-CT-018",
                 f"mapAxis must be a permutation of 0..{len(v) - 1} (each index exactly "
                 f"once), got {v}",
             )
@@ -130,14 +130,14 @@ class ProjectAxisTransformation(_TransformBase):
         # (schema: at least one of the two is required)
         if self.droppedInputs is None and self.createdOutputs is None:
             raise rule_error(
-                "NGFF-CT-045",
+                "YZ-CT-045",
                 "projectAxis requires at least one of 'droppedInputs' or "
                 "'createdOutputs'",
             )
         # The values in the `createdOutputs` / `droppedInputs` array MUST be unique.
         for field, code in (
-            ("droppedInputs", "NGFF-CT-021"),
-            ("createdOutputs", "NGFF-CT-020"),
+            ("droppedInputs", "YZ-CT-021"),
+            ("createdOutputs", "YZ-CT-020"),
         ):
             if (v := getattr(self, field)) is not None and len(set(v)) != len(v):
                 raise rule_error(code, f"projectAxis {field} must be unique, got {v}")
@@ -171,7 +171,7 @@ class ScaleTransformation(_TransformBase):
         # values, i.e. axis flips, so we follow the prose.)
         if 0 in v:
             warn_rule(
-                "NGFF-CT-022",
+                "YZ-CT-022",
                 f"Scale values SHOULD be non-zero (got {v}); a zero scale is not "
                 "invertible.",
                 stacklevel=2,
@@ -194,17 +194,17 @@ class AffineTransformation(_TransformBase):
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        _require_exactly_one(self, "affine", "NGFF-CT-023")
+        _require_exactly_one(self, "affine", "YZ-CT-023")
         # The matrix MUST be stored as 2D nested array ... where the outer array
         # MUST be length `M` and the inner arrays MUST be length `N+1`.
         if self.affine is not None:
             if not self.affine:
                 raise rule_error(
-                    "NGFF-CT-025", "affine matrix must have at least one row"
+                    "YZ-CT-025", "affine matrix must have at least one row"
                 )
             if len({len(row) for row in self.affine}) != 1:
                 raise rule_error(
-                    "NGFF-CT-025", "affine matrix rows must all have the same length"
+                    "YZ-CT-025", "affine matrix rows must all have the same length"
                 )
         return self
 
@@ -222,23 +222,21 @@ class RotationTransformation(_TransformBase):
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        _require_exactly_one(self, "rotation", "NGFF-CT-028")
+        _require_exactly_one(self, "rotation", "YZ-CT-028")
         if (m := self.rotation) is not None:
             # the outer array MUST be length `N` and the inner arrays MUST be length N
             if any(len(row) != len(m) for row in m):
-                raise rule_error("NGFF-CT-030", "rotation matrix must be square (NxN)")
+                raise rule_error("YZ-CT-030", "rotation matrix must be square (NxN)")
             # [Rotations] MUST have determinant equal to one, with orthonormal rows
             # and columns.
             # (for a square matrix, orthonormal rows imply orthonormal columns)
             if not _has_orthonormal_rows(m):
                 raise rule_error(
-                    "NGFF-CT-027", "rotation matrix must have orthonormal rows"
+                    "YZ-CT-027", "rotation matrix must have orthonormal rows"
                 )
             # (orthonormal => det is +/-1; a rotation requires +1, not a reflection)
             if not math.isclose(_det(m), 1.0, abs_tol=_ROTATION_TOL):
-                raise rule_error(
-                    "NGFF-CT-027", "rotation matrix must have determinant 1"
-                )
+                raise rule_error("YZ-CT-027", "rotation matrix must have determinant 1")
         return self
 
 
@@ -255,19 +253,13 @@ class ByDimensionItem(_BaseModel):
     """A lower-dimensional transformation applied to a subset of axes."""
 
     transformation: Annotated[
-        "CoordinateTransformation", RuleCodes(missing="NGFF-CT-036")
+        "CoordinateTransformation", RuleCodes(missing="YZ-CT-036")
     ] = Field(description="The transformation to apply to the selected axes.")
-    inputAxes: Annotated[list[NonNegativeInt], RuleCodes(missing="NGFF-CT-036")] = (
-        Field(
-            description="Indices of the parent's input axes this transformation reads."
-        )
+    inputAxes: Annotated[list[NonNegativeInt], RuleCodes(missing="YZ-CT-036")] = Field(
+        description="Indices of the parent's input axes this transformation reads."
     )
-    outputAxes: Annotated[list[NonNegativeInt], RuleCodes(missing="NGFF-CT-036")] = (
-        Field(
-            description=(
-                "Indices of the parent's output axes this transformation writes."
-            )
-        )
+    outputAxes: Annotated[list[NonNegativeInt], RuleCodes(missing="YZ-CT-036")] = Field(
+        description=("Indices of the parent's output axes this transformation writes.")
     )
 
     @model_validator(mode="after")
@@ -279,7 +271,7 @@ class ByDimensionItem(_BaseModel):
                 self.transformation, len(self.inputAxes), len(self.outputAxes)
             )
         except ValueError as e:
-            raise rewrap_error(e, code="NGFF-CT-038") from None
+            raise rewrap_error(e, code="YZ-CT-038") from None
         return self
 
 
@@ -290,7 +282,7 @@ class ByDimensionTransformation(_TransformBase):
     transformations: Annotated[
         list[ByDimensionItem],
         MinLen(1),
-        RuleCodes(list="NGFF-CT-036", object="NGFF-CT-036"),
+        RuleCodes(list="YZ-CT-036", object="YZ-CT-036"),
     ] = Field(description="Transformations and the axes they apply to (non-empty).")
 
     @field_validator("transformations")
@@ -302,14 +294,14 @@ class ByDimensionTransformation(_TransformBase):
         for i, item in enumerate(v):
             if len(set(item.outputAxes)) != len(item.outputAxes):
                 raise rule_error(
-                    "NGFF-CT-037",
+                    "YZ-CT-037",
                     f"byDimension transformations[{i}].outputAxes has duplicate axes: "
                     f"{item.outputAxes}",
                 )
         out = [ax for item in v for ax in item.outputAxes]
         if dupes := sorted({ax for ax in out if out.count(ax) > 1}):
             raise rule_error(
-                "NGFF-CT-037",
+                "YZ-CT-037",
                 f"byDimension output axes {dupes} appear in more than one "
                 "transformation's 'outputAxes'",
             )
@@ -335,7 +327,7 @@ class BijectionTransformation(_TransformBase):
             t = getattr(self, direction)
             if _is_closed_form_invertible(t):
                 warn_rule(
-                    "NGFF-CT-039",
+                    "YZ-CT-039",
                     f"bijection {direction} transformation ({t.type!r}) is "
                     "closed-form invertible; each direction SHOULD be a type that "
                     "is not.",
@@ -423,14 +415,14 @@ def check_transform_ndim(t: CoordinateTransformation, n_in: int, n_out: int) -> 
         # length of the `scale`/`translation` array (N).
         params = t.translation if isinstance(t, TranslationTransformation) else t.scale
         if not len(params) == n_in == n_out:
-            _fail("NGFF-CT-004", f"has {len(params)} values")
+            _fail("YZ-CT-004", f"has {len(params)} values")
     elif isinstance(t, (IdentityTransformation, DisplacementsTransformation)):
         # (`displacements` require M=N)
         if n_in != n_out:
             _fail(
-                "NGFF-CT-035"
+                "YZ-CT-035"
                 if isinstance(t, DisplacementsTransformation)
-                else "NGFF-CT-015",
+                else "YZ-CT-015",
                 "input and output must have the same number of axes",
             )
     elif isinstance(t, MapAxisTransformation):
@@ -439,37 +431,35 @@ def check_transform_ndim(t: CoordinateTransformation, n_in: int, n_out: int) -> 
         # valid zero-based index into the input coordinate system's axes
         # (that it's a permutation of 0..N-1 is checked by MapAxisTransformation)
         if not len(t.mapAxis) == n_in == n_out:
-            _fail("NGFF-CT-017", f"has {len(t.mapAxis)} indices")
+            _fail("YZ-CT-017", f"has {len(t.mapAxis)} indices")
     elif isinstance(t, ProjectAxisTransformation):
         dropped, created = t.droppedInputs or [], t.createdOutputs or []
         if any(i >= n_in for i in dropped):
-            _fail("NGFF-CT-015", f"droppedInputs {dropped} out of range")
+            _fail("YZ-CT-015", f"droppedInputs {dropped} out of range")
         if any(i >= n_out for i in created):
-            _fail("NGFF-CT-015", f"createdOutputs {created} out of range")
+            _fail("YZ-CT-015", f"createdOutputs {created} out of range")
         if n_out != n_in - len(dropped) + len(created):
-            _fail(
-                "NGFF-CT-015", f"drops {len(dropped)} and creates {len(created)} axes"
-            )
+            _fail("YZ-CT-015", f"drops {len(dropped)} and creates {len(created)} axes")
     elif isinstance(t, AffineTransformation):
         # the outer array MUST be length `M` and the inner arrays MUST be length N+1
         if t.affine is not None:
             m, n1 = len(t.affine), len(t.affine[0])
             if m != n_out or n1 != n_in + 1:
-                _fail("NGFF-CT-025", f"matrix is {m}x{n1}, expected {n_out}x{n_in + 1}")
+                _fail("YZ-CT-025", f"matrix is {m}x{n1}, expected {n_out}x{n_in + 1}")
     elif isinstance(t, RotationTransformation):
         # Input and output dimensionality (N) MUST be identical.
         if n_in != n_out:
-            _fail("NGFF-CT-026", "input and output must have the same number of axes")
+            _fail("YZ-CT-026", "input and output must have the same number of axes")
         if t.rotation is not None and len(t.rotation) != n_in:
-            _fail("NGFF-CT-030", f"matrix is {len(t.rotation)}x{len(t.rotation)}")
+            _fail("YZ-CT-030", f"matrix is {len(t.rotation)}x{len(t.rotation)}")
     elif isinstance(t, BijectionTransformation):
         # Its input and output spaces MUST have equal dimension. The input and
         # output dimensions for the both the forward and inverse transformations
         # MUST match bijection's input and output space dimensions.
         if n_in != n_out:
-            _fail("NGFF-CT-040", "input and output must have the same number of axes")
-        _check_child(t, "forward", t.forward, n_in, n_out, code="NGFF-CT-041")
-        _check_child(t, "inverse", t.inverse, n_out, n_in, code="NGFF-CT-041")
+            _fail("YZ-CT-040", "input and output must have the same number of axes")
+        _check_child(t, "forward", t.forward, n_in, n_out, code="YZ-CT-041")
+        _check_child(t, "inverse", t.inverse, n_out, n_in, code="YZ-CT-041")
     elif isinstance(t, SequenceTransformation):
         # (intermediate dimensionality is inferred from each step's parameters. Where
         # it can't be (e.g. after a `coordinates` step), checking resumes at the next
@@ -490,12 +480,12 @@ def check_transform_ndim(t: CoordinateTransformation, n_in: int, n_out: int) -> 
         for i, item in enumerate(t.transformations):
             if any(ax >= n_in for ax in item.inputAxes):
                 _fail(
-                    "NGFF-CT-015",
+                    "YZ-CT-015",
                     f"transformations[{i}].inputAxes {item.inputAxes} out of range",
                 )
             if any(ax >= n_out for ax in item.outputAxes):
                 _fail(
-                    "NGFF-CT-015",
+                    "YZ-CT-015",
                     f"transformations[{i}].outputAxes {item.outputAxes} out of range",
                 )
         # Every axis index in the parent byDimension's `output` coordinate system
@@ -503,7 +493,7 @@ def check_transform_ndim(t: CoordinateTransformation, n_in: int, n_out: int) -> 
         covered = {ax for item in t.transformations for ax in item.outputAxes}
         if missing := sorted(set(range(n_out)) - covered):
             _fail(
-                "NGFF-CT-037",
+                "YZ-CT-037",
                 f"output axes {missing} are not covered by any transformation",
             )
 

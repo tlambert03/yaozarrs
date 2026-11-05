@@ -84,7 +84,7 @@ def _validate_transforms_list(
     num_scales = len([t for t in transforms if isinstance(t, ScaleTransformation)])
     if num_scales != 1:
         raise rule_error(
-            "NGFF-CT-001",
+            "YZ-CT-001",
             "There must be exactly one scale transformation in the list of transforms. "
             f"Found {num_scales}.\n\n"
             "TIP:\n"
@@ -98,7 +98,7 @@ def _validate_transforms_list(
     num_trans = len([t for t in transforms if isinstance(t, TranslationTransformation)])
     if num_trans > 1:
         raise rule_error(
-            "NGFF-CT-002",
+            "YZ-CT-002",
             f"There can be at most one translation transformation. Found {num_trans}.",
         )
 
@@ -115,7 +115,7 @@ def _validate_transforms_list(
         )
         if translation_idx < scale_idx:
             raise rule_error(
-                "NGFF-CT-003",
+                "YZ-CT-003",
                 "If a translation transformation is given, it must be listed after "
                 "the scale transformation.",
             )
@@ -142,7 +142,7 @@ class Dataset(_BaseModel):
     where each level represents the same physical region at different sampling rates.
     """
 
-    path: Annotated[str, SuggestDatasetPath, RuleCodes(missing="NGFF-DS-006")] = Field(
+    path: Annotated[str, SuggestDatasetPath, RuleCodes(missing="YZ-DS-006")] = Field(
         description=(
             "Path to the Zarr array for this resolution level, "
             "relative to the parent multiscale group. All strings are allowed "
@@ -153,7 +153,7 @@ class Dataset(_BaseModel):
     )
 
     coordinateTransformations: Annotated[
-        CoordinateTransformsList, RuleCodes(missing="NGFF-DS-007")
+        CoordinateTransformsList, RuleCodes(missing="YZ-DS-007")
     ] = Field(
         description=(
             "Transformations mapping array indices to physical coordinates. "
@@ -169,15 +169,13 @@ def _validate_datasets_list(datasets: list[Dataset]) -> list[Dataset]:
     ndims = {dt.path: dt.coordinateTransformations[0].ndim for dt in datasets}
     if len(set(ndims.values())) != 1:
         raise rule_error(
-            "NGFF-DS-002",
+            "YZ-DS-002",
             "All datasets must have the same number of dimensions. "
             f"Found differing dimensions: {ndims}",
         )
     # Must not have more than 5 dimensions
     if any(n > 5 for n in ndims.values()):
-        raise rule_error(
-            "NGFF-DS-003", "Datasets must not have more than 5 dimensions."
-        )
+        raise rule_error("YZ-DS-003", "Datasets must not have more than 5 dimensions.")
 
     return datasets
 
@@ -205,10 +203,10 @@ class Multiscale(_BaseModel):
         default=None,
         description="Optional identifier for this multiscale image",
     )
-    axes: Annotated[AxesList, RuleCodes(missing="NGFF-MS-002")] = Field(
+    axes: Annotated[AxesList, RuleCodes(missing="YZ-MS-002")] = Field(
         description="Ordered list of dimension axes defining the coordinate system"
     )
-    datasets: Annotated[DatasetsList, RuleCodes(missing="NGFF-MS-003")] = Field(
+    datasets: Annotated[DatasetsList, RuleCodes(missing="YZ-MS-003")] = Field(
         description=("Resolution pyramid levels, from highest to lowest resolution")
     )
     coordinateTransformations: CoordinateTransformsList | None = Field(
@@ -248,7 +246,7 @@ class Multiscale(_BaseModel):
             for _it, transform in enumerate(ds.coordinateTransformations):
                 if transform.ndim != self.ndim:
                     raise rule_error(
-                        "NGFF-CT-004",
+                        "YZ-CT-004",
                         f"at datasets.[{_id}].coordinateTransformations[{_it}]:\n"
                         f"  The length of the transformation ({transform.ndim}) does "
                         f"not match the number of axes ({self.ndim}).",
@@ -257,7 +255,7 @@ class Multiscale(_BaseModel):
             for _it, transform in enumerate(self.coordinateTransformations):
                 if transform.ndim != self.ndim:
                     raise rule_error(
-                        "NGFF-CT-004",
+                        "YZ-CT-004",
                         f"at coordinateTransformations[{_it}]:\n"
                         f"  The length of the transformation ({transform.ndim}) "
                         f"does not match the number of axes ({self.ndim}).",

@@ -50,10 +50,10 @@ _FIELDS = (DisplacementsTransformation, CoordinatesTransformation)
 
 # the rule for what `path` must point to, for each transformation type that has one
 _PARAMETER_RULES = {
-    "affine": "NGFF-CT-024",
-    "rotation": "NGFF-CT-029",
-    "displacements": "NGFF-CT-031",
-    "coordinates": "NGFF-CT-031",
+    "affine": "YZ-CT-024",
+    "rotation": "YZ-CT-029",
+    "displacements": "YZ-CT-031",
+    "coordinates": "YZ-CT-031",
 }
 
 
@@ -175,7 +175,7 @@ class StorageValidatorV06(StorageValidator):
             elif arr.dtype != first_dtype:
                 result.add_error(
                     StorageErrorType.dataset_dtype_mismatch,
-                    "NGFF-DS-008",
+                    "YZ-DS-008",
                     (*loc_prefix, "datasets", ds_idx, "path"),
                     f"Dataset '{dataset.path}' has dtype '{arr.dtype}', but the "
                     f"first dataset has '{first_dtype}'",
@@ -228,7 +228,7 @@ class StorageValidatorV06(StorageValidator):
                 except ValueError as e:
                     result.add_error(
                         StorageErrorType.transform_dimension_mismatch,
-                        error_code(e) or "NGFF-CT-015",
+                        error_code(e) or "YZ-CT-015",
                         t_loc,
                         f"Transformation to a label image: {e}",
                         ctx={"error": str(e)},
@@ -261,7 +261,7 @@ class StorageValidatorV06(StorageValidator):
         if _child_head(path) is None:
             result.add_error(
                 StorageErrorType.coordinate_system_path_invalid,
-                "NGFF-CT-013",
+                "YZ-CT-013",
                 (*loc, "path"),
                 f"Path '{path}' is not in a child labels group of this image",
                 ctx={"path": path, "expected": "<labels group>/<label image>"},
@@ -270,7 +270,7 @@ class StorageValidatorV06(StorageValidator):
         if zarr_group.get(norm) is None:
             result.add_error(
                 StorageErrorType.coordinate_system_path_not_found,
-                "NGFF-CT-013",
+                "YZ-CT-013",
                 (*loc, "path"),
                 f"Path '{path}' not found",
                 ctx={"fs_path": _build_fs_path(zarr_group, path), "expected": "group"},
@@ -282,16 +282,16 @@ class StorageValidatorV06(StorageValidator):
         if not rest or self._child_labels_group(zarr_group, head) is None:
             result.add_error(
                 StorageErrorType.coordinate_system_path_invalid,
-                "NGFF-CT-013",
+                "YZ-CT-013",
                 (*loc, "path"),
                 f"Path '{path}' is not in a child labels group of this image",
                 ctx={"path": path, "expected": "<labels group>/<label image>"},
             )
             return None
-        image = self._image_at(zarr_group, norm, loc, result, "NGFF-CT-013")
+        image = self._image_at(zarr_group, norm, loc, result, "YZ-CT-013")
         if image is None:
             return None
-        return self._find_cs(image, path, name, loc, result, "NGFF-CT-013")
+        return self._find_cs(image, path, name, loc, result, "YZ-CT-013")
 
     def _image_at(
         self,
@@ -366,7 +366,7 @@ class StorageValidatorV06(StorageValidator):
             if len(groups := _components(nodes, edges)) > 1:
                 result.add_warning(
                     StorageErrorType.graph_not_connected,
-                    "NGFF-CT-042",
+                    "YZ-CT-042",
                     (*loc_prefix, "multiscales", ms_idx, "coordinateSystems"),
                     "Coordinate systems are not all linked by coordinate "
                     f"transformations: {groups}",
@@ -420,7 +420,7 @@ class StorageValidatorV06(StorageValidator):
                 except ValueError as e:
                     result.add_error(
                         StorageErrorType.transform_dimension_mismatch,
-                        error_code(e) or "NGFF-CT-015",
+                        error_code(e) or "YZ-CT-015",
                         t_loc,
                         f"Transformation between {_fmt(a)!r} and {_fmt(b)!r}: {e}",
                         ctx={"error": str(e)},
@@ -457,7 +457,7 @@ class StorageValidatorV06(StorageValidator):
         if resolved_all and len(groups := _components(nodes, edges)) > 1:
             result.add_error(
                 StorageErrorType.graph_not_connected,
-                "NGFF-CT-042",
+                "YZ-CT-042",
                 scene_loc,
                 "The coordinate systems of the scene and its images are not all "
                 f"linked by coordinate transformations: {groups}",
@@ -486,9 +486,7 @@ class StorageValidatorV06(StorageValidator):
         if (image := images[path]) is None:
             return None
         if (found := _find_coordinate_system(image, ref.name)) is None:
-            self._find_cs(
-                image, path, ref.name, loc, result, "NGFF-SC-007"
-            )  # (adds it)
+            self._find_cs(image, path, ref.name, loc, result, "YZ-SC-007")  # (adds it)
             return None
         ms_idx, cs = found
         return (path, ms_idx, ref.name), cs
@@ -499,7 +497,7 @@ class StorageValidatorV06(StorageValidator):
         if path.startswith(("..", "/")):
             result.add_error(
                 StorageErrorType.coordinate_system_path_invalid,
-                "NGFF-SC-007",
+                "YZ-SC-007",
                 (*loc, "path"),
                 f"Path '{path}' is not a subgroup of the scene",
                 ctx={"path": path},
@@ -508,13 +506,13 @@ class StorageValidatorV06(StorageValidator):
         if zarr_group.get(path) is None:
             result.add_error(
                 StorageErrorType.coordinate_system_path_not_found,
-                "NGFF-SC-007",
+                "YZ-SC-007",
                 (*loc, "path"),
                 f"Path '{path}' not found",
                 ctx={"fs_path": _build_fs_path(zarr_group, path), "expected": "group"},
             )
             return None
-        return self._image_at(zarr_group, path, loc, result, "NGFF-SC-007")
+        return self._image_at(zarr_group, path, loc, result, "YZ-SC-007")
 
     # ------------------------------------------------------------------------------
     # Transformation parameters stored in Zarr (matrices, displacement fields)
@@ -598,7 +596,7 @@ class StorageValidatorV06(StorageValidator):
             # called "coordinateTransformations".
             result.add_warning(
                 StorageErrorType.transform_parameters_location,
-                "NGFF-CT-043",
+                "YZ-CT-043",
                 (*loc, "path"),
                 f"Parameters of {t.type} at '{path}' SHOULD be stored in the scene's "
                 "'coordinateTransformations' group",
@@ -672,9 +670,7 @@ class StorageValidatorV06(StorageValidator):
         # in an ome-zarr multiscale group
         # (since ngff-spec#145; the schema descriptions still say "zarr array")
         if not isinstance(node, ZarrGroup):
-            _error(
-                "NGFF-CT-031", "is a Zarr array, but must be a multiscale image group"
-            )
+            _error("YZ-CT-031", "is a Zarr array, but must be a multiscale image group")
             return result
         try:
             model: Any = node.ome_metadata(version=self.VERSION, strict=self.strict)
@@ -687,7 +683,7 @@ class StorageValidatorV06(StorageValidator):
                 else {"type": type(model).__name__}
             )
             _error(
-                "NGFF-CT-031",
+                "YZ-CT-031",
                 "does not contain valid Image ('multiscales') metadata",
                 **reason,
             )
@@ -701,19 +697,19 @@ class StorageValidatorV06(StorageValidator):
             # dimension corresponding to the coordinate or displacement vector.
             vector = [i for i, ax in enumerate(axes) if ax.type == kind]
             if len(vector) != 1:
-                _error("NGFF-CT-032", f"must have exactly one axis of type {kind!r}")
+                _error("YZ-CT-032", f"must have exactly one axis of type {kind!r}")
                 continue
             idx = vector[0]
             if axes[idx].discrete is not True:
                 _error(
-                    "NGFF-CT-032",
+                    "YZ-CT-032",
                     f"axis {axes[idx].name!r} must specify 'discrete: true'",
                 )
             # If the input coordinate system has `N` axes, the multiscale image at
             # location `path` MUST have `N+1` dimensions.
             if n_in is not None and len(axes) != n_in + 1:
                 _error(
-                    "NGFF-CT-033",
+                    "YZ-CT-033",
                     f"has {len(axes)} dimensions, expected {n_in + 1} (input has "
                     f"{n_in} axes)",
                 )
@@ -729,7 +725,7 @@ class StorageValidatorV06(StorageValidator):
                     continue  # reported when validating the image
                 if (actual := arr.metadata.shape[idx]) != length:
                     _error(
-                        "NGFF-CT-035" if kind == "displacement" else "NGFF-CT-034",
+                        "YZ-CT-035" if kind == "displacement" else "YZ-CT-034",
                         f"array '{dataset.path}' has length {actual} along the "
                         f"{kind} axis, expected {length}",
                     )

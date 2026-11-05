@@ -34,27 +34,27 @@ assert _spec and _spec.loader
 ngff_rules = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ngff_rules)
 
-CODE_RE = re.compile(r"^(NGFF-[A-Z]{2}-\d{3}|YZ-\d{3})$")
+CODE_RE = re.compile(r"^YZ-([A-Z]{2}-)?\d{3}$")
 SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 # Where yaozarrs behavior knowingly differs from "checked in every version whose
 # spec states the rule". Both sets are verified, so stale entries fail the test.
 # Spec states the rule, but yaozarrs doesn't check it (yet).
 KNOWN_GAPS = {
-    ("NGFF-DS-001", "0.4"),
-    ("NGFF-PL-001", "0.4"),
-    ("NGFF-PL-002", "0.4"),
-    ("NGFF-PL-003", "0.4"),
-    ("NGFF-PL-006", "0.4"),
-    ("NGFF-WL-002", "0.4"),
-    # each dataset's transformation is checked against the axes instead (NGFF-CT-004),
-    # and each array's number of dimensions (NGFF-DS-005)
-    ("NGFF-DS-002", "0.6"),
+    ("YZ-DS-001", "0.4"),
+    ("YZ-PL-001", "0.4"),
+    ("YZ-PL-002", "0.4"),
+    ("YZ-PL-003", "0.4"),
+    ("YZ-PL-006", "0.4"),
+    ("YZ-WL-002", "0.4"),
+    # each dataset's transformation is checked against the axes instead (YZ-CT-004),
+    # and each array's number of dimensions (YZ-DS-005)
+    ("YZ-DS-002", "0.6"),
 }
 # yaozarrs checks the rule in a version whose spec doesn't state it.
 KNOWN_OVERREACH = {
     # shared omero model; the 0.4 schema only requires `color` to be a string
-    ("NGFF-OM-001", "0.4"),
+    ("YZ-OM-001", "0.4"),
 }
 
 
@@ -72,7 +72,7 @@ def test_rule_fields(rule: Rule) -> None:
     for code in rule.supersedes:
         assert code in RULES and code != rule.code
 
-    if rule.code.startswith("YZ-"):
+    if not rule.is_spec_rule:
         assert rule.level is None and rule.introduced is None and not rule.sources
         assert rule.severity is not None
         return
@@ -122,7 +122,7 @@ def test_quote_at_lines(src: SpecSource) -> None:
 
 def test_codes_in_source_exist() -> None:
     """Every code used in `src/` is registered and has an example."""
-    pattern = re.compile(r"\"((?:NGFF-[A-Z]{2}-|YZ-)\d{3})\"")
+    pattern = re.compile(r"\"(YZ-(?:[A-Z]{2}-)?\d{3})\"")
     used: set[str] = set()
     for path in (ROOT / "src" / "yaozarrs").rglob("*.py"):
         used.update(pattern.findall(path.read_text(encoding="utf-8")))
@@ -140,7 +140,7 @@ def _expected(rule: Rule, version: str) -> bool:
         return True
     if (rule.code, version) in KNOWN_GAPS:
         return False
-    if rule.code.startswith("YZ-"):
+    if not rule.is_spec_rule:
         return ngff_rules.example_for(rule, version) is not None
     return version in {s.doc.version for s in rule.sources}
 
@@ -174,11 +174,11 @@ def test_known_exceptions_have_examples() -> None:
 
 
 def test_schema_source() -> None:
-    src = next(s for s in get_rule("NGFF-CT-045").sources)
+    src = next(s for s in get_rule("YZ-CT-045").sources)
     assert src.is_schema
     assert src.doc.path == "schemas/coordinate_transformations.schema"
     assert f"/blob/{src.doc.sha}/schemas/coordinate" in src.permalink
-    v4 = next(s for s in get_rule("NGFF-PL-037").sources if s.doc.version == "0.4")
+    v4 = next(s for s in get_rule("YZ-PL-037").sources if s.doc.version == "0.4")
     assert v4.doc.path == "0.4/schemas/plate.schema"
     assert v4.doc.cache_name == "ome-ngff-0.4.1-plate.schema"
 
@@ -186,13 +186,13 @@ def test_schema_source() -> None:
 def test_rule_warning_filterable() -> None:
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        warnings.filterwarnings("ignore", message=r"\[NGFF-AX-006\]")
+        warnings.filterwarnings("ignore", message=r"\[YZ-AX-006\]")
         v05.SpaceAxis(name="x", unit="lightyear")
     assert not w
 
 
 def test_rule_error_message() -> None:
-    rule = get_rule("NGFF-AX-001")
+    rule = get_rule("YZ-AX-001")
     assert rule.example
     with pytest.raises(ValidationError) as e:
         v05.Multiscale.model_validate(rule.example.data)
@@ -204,14 +204,14 @@ def test_field_error_codes() -> None:
     with pytest.raises(ValidationError) as e:
         v05.PlateWell.model_validate({"path": "A1", "rowIndex": -1})
     errs = {x["loc"]: x for x in e.value.errors()}
-    assert errs[("path",)]["type"] == "NGFF-PL-032"
-    assert errs[("rowIndex",)]["type"] == "NGFF-PL-004"
-    assert errs[("columnIndex",)]["type"] == "NGFF-PL-033"
+    assert errs[("path",)]["type"] == "YZ-PL-032"
+    assert errs[("rowIndex",)]["type"] == "YZ-PL-004"
+    assert errs[("columnIndex",)]["type"] == "YZ-PL-033"
     # the original pydantic error is kept in ctx and in the message
     missing = errs[("columnIndex",)]
     assert missing["ctx"]["pydantic_type"] == "missing"
     assert missing["msg"].startswith("Field required")
-    assert get_rule("NGFF-PL-033").url in missing["msg"]
+    assert get_rule("YZ-PL-033").url in missing["msg"]
 
 
 def test_field_error_codes_nested() -> None:
@@ -221,8 +221,8 @@ def test_field_error_codes_nested() -> None:
         v05.Plate.model_validate(plate)
     errs = {x["loc"]: x["type"] for x in e.value.errors()}
     assert errs == {
-        ("plate", "rows", 0, "name"): "NGFF-PL-026",
-        ("plate", "wells"): "NGFF-PL-028",
+        ("plate", "rows", 0, "name"): "YZ-PL-026",
+        ("plate", "wells"): "YZ-PL-028",
     }
     with pytest.raises(ValidationError) as e:
         v05.Omero.model_validate({"channels": [{"color": "FF0000", "window": 1}]})
@@ -234,7 +234,7 @@ def test_field_error_codes_on_assignment() -> None:
     well = v05.PlateWell(path="A/1", rowIndex=0, columnIndex=0)
     with pytest.raises(ValidationError) as e:
         well.rowIndex = -1
-    assert e.value.errors()[0]["type"] == "NGFF-PL-004"
+    assert e.value.errors()[0]["type"] == "YZ-PL-004"
 
 
 def test_field_error_codes_keep_union_labels() -> None:
@@ -251,18 +251,18 @@ def test_field_error_codes_keep_union_labels() -> None:
 
 def test_rewrap_error_keeps_code() -> None:
     # the code survives the context that callers add to a message
-    example = ngff_rules.example_for(get_rule("NGFF-CT-004"), "0.6")
+    example = ngff_rules.example_for(get_rule("YZ-CT-004"), "0.6")
     with pytest.raises(ValidationError) as e:
         v06.Multiscale.model_validate(example.data)
     (err,) = e.value.errors()
-    assert err["type"] == "NGFF-CT-004"
+    assert err["type"] == "YZ-CT-004"
     assert "datasets[" in err["msg"]
     assert err["msg"].count("See https://") == 1
 
-    original = rule_error("NGFF-CT-004", "bad")
-    assert error_code(rewrap_error(original, "a: ", ": b")) == "NGFF-CT-004"
+    original = rule_error("YZ-CT-004", "bad")
+    assert error_code(rewrap_error(original, "a: ", ": b")) == "YZ-CT-004"
     assert str(rewrap_error(original, "a: ", ": b")).startswith("a: bad: b\n  See ")
-    assert error_code(rewrap_error(original, code="NGFF-CT-041")) == "NGFF-CT-041"
+    assert error_code(rewrap_error(original, code="YZ-CT-041")) == "YZ-CT-041"
     plain = rewrap_error(ValueError("bad"), "a: ")
     assert str(plain) == "a: bad" and error_code(plain) is None
 
@@ -270,7 +270,7 @@ def test_rewrap_error_keeps_code() -> None:
 def test_storage_dimension_mismatch_keeps_code() -> None:
     # a dimensionality error found in storage validation keeps its specific code
     pytest.importorskip("fsspec")
-    image = get_rule("NGFF-DS-005").example
+    image = get_rule("YZ-DS-005").example
     assert image
     files = ngff_rules.to_v06_store(image.files)
     files["s0/zarr.json"]["shape"] = [4, 4]
@@ -290,12 +290,12 @@ def test_storage_dimension_mismatch_keeps_code() -> None:
     }
     root = {"zarr_format": 3, "node_type": "group", "attributes": {"ome": scene}}
     store = {"zarr.json": root, **{f"image/{k}": v for k, v in files.items()}}
-    assert "NGFF-CT-004" in ngff_rules._store_codes(store)
+    assert "YZ-CT-004" in ngff_rules._store_codes(store)
 
 
 def test_field_error_codes_nested_discriminated_union() -> None:
     # discriminated unions stay discriminated in models nested in other models
-    example = ngff_rules.example_for(get_rule("NGFF-CT-005"), "0.6")
+    example = ngff_rules.example_for(get_rule("YZ-CT-005"), "0.6")
     multiscale = {
         "coordinateSystems": [
             {
@@ -311,13 +311,13 @@ def test_field_error_codes_nested_discriminated_union() -> None:
     with pytest.raises(ValidationError) as e:
         v06.Image.model_validate({"multiscales": [multiscale]})
     (err,) = e.value.errors()
-    assert err["type"] == "NGFF-CT-005"
+    assert err["type"] == "YZ-CT-005"
     assert err["ctx"]["pydantic_type"] == "union_tag_invalid"
 
 
 def test_rule_codes_unknown_code() -> None:
     with pytest.raises(KeyError):
-        RuleCodes(missing="NGFF-XX-999")
+        RuleCodes(missing="YZ-XX-999")
 
 
 def test_docs_render() -> None:

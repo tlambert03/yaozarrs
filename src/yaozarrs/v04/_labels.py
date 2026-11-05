@@ -34,19 +34,19 @@ class LabelColor(_BaseModel):
     visualization purposes.
     """
 
-    label_value: Annotated[float, RuleCodes(missing="NGFF-IL-006")] = Field(
+    label_value: Annotated[float, RuleCodes(missing="YZ-IL-006")] = Field(
         description="Label value from the segmentation image",
         alias="label-value",
     )
     rgba: Annotated[
         Annotated[list[Int8bit], Len(min_length=4, max_length=4)] | None,
         RuleCodes(
-            list="NGFF-IL-008",
-            too_short="NGFF-IL-008",
-            too_long="NGFF-IL-008",
-            int="NGFF-IL-008",
-            greater_than_equal="NGFF-IL-008",
-            less_than_equal="NGFF-IL-008",
+            list="YZ-IL-008",
+            too_short="YZ-IL-008",
+            too_long="YZ-IL-008",
+            int="YZ-IL-008",
+            greater_than_equal="YZ-IL-008",
+            less_than_equal="YZ-IL-008",
         ),
     ] = Field(
         default=None,
@@ -72,7 +72,7 @@ class LabelProperty(_BaseModel):
         ```
     """
 
-    label_value: Annotated[int, RuleCodes(missing="NGFF-IL-010")] = Field(
+    label_value: Annotated[int, RuleCodes(missing="YZ-IL-010")] = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
@@ -90,7 +90,7 @@ class LabelSource(_BaseModel):
     image was derived.
     """
 
-    image: Annotated[str | None, RuleCodes(str="NGFF-IL-013")] = Field(
+    image: Annotated[str | None, RuleCodes(str="YZ-IL-013")] = Field(
         default=None,
         description=(
             "Relative path to the source image group (default: '../../', "
@@ -114,19 +114,19 @@ class ImageLabel(_BaseModel):
 
     colors: Annotated[
         Annotated[UniqueList[LabelColor], MinLen(1)] | None,
-        RuleCodes(list="NGFF-IL-005"),
+        RuleCodes(list="YZ-IL-005"),
     ] = Field(
         default=None,
         description="Color mappings for label values, used for visualization",
     )
     properties: Annotated[
         Annotated[UniqueList[LabelProperty], MinLen(1)] | None,
-        RuleCodes(list="NGFF-IL-009", object="NGFF-IL-009"),
+        RuleCodes(list="YZ-IL-009", object="YZ-IL-009"),
     ] = Field(
         default=None,
         description="Arbitrary metadata properties for individual label values",
     )
-    source: Annotated[LabelSource | None, RuleCodes(object="NGFF-IL-012")] = Field(
+    source: Annotated[LabelSource | None, RuleCodes(object="YZ-IL-012")] = Field(
         default=None,
         description="Reference to the source intensity image that was segmented",
     )
@@ -158,7 +158,7 @@ class LabelsGroup(_BaseModel):
         ```
     """
 
-    labels: Annotated[list[str], RuleCodes(missing="NGFF-LB-001")] = Field(
+    labels: Annotated[list[str], RuleCodes(missing="YZ-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
 

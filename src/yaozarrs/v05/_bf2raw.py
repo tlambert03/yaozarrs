@@ -41,7 +41,7 @@ class Bf2Raw(_OMEDocument):
         description="OME-NGFF specification version",
     )
     bioformats2raw_layout: Annotated[
-        Literal[3], RuleCodes(missing="NGFF-BF-003", literal_error="NGFF-BF-003")
+        Literal[3], RuleCodes(missing="YZ-BF-003", literal_error="YZ-BF-003")
     ] = Field(
         alias="bioformats2raw.layout",
         description="Layout version marker added by bioformats2raw (currently 3)",
@@ -78,7 +78,7 @@ class Series(_OMEDocument):
         description="OME-NGFF specification version",
     )
     series: Annotated[
-        list[str], MinLen(1), RuleCodes(list="NGFF-BF-004", str="NGFF-BF-004")
+        list[str], MinLen(1), RuleCodes(list="YZ-BF-004", str="YZ-BF-004")
     ] = Field(
         description=(
             "Ordered list of paths to image groups, matching the order in "

@@ -21,15 +21,13 @@ class CoordinateSystem(_BaseModel):
     # MUST contain the field `name`. The value MUST be a non-empty string ...
     name: Annotated[
         str,
-        RuleCodes(
-            missing="NGFF-CS-001", str="NGFF-CS-002", string_too_short="NGFF-CS-002"
-        ),
+        RuleCodes(missing="YZ-CS-001", str="YZ-CS-002", string_too_short="YZ-CS-002"),
     ] = Field(min_length=1, description="Name of the coordinate system.")
     # MUST contain the field `axes`, whose value is an array of valid `axes`
     axes: Annotated[
         AxesList,
         RuleCodes(
-            missing="NGFF-CS-004", list="NGFF-CS-004", listItemsNotUnique="NGFF-AX-001"
+            missing="YZ-CS-004", list="YZ-CS-004", listItemsNotUnique="YZ-AX-001"
         ),
     ] = Field(description="The axes of this coordinate system.")
 
@@ -45,7 +43,7 @@ def _validate_names(systems: list[CoordinateSystem]) -> list[CoordinateSystem]:
     names = [cs.name for cs in systems]
     if dupes := sorted({n for n in names if names.count(n) > 1}):
         raise rule_error(
-            "NGFF-CS-003",
+            "YZ-CS-003",
             f"Coordinate system names must be unique. Duplicates: {dupes}",
         )
     return systems

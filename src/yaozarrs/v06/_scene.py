@@ -52,17 +52,17 @@ class SceneDef(_BaseModel):
         list[CoordinateTransformation],
         MinLen(1),
         RuleCodes(
-            missing="NGFF-SC-001",
-            list="NGFF-SC-002",
-            union_tag_invalid="NGFF-SC-002",
-            union_tag_not_found="NGFF-SC-002",
+            missing="YZ-SC-001",
+            list="YZ-SC-002",
+            union_tag_invalid="YZ-SC-002",
+            union_tag_not_found="YZ-SC-002",
         ),
     ] = Field(description="Transformations between coordinate systems of the images.")
     # It MAY contain the field `coordinateSystems`, whose values MUST be an array of
     # valid coordinate systems.
     coordinateSystems: Annotated[
         CoordinateSystemsList | None,
-        RuleCodes(list="NGFF-SC-003", listItemsNotUnique="NGFF-CS-003"),
+        RuleCodes(list="YZ-SC-003", listItemsNotUnique="YZ-CS-003"),
     ] = Field(
         default=None,
         description=(
@@ -81,12 +81,12 @@ class SceneDef(_BaseModel):
             # contain the field `path`.
             if t.input is None or t.output is None:
                 raise rule_error(
-                    "NGFF-SC-004", f"{loc}: must have both an 'input' and an 'output'."
+                    "YZ-SC-004", f"{loc}: must have both an 'input' and an 'output'."
                 )
             for side, ref in (("input", t.input), ("output", t.output)):
                 if ref.name is None:
                     raise rule_error(
-                        "NGFF-SC-005", f"{loc}: {side} must specify a 'name'."
+                        "YZ-SC-005", f"{loc}: {side} must specify a 'name'."
                     )
                 # If `name` refers to a coordinate system in the `scene` object, the
                 # `path` value MAY be omitted or null.
@@ -94,7 +94,7 @@ class SceneDef(_BaseModel):
                 # systems; names with a path are resolved in storage validation)
                 if ref.path is None and ref.name not in systems:
                     raise rule_error(
-                        "NGFF-SC-006",
+                        "YZ-SC-006",
                         f"{loc}: {side} {ref.name!r} has no 'path', so it must be one "
                         f"of the scene's coordinateSystems ({list(systems)}).",
                     )
