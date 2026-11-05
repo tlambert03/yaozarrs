@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, cast
 
 from pydantic_core import PydanticCustomError
 
+from yaozarrs._errors import ValidationWarning
 from yaozarrs._rules._fields import RuleCodes
 from yaozarrs._rules._model import Rule, SpecDoc, SpecSource
 from yaozarrs._rules._registry import RULES
-from yaozarrs._validation_warning import ValidationWarning
 
 if TYPE_CHECKING:
     from typing_extensions import LiteralString

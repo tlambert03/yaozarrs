@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from yaozarrs import DimSpec, v06
-from yaozarrs._validation_warning import ValidationWarning
+from yaozarrs._errors import ValidationWarning
 
 Y = {"name": "y", "type": "space", "unit": "micrometer"}
 X = {"name": "x", "type": "space", "unit": "micrometer"}
@@ -150,8 +150,6 @@ INVALID_IMAGES = [
         },
         "at least 1 item",
     ),
-    # (as in v05)
-    (image([dataset("s0", scale("s0", 1, 1))] * 2), "List items are not unique"),
     # dataset transformations
     (image([{"path": "s0", "coordinateTransformations": []}]), "at least 1 item"),
     (

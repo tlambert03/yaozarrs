@@ -1,6 +1,7 @@
 """Plate building blocks (identical in v0.5 and v0.6)."""
 
-from typing import Annotated
+from collections.abc import Sequence
+from typing import Annotated, Any
 
 from annotated_types import MinLen
 from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
@@ -8,11 +9,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._rules import RuleCodes, rule_error, warn_rule
-from yaozarrs._types import UniqueList
-
-# ------------------------------------------------------------------------------
-# Acquisition model
-# ------------------------------------------------------------------------------
+from yaozarrs._types import UNIQUE_ITEMS, duplicates
 
 
 class Acquisition(_BaseModel):
@@ -62,11 +59,6 @@ class Acquisition(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Column model
-# ------------------------------------------------------------------------------
-
-
 class Column(_BaseModel):
     """A column in the plate grid.
 
@@ -85,11 +77,6 @@ class Column(_BaseModel):
         description="Column identifier (typically numeric, e.g., '1', '2', '3')",
         pattern=r"^[A-Za-z0-9]+$",
     )
-
-
-# ------------------------------------------------------------------------------
-# Row model
-# ------------------------------------------------------------------------------
 
 
 class Row(_BaseModel):
@@ -111,12 +98,7 @@ class Row(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Well model
-# ------------------------------------------------------------------------------
-
-
-# naming this PlateWell to disambiguate from a top level Well (see _well.py)
+# (named PlateWell to distinguish it from each version's top-level `Well`)
 class PlateWell(_BaseModel):
     """A well location reference within a plate.
 
@@ -152,9 +134,62 @@ class PlateWell(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Plate model
-# ------------------------------------------------------------------------------
+def check_plate_layout(
+    rows: Sequence[Any],
+    columns: Sequence[Any],
+    wells: Sequence[Any],
+    acquisitions: Sequence[Any] | None,
+) -> None:
+    """The MUSTs relating rows, columns, wells and acquisitions (also used by v04)."""
+    for well in wells:
+        if well.rowIndex >= len(rows):
+            raise rule_error(
+                "YZ-PL-004",
+                f"Well {well.path} has rowIndex {well.rowIndex} "
+                f"but only {len(rows)} rows exist",
+            )
+        if well.columnIndex >= len(columns):
+            raise rule_error(
+                "YZ-PL-005",
+                f"Well {well.path} has columnIndex {well.columnIndex} "
+                f"but only {len(columns)} columns exist",
+            )
+        # The `rowIndex`, `columnIndex`, and `path` MUST all refer to the same
+        # row/column pair.
+        row = rows[well.rowIndex].name
+        col = columns[well.columnIndex].name
+        if well.path != f"{row}/{col}":
+            raise rule_error(
+                "YZ-PL-006",
+                f"Well path {well.path!r} does not match its rowIndex "
+                f"({well.rowIndex}) and columnIndex ({well.columnIndex}), "
+                f"which refer to '{row}/{col}'",
+            )
+
+    # [Each column/row name] MUST NOT be a duplicate of any other `name` in the
+    # `columns`/`rows` array.
+    for kind, code, items in (
+        ("column", "YZ-PL-019", columns),
+        ("row", "YZ-PL-027", rows),
+    ):
+        if dupes := duplicates([x.name for x in items]):
+            raise rule_error(
+                code, f"Plate {kind} names must be unique. Duplicates: {dupes}"
+            )
+    # (no two wells may be equal (uniqueItems).  Ignoring unknown keys, which the
+    # models drop, a well's path and indices must refer to the same row/column pair,
+    # so equal paths mean equal wells)
+    if dupes := duplicates([well.path for well in wells]):
+        raise rule_error("YZ-PL-040", f"Well paths must be unique. Duplicates: {dupes}")
+
+    # Each acquisition object MUST contain an `id` key whose value MUST be an
+    # unique integer identifier greater than or equal to 0 within the context
+    # of the plate
+    if dupes := duplicates([acq.id for acq in acquisitions or ()]):
+        raise rule_error(
+            "YZ-PL-001",
+            f"Acquisition ids must be unique within a plate. Duplicates: {dupes}",
+        )
 
 
 class PlateDef(_BaseModel):
@@ -164,37 +199,38 @@ class PlateDef(_BaseModel):
     This is the core content of the `plate` metadata field.
     """
 
+    # (uniqueItems is implied by the unique names and paths, see `check_plate_layout`)
     columns: Annotated[
-        UniqueList[Column],
+        list[Column],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-PL-015",
             list="YZ-PL-016",
             object="YZ-PL-016",
             too_short="YZ-PL-037",
-            listItemsNotUnique="YZ-PL-019",
         ),
     ] = Field(description="Column definitions for the plate grid")
     rows: Annotated[
-        UniqueList[Row],
+        list[Row],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-PL-022",
             list="YZ-PL-023",
             object="YZ-PL-023",
             too_short="YZ-PL-038",
-            listItemsNotUnique="YZ-PL-027",
         ),
     ] = Field(description="Row definitions for the plate grid")
     wells: Annotated[
-        UniqueList[PlateWell],
+        list[PlateWell],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-PL-028",
             list="YZ-PL-029",
             object="YZ-PL-029",
             too_short="YZ-PL-039",
-            listItemsNotUnique="YZ-PL-040",
         ),
     ] = Field(
         description="List of all wells present in this plate with their grid positions"
@@ -218,31 +254,8 @@ class PlateDef(_BaseModel):
     )
 
     @model_validator(mode="after")
-    def _validate_well_indices(self) -> Self:
-        for well in self.wells:
-            if well.rowIndex >= len(self.rows):
-                raise rule_error(
-                    "YZ-PL-004",
-                    f"Well {well.path} has rowIndex {well.rowIndex} "
-                    f"but only {len(self.rows)} rows exist",
-                )
-            if well.columnIndex >= len(self.columns):
-                raise rule_error(
-                    "YZ-PL-005",
-                    f"Well {well.path} has columnIndex {well.columnIndex} "
-                    f"but only {len(self.columns)} columns exist",
-                )
-            # The `rowIndex`, `columnIndex`, and `path` MUST all refer to the same
-            # row/column pair.
-            row = self.rows[well.rowIndex].name
-            col = self.columns[well.columnIndex].name
-            if well.path != f"{row}/{col}":
-                raise rule_error(
-                    "YZ-PL-006",
-                    f"Well path {well.path!r} does not match its rowIndex "
-                    f"({well.rowIndex}) and columnIndex ({well.columnIndex}), "
-                    f"which refer to '{row}/{col}'",
-                )
+    def _validate_layout(self) -> Self:
+        check_plate_layout(self.rows, self.columns, self.wells, self.acquisitions)
         return self
 
     @model_validator(mode="after")
@@ -261,17 +274,4 @@ class PlateDef(_BaseModel):
                     "collide on case-insensitive filesystems.",
                     stacklevel=2,
                 )
-        return self
-
-    @model_validator(mode="after")
-    def _validate_acquisition_ids(self) -> Self:
-        # Each acquisition object MUST contain an `id` key whose value MUST be an
-        # unique integer identifier greater than or equal to 0 within the context
-        # of the plate
-        ids = [acq.id for acq in self.acquisitions or ()]
-        if dupes := sorted({i for i in ids if ids.count(i) > 1}):
-            raise rule_error(
-                "YZ-PL-001",
-                f"Acquisition ids must be unique within a plate. Duplicates: {dupes}",
-            )
         return self

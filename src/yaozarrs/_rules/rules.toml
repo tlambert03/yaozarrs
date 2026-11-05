@@ -5081,6 +5081,24 @@ store = '''
 }
 '''
 
+[rules.YZ-SC-008]
+slug = 'scene-transform-reference-keys'
+level = 'MUST'
+summary = 'The `input` and `output` of a transformation in a `scene` may only contain `name` and `path`.'
+introduced = '0.6'
+notes = 'The prose is silent; `scene.schema` sets `additionalProperties: false` here, unlike anywhere else.'
+
+[[rules.YZ-SC-008.sources]]
+quote = '''"input": { "type": "object", "properties": { "name": {"type": "string"}, "path": {"type": "string"} }, "required": ["name"], "additionalProperties": false,'''
+schema = 'scene.schema'
+lines = { "0.6" = [34, 41] }
+
+[rules.YZ-SC-008.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateSystems": [{"name": "a", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "a", "extra": 1}, "output": {"name": "a"}}]}
+'''
+
 # ------------------------------------------------------------------------------
 # YZ-GN
 # ------------------------------------------------------------------------------
@@ -5246,7 +5264,7 @@ json = '''
 
 [rules.YZ-006]
 slug = 'version-unsupported'
-summary = 'The store declares an OME-Zarr version that yaozarrs does not know.'
+summary = 'The document or store declares an OME-Zarr version that yaozarrs does not know.'
 severity = 'error'
 
 [rules.YZ-006.examples."0.5"]

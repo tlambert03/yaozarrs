@@ -6,19 +6,19 @@ from pydantic import (
     AfterValidator,
     Field,
     SerializerFunctionWrapHandler,
-    WrapValidator,
     model_serializer,
     model_validator,
 )
 from typing_extensions import Self
 
-from yaozarrs._axis import AxesList
 from yaozarrs._base import ZarrGroupModel, _BaseModel
+from yaozarrs._common._axis import AxesList
+from yaozarrs._common._image import check_resolution_order, check_transform_lengths
+from yaozarrs._common._node_names import SuggestDatasetPath
 from yaozarrs._common._omero import Omero
-from yaozarrs._dim_spec import DimSpec
+from yaozarrs._dim_spec import DimSpec, _axes_datasets
 from yaozarrs._rules import RuleCodes, rule_error
 from yaozarrs._types import UniqueList
-from yaozarrs._util import SuggestDatasetPath
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Image",
@@ -27,10 +27,6 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "ScaleTransformation",
     "TranslationTransformation",
 ]
-
-# ------------------------------------------------------------------------------
-# Transformations model
-# ------------------------------------------------------------------------------
 
 
 class ScaleTransformation(_BaseModel):
@@ -81,12 +77,12 @@ def _validate_transforms_list(
     transforms: list[CoordinateTransformation],
 ) -> list[CoordinateTransformation]:
     # Must contain exactly one scale transformation
-    num_scales = len([t for t in transforms if isinstance(t, ScaleTransformation)])
-    if num_scales != 1:
+    scales = [t for t in transforms if isinstance(t, ScaleTransformation)]
+    if len(scales) != 1:
         raise rule_error(
             "YZ-CT-001",
             "There must be exactly one scale transformation in the list of transforms. "
-            f"Found {num_scales}.\n\n"
+            f"Found {len(scales)}.\n\n"
             "TIP:\n"
             "If scaling information is not available or applicable for one of the axes,"
             " the value MUST express the scaling factor between the current resolution "
@@ -95,30 +91,32 @@ def _validate_transforms_list(
         )
 
     # May contain at most one translation
-    num_trans = len([t for t in transforms if isinstance(t, TranslationTransformation)])
-    if num_trans > 1:
+    translations = [t for t in transforms if isinstance(t, TranslationTransformation)]
+    if len(translations) > 1:
         raise rule_error(
             "YZ-CT-002",
-            f"There can be at most one translation transformation. Found {num_trans}.",
+            "There can be at most one translation transformation. "
+            f"Found {len(translations)}.",
         )
 
     # If translation is given it MUST be listed after scale to ensure that it is given
     # in physical coordinates.
-    if num_trans:
-        translation_idx = next(
-            i
-            for i, t in enumerate(transforms)
-            if isinstance(t, TranslationTransformation)
+    if translations and transforms.index(translations[0]) < transforms.index(scales[0]):
+        raise rule_error(
+            "YZ-CT-003",
+            "If a translation transformation is given, it must be listed after "
+            "the scale transformation.",
         )
-        scale_idx = next(
-            i for i, t in enumerate(transforms) if isinstance(t, ScaleTransformation)
+
+    # The length of the scale and translation array MUST be the same as the length of
+    # "axes" (checked by Multiscale), so they must also match each other.
+    if len({t.ndim for t in transforms}) > 1:
+        lengths = ", ".join(f"{t.type} has {t.ndim}" for t in transforms)
+        raise rule_error(
+            "YZ-CT-004",
+            "The scale and translation transformations must have the same length "
+            f"(one value per axis), but {lengths}.",
         )
-        if translation_idx < scale_idx:
-            raise rule_error(
-                "YZ-CT-003",
-                "If a translation transformation is given, it must be listed after "
-                "the scale transformation.",
-            )
 
     return transforms
 
@@ -128,10 +126,6 @@ CoordinateTransformsList: TypeAlias = Annotated[
     MinLen(1),
     AfterValidator(_validate_transforms_list),
 ]
-
-# ------------------------------------------------------------------------------
-# Dataset model
-# ------------------------------------------------------------------------------
 
 
 class Dataset(_BaseModel):
@@ -162,6 +156,18 @@ class Dataset(_BaseModel):
         )
     )
 
+    @property
+    def scale_transform(self) -> ScaleTransformation:
+        """Return the scale transformation from the list.
+
+        (CoordinateTransformsList validator ensures there is exactly one.)
+        """
+        return next(
+            t
+            for t in self.coordinateTransformations
+            if isinstance(t, ScaleTransformation)
+        )
+
 
 def _validate_datasets_list(datasets: list[Dataset]) -> list[Dataset]:
     """Validate a list of Dataset for `Multiscale.datasets`."""
@@ -181,14 +187,10 @@ def _validate_datasets_list(datasets: list[Dataset]) -> list[Dataset]:
 
 
 DatasetsList: TypeAlias = Annotated[
-    UniqueList[Dataset],
+    list[Dataset],
     MinLen(1),
-    WrapValidator(lambda v, h: _validate_datasets_list(h(v))),
+    AfterValidator(_validate_datasets_list),
 ]
-
-# ------------------------------------------------------------------------------
-# Multiscale model
-# ------------------------------------------------------------------------------
 
 
 class Multiscale(_BaseModel):
@@ -235,31 +237,20 @@ class Multiscale(_BaseModel):
     def serialize_model(
         self, handler: SerializerFunctionWrapHandler
     ) -> dict[str, object]:
-        """Include version in serialization if it is not the default value."""
-        serialized = handler(self)
-        serialized["version"] = self.version  # always include version in serialization
-        return serialized
+        """Always include `version` (even when dumping with `exclude_unset`)."""
+        return {**handler(self), "version": self.version}
 
     @model_validator(mode="after")
-    def _check_ndim(self) -> Self:
-        for _id, ds in enumerate(self.datasets):
-            for _it, transform in enumerate(ds.coordinateTransformations):
-                if transform.ndim != self.ndim:
-                    raise rule_error(
-                        "YZ-CT-004",
-                        f"at datasets.[{_id}].coordinateTransformations[{_it}]:\n"
-                        f"  The length of the transformation ({transform.ndim}) does "
-                        f"not match the number of axes ({self.ndim}).",
-                    )
-        if self.coordinateTransformations:
-            for _it, transform in enumerate(self.coordinateTransformations):
-                if transform.ndim != self.ndim:
-                    raise rule_error(
-                        "YZ-CT-004",
-                        f"at coordinateTransformations[{_it}]:\n"
-                        f"  The length of the transformation ({transform.ndim}) "
-                        f"does not match the number of axes ({self.ndim}).",
-                    )
+    def _validate(self) -> Self:
+        check_transform_lengths(
+            self.datasets, self.coordinateTransformations, self.ndim
+        )
+        # The "path"s MUST be ordered from largest (i.e. highest resolution) to
+        # smallest.
+        space = [i for i, ax in enumerate(self.axes) if ax.type == "space"]
+        check_resolution_order(
+            [tuple(ds.scale_transform.scale[i] for i in space) for ds in self.datasets]
+        )
         return self
 
     @property
@@ -301,16 +292,11 @@ class Multiscale(_BaseModel):
         ...     DimSpec(name="y", size=512, scale=0.5, unit="micrometer"),
         ...     DimSpec(name="x", size=512, scale=0.5, unit="micrometer"),
         ... ]
-        >>> v04.Multiscale.from_dims(dims, name="my_multiscale", n_levels=3)
+        >>> ms = v04.Multiscale.from_dims(dims, name="my_multiscale", n_levels=3)
+        >>> [ds.path for ds in ms.datasets]
+        ['0', '1', '2']
         """
-        from yaozarrs._dim_spec import _axes_datasets
-
         return cls(name=name, **_axes_datasets(dims, n_levels))  # type: ignore
-
-
-# ------------------------------------------------------------------------------
-# Image model
-# ------------------------------------------------------------------------------
 
 
 class Image(ZarrGroupModel):

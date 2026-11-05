@@ -40,8 +40,9 @@ class Bf2Raw(_OMEDocument):
     version: VersionStr = Field(default="0.6", description="OME-NGFF version")
     # MUST have the value `3` for the `bioformats2raw.layout` key
     bioformats2raw_layout: Annotated[
-        Literal[3], RuleCodes(missing="YZ-BF-003", literal_error="YZ-BF-003")
+        Literal[3], RuleCodes(literal_error="YZ-BF-003")
     ] = Field(
+        default=3,
         alias="bioformats2raw.layout",
         description="Layout version marker added by bioformats2raw (currently 3)",
     )

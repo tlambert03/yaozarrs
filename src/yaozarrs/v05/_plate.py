@@ -5,10 +5,10 @@ from pydantic import Field, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel, _OMEDocument
+from yaozarrs._common._node_names import RelaxedFOVPathName
 from yaozarrs._common._plate import Acquisition, Column, PlateDef, PlateWell, Row
 from yaozarrs._rules import RuleCodes, rule_error
-from yaozarrs._types import UniqueList
-from yaozarrs._util import RelaxedFOVPathName
+from yaozarrs._types import UNIQUE_ITEMS, duplicates
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Plate",
@@ -23,10 +23,6 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "WellDef",
     "FieldOfView",
 ]
-
-# ------------------------------------------------------------------------------
-# Plate model (top-level)
-# ------------------------------------------------------------------------------
 
 
 class Plate(_OMEDocument):
@@ -99,7 +95,6 @@ class FieldOfView(_BaseModel):
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
         ),
-        # pattern=r"^[A-Za-z0-9]+$",
     )
     acquisition: Annotated[int | None, RuleCodes(int="YZ-WL-007")] = Field(
         default=None,
@@ -118,14 +113,14 @@ class WellDef(_BaseModel):
     """
 
     images: Annotated[
-        UniqueList[FieldOfView],
+        list[FieldOfView],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-WL-004",
             list="YZ-WL-005",
             object="YZ-WL-005",
             too_short="YZ-WL-012",
-            listItemsNotUnique="YZ-WL-002",
         ),
     ] = Field(
         description="List of all fields-of-view imaged in this well",
@@ -134,19 +129,12 @@ class WellDef(_BaseModel):
     @model_validator(mode="after")
     def _validate_unique_paths(self) -> Self:
         # The `path` ... MUST NOT be a duplicate of any other `path` in the `images`
-        # list.  (UniqueList only catches fully identical entries.)
-        paths = [img.path for img in self.images]
-        if dupes := sorted({p for p in paths if paths.count(p) > 1}):
+        # list.  (This implies the schema's uniqueItems.)
+        if dupes := duplicates([img.path for img in self.images]):
             raise rule_error(
-                "YZ-WL-002",
-                f"Field of view paths must be unique. Duplicates: {dupes}",
+                "YZ-WL-002", f"Field of view paths must be unique. Duplicates: {dupes}"
             )
         return self
-
-
-# ------------------------------------------------------------------------------
-# Well model (top-level)
-# ------------------------------------------------------------------------------
 
 
 class Well(_OMEDocument):

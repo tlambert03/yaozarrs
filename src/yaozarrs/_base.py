@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import (
@@ -7,6 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    TypeAdapter,
     model_serializer,
     model_validator,
 )
@@ -22,7 +24,17 @@ if TYPE_CHECKING:
     )
     from pydantic_core import CoreSchema
 
-__all__ = ["_BaseModel", "_OMEDocument"]
+__all__ = [
+    "MISSING_VERSION",
+    "REQUIRE_VERSION",
+    "_BaseModel",
+    "_OMEDocument",
+    "type_adapter",
+]
+
+# A validation context key: documents must declare their version (see `_OMEDocument`)
+REQUIRE_VERSION = "require_version"
+MISSING_VERSION = "OME metadata MUST contain a 'version' key."
 
 # populate_by_name is deprecated in pydantic v2.11+ (removed in v3).
 # For >=2.11 use validate_by_name + validate_by_alias instead.
@@ -34,9 +46,25 @@ _by_name_cfg: dict = (
 )
 
 
+def type_adapter(tp: Any) -> TypeAdapter[Any]:
+    """Return a TypeAdapter for `tp`, cached (building one rebuilds its schema)."""
+    try:
+        return _cached_type_adapter(tp)
+    except TypeError:  # pragma: no cover  (unhashable type expression)
+        return TypeAdapter(tp)
+
+
+@functools.cache
+def _cached_type_adapter(tp: Any) -> TypeAdapter[Any]:
+    return TypeAdapter(tp)
+
+
 class _BaseModel(BaseModel):
+    # "allow": keys the spec doesn't define are kept, and written back out.  No
+    # version of the spec forbids them, nor do the JSON schemas (except where a model
+    # says otherwise), so a reader shouldn't reject them or silently drop them.
     model_config: ClassVar[ConfigDict] = ConfigDict(
-        extra="ignore",
+        extra="allow",
         validate_assignment=True,
         validate_default=True,
         serialize_by_alias=True,
@@ -82,22 +110,30 @@ class _OMEDocument(_BaseModel):
     """A top-level OME metadata document (the value of the "ome" key), with a version.
 
     Its `version` has a default, so documents can be created in Python without one,
-    but JSON being validated must declare it.
+    but JSON being validated must declare it, as must documents validated by the
+    version-independent `validate_ome_*` functions (which can't guess it).
     """
+
+    if TYPE_CHECKING:
+        # (each version declares its own `version` field, as a `Literal`)
+        version: Any
 
     @model_validator(mode="before")
     @classmethod
-    def _require_version_in_json(cls, data: Any, info: ValidationInfo) -> Any:
+    def _require_version(cls, data: Any, info: ValidationInfo) -> Any:
         # [The `ome` object] MUST contain a `version` key
-        if info.mode == "json" and isinstance(data, dict) and "version" not in data:
-            raise rule_error("YZ-GN-001", "OME metadata MUST contain a 'version' key.")
+        required = info.mode == "json" or (info.context or {}).get(REQUIRE_VERSION)
+        if required and isinstance(data, dict) and "version" not in data:
+            raise rule_error("YZ-GN-001", MISSING_VERSION)
         return data
 
     @model_serializer(mode="wrap")
     def _always_dump_version(
         self, handler: SerializerFunctionWrapHandler
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         # (so that documents dumped with `exclude_unset` still declare their version)
+        # NOTE: `object`, not `Any`: pydantic 2.10.0 resolves this (string) annotation
+        # in the *subclass's* module namespace (pydantic/pydantic#10929)
         return {"version": self.version, **handler(self)}
 
 

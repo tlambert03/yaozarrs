@@ -1,7 +1,7 @@
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 from annotated_types import Interval, Len, MinLen
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._rules import RuleCodes
@@ -20,10 +20,6 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "LabelsGroup",
 ]
 
-# ------------------------------------------------------------------------------
-# Color model
-# ------------------------------------------------------------------------------
-
 Int8bit = Annotated[int, Interval(ge=0, le=255)]
 
 
@@ -34,7 +30,10 @@ class LabelColor(_BaseModel):
     visualization purposes.
     """
 
-    label_value: Annotated[float, RuleCodes(missing="YZ-IL-006")] = Field(
+    # NOTE: the spec and schema disagree here: the prose says the value "MUST be an
+    # integer", while label.schema says "number".  We accept both, as the schema does,
+    # but keep integers as integers (as a float, a large label id would lose precision).
+    label_value: Annotated[int | float, RuleCodes(missing="YZ-IL-006")] = Field(
         description="Label value from the segmentation image",
         alias="label-value",
     )
@@ -54,11 +53,6 @@ class LabelColor(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Properties model
-# ------------------------------------------------------------------------------
-
-
 class LabelProperty(_BaseModel):
     """Custom metadata for a label value.
 
@@ -72,15 +66,13 @@ class LabelProperty(_BaseModel):
         ```
     """
 
+    # "an arbitrary number of key-value pairs MAY be present for each label value"
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+
     label_value: Annotated[int, RuleCodes(missing="YZ-IL-010")] = Field(
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
-
-
-# ------------------------------------------------------------------------------
-# Source model
-# ------------------------------------------------------------------------------
 
 
 class LabelSource(_BaseModel):
@@ -97,11 +89,6 @@ class LabelSource(_BaseModel):
             "pointing to the parent of the labels/ directory)"
         ),
     )
-
-
-# ------------------------------------------------------------------------------
-# ImageLabel model
-# ------------------------------------------------------------------------------
 
 
 class ImageLabel(_BaseModel):
@@ -133,11 +120,6 @@ class ImageLabel(_BaseModel):
     version: Literal["0.4"] = "0.4"
 
 
-# ------------------------------------------------------------------------------
-# Labels group model (contains paths to individual label images)
-# ------------------------------------------------------------------------------
-
-
 # NOTE: this is described in the spec, but doesn't appear in the schema.
 class LabelsGroup(_BaseModel):
     """Top-level labels collection metadata.
@@ -161,11 +143,6 @@ class LabelsGroup(_BaseModel):
     labels: Annotated[list[str], RuleCodes(missing="YZ-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
-
-
-# ------------------------------------------------------------------------------
-# Label model (top-level for individual label images)
-# ------------------------------------------------------------------------------
 
 
 class LabelImage(Image):

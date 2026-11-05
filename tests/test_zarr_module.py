@@ -104,6 +104,13 @@ def test_cached_mapper_caches_values_and_exceptions(
         _missing = cached["missing"]
 
 
+def test_cached_mapper_does_not_cache_default(memory_mapper: fsspec.FSMap) -> None:
+    cached = _CachedMapper(memory_mapper)
+    assert cached.get("missing", b"fallback") == b"fallback"
+    assert cached.get("missing") is None
+    assert "missing" not in cached
+
+
 def test_cached_mapper_contains_len_iter_and_getitem(
     memory_mapper: fsspec.FSMap,
 ) -> None:
@@ -147,14 +154,14 @@ def test_cached_mapper_getitems_error_handling(
     def boom(keys, on_error=None):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(cached._fsmap, "getitems", boom)
+    monkeypatch.setattr(cached._mapper, "getitems", boom)
 
     if get_raises:
 
         def bad_get(key, default=None):
             raise FileNotFoundError("nope")
 
-        monkeypatch.setattr(cached._fsmap, "get", bad_get)
+        monkeypatch.setattr(cached._mapper, "get", bad_get)
 
     key = setup_key if setup_key else "missing"
     kwargs = {"on_error": on_error_arg} if on_error_arg else {}

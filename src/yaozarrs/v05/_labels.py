@@ -21,10 +21,6 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "LabelsGroup",
 ]
 
-# ------------------------------------------------------------------------------
-# ImageLabel model
-# ------------------------------------------------------------------------------
-
 
 class ImageLabel(_BaseModel):
     """Metadata for a segmentation/annotation label image.
@@ -68,11 +64,6 @@ class ImageLabel(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Labels group model (contains paths to individual label images)
-# ------------------------------------------------------------------------------
-
-
 class LabelsGroup(_BaseModel):
     """Top-level labels collection metadata.
 
@@ -98,11 +89,6 @@ class LabelsGroup(_BaseModel):
     labels: Annotated[list[str], RuleCodes(missing="YZ-LB-001")] = Field(
         description="Paths to individual label image groups within this collection"
     )
-
-
-# ------------------------------------------------------------------------------
-# Label model (top-level for individual label images)
-# ------------------------------------------------------------------------------
 
 
 class LabelImage(Image):

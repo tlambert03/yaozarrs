@@ -41,12 +41,8 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 # spec states the rule". Both sets are verified, so stale entries fail the test.
 # Spec states the rule, but yaozarrs doesn't check it (yet).
 KNOWN_GAPS = {
-    ("YZ-DS-001", "0.4"),
-    ("YZ-PL-001", "0.4"),
     ("YZ-PL-002", "0.4"),
     ("YZ-PL-003", "0.4"),
-    ("YZ-PL-006", "0.4"),
-    ("YZ-WL-002", "0.4"),
     # each dataset's transformation is checked against the axes instead (YZ-CT-004),
     # and each array's number of dimensions (YZ-DS-005)
     ("YZ-DS-002", "0.6"),

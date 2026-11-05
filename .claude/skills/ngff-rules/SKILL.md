@@ -117,7 +117,7 @@ id: Annotated[
   (`well-path-present`, `well-path-string`). If a statement has no RFC 2119 keyword in a
   version (e.g. 0.4's "whose value is a string"), cite it with `implied = true` (see
   invariant 3).
-  `src/yaozarrs/_axis.py` and `src/yaozarrs/_common/` are shared by several versions, so
+  `src/yaozarrs/_common/` (including `_axis.py`) is shared by several versions, so
   a tag there applies to all of them (record any overreach in `KNOWN_OVERREACH`).
 - Don't tag `version` fields: their `Literal` selects the model for a version.
 

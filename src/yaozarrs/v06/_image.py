@@ -1,17 +1,17 @@
-import math
 from collections.abc import Sequence
 from typing import Annotated, Any, TypeAlias, cast
 
 from annotated_types import Len, MinLen
-from pydantic import Discriminator, Field, model_validator
+from pydantic import Field, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel, _OMEDocument
+from yaozarrs._common._image import check_resolution_order
+from yaozarrs._common._node_names import SuggestDatasetPath
 from yaozarrs._common._omero import Omero
 from yaozarrs._dim_spec import DimSpec
 from yaozarrs._rules import RuleCodes, rewrap_error, rule_error, warn_rule
 from yaozarrs._types import UniqueList
-from yaozarrs._util import SuggestDatasetPath
 
 from ._axes import Axis, validate_multiscale_axes
 from ._coordinate_systems import CoordinateSystem, CoordinateSystemsList
@@ -31,16 +31,12 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Dataset",
 ]
 
-# ------------------------------------------------------------------------------
-# Dataset model
-# ------------------------------------------------------------------------------
-
 # The transformation MUST be one of the following:
 # - A single scale or identity transformation
 # - A sequence transformation containing one scale and one translation transformation.
 DatasetTransformation: TypeAlias = Annotated[
     ScaleTransformation | IdentityTransformation | SequenceTransformation,
-    Discriminator("type"),
+    Field(discriminator="type"),
 ]
 
 
@@ -172,16 +168,6 @@ class Dataset(_BaseModel):
         return None
 
 
-# ------------------------------------------------------------------------------
-# Multiscale model
-# ------------------------------------------------------------------------------
-
-
-# types allowed when transforming to a coordinate system in a child labels group
-# (see also `_is_label_transform`)
-_LABEL_TRANSFORM_TYPES = ("identity", "scale", "translation")
-
-
 class Multiscale(_BaseModel):
     """A multi-resolution image pyramid, with its coordinate systems.
 
@@ -193,15 +179,12 @@ class Multiscale(_BaseModel):
 
     name: str | None = Field(default=None, description="Name of the multiscale image.")
     coordinateSystems: Annotated[
-        CoordinateSystemsList,
-        MinLen(1),
-        RuleCodes(missing="YZ-MS-004", listItemsNotUnique="YZ-CS-003"),
+        CoordinateSystemsList, MinLen(1), RuleCodes(missing="YZ-MS-004")
     ] = Field(description="Coordinate systems of this multiscale image.")
-    # (entries are unique as in v05, although neither the schema nor the prose says so)
-    datasets: Annotated[
-        UniqueList[Dataset], MinLen(1), RuleCodes(missing="YZ-MS-003")
-    ] = Field(
-        description="Resolution levels, ordered from highest to lowest resolution."
+    datasets: Annotated[list[Dataset], MinLen(1), RuleCodes(missing="YZ-MS-003")] = (
+        Field(
+            description="Resolution levels, ordered from highest to lowest resolution."
+        )
     )
     coordinateTransformations: (
         Annotated[list[CoordinateTransformation], MinLen(1)] | None
@@ -328,24 +311,13 @@ class Multiscale(_BaseModel):
         # The `path`s MUST be ordered from largest (i.e. highest resolution) to
         # smallest.
         # (Really a storage-level rule; like v05, we also check it on the scales of
-        # the spatial axes, when every level has one: per axis, a scale may not shrink
-        # from one level to the next, allowing for float noise. Scales may be negative
-        # (flips), so we compare magnitudes.)
+        # the spatial axes, when every level has one. Scales may be negative (flips),
+        # so we compare magnitudes.)
         scales = [ds.scale_transform for ds in self.datasets]
         if any(s is None for s in scales):
             return
         space = [i for i, ax in enumerate(intrinsic.axes) if ax.type == "space"]
-        spatial = [tuple(abs(s.scale[i]) for i in space) for s in scales]
-        if any(
-            b < a and not math.isclose(a, b, rel_tol=1e-6)
-            for prev, cur in zip(spatial, spatial[1:])
-            for a, b in zip(prev, cur)
-        ):
-            raise rule_error(
-                "YZ-DS-001",
-                "The datasets are not ordered from highest to lowest resolution. "
-                f"Found spatial scales: {spatial}",
-            )
+        check_resolution_order([tuple(abs(s.scale[i]) for i in space) for s in scales])
 
     @property
     def intrinsic_coordinate_system(self) -> CoordinateSystem:
@@ -402,7 +374,9 @@ class Multiscale(_BaseModel):
         ...     DimSpec(name="y", size=512, scale=0.5, unit="micrometer"),
         ...     DimSpec(name="x", size=512, scale=0.5, unit="micrometer"),
         ... ]
-        >>> v06.Multiscale.from_dims(dims, name="my_multiscale", n_levels=3)
+        >>> ms = v06.Multiscale.from_dims(dims, name="my_multiscale", n_levels=3)
+        >>> [ds.path for ds in ms.datasets]
+        ['0', '1', '2']
         """
         layout = _coordinate_systems_datasets(dims, n_levels, coordinate_system)
         return cls.model_validate({"name": name, **layout})
@@ -442,6 +416,10 @@ def _coordinate_systems_datasets(
     }
 
 
+# types allowed when transforming to a coordinate system in a child labels group
+_LABEL_TRANSFORM_TYPES = ("identity", "scale", "translation")
+
+
 def _is_label_transform(t: CoordinateTransformation) -> bool:
     if isinstance(t, SequenceTransformation):
         # (no order is given here, unlike for dataset transformations)
@@ -450,11 +428,6 @@ def _is_label_transform(t: CoordinateTransformation) -> bool:
             "translation",
         ]
     return t.type in _LABEL_TRANSFORM_TYPES
-
-
-# ------------------------------------------------------------------------------
-# Image model
-# ------------------------------------------------------------------------------
 
 
 class Image(_OMEDocument):

@@ -26,9 +26,9 @@ from typing import TYPE_CHECKING, Any, cast
 from pydantic import ValidationError
 
 from yaozarrs import v04, v05, v06, validate_zarr_store
+from yaozarrs._errors import StorageValidationError, StorageValidationWarning
 from yaozarrs._rules import RULES, Rule, RuleWarning, SpecDoc
 from yaozarrs._rules._registry import REGISTRY_FILE, SPEC_DOCS, TRACKED_VERSIONS
-from yaozarrs._storage import StorageValidationError, StorageValidationWarning
 
 if TYPE_CHECKING:
     from collections.abc import Generator

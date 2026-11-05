@@ -5,9 +5,10 @@ from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from typing_extensions import Self
 
 from yaozarrs._base import ZarrGroupModel, _BaseModel
+from yaozarrs._common._node_names import RelaxedFOVPathName
+from yaozarrs._common._plate import check_plate_layout
 from yaozarrs._rules import RuleCodes, rule_error
-from yaozarrs._types import UniqueList
-from yaozarrs._util import RelaxedFOVPathName
+from yaozarrs._types import UNIQUE_ITEMS, duplicates
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Plate",
@@ -22,10 +23,6 @@ __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "WellDef",
     "FieldOfView",
 ]
-
-# ------------------------------------------------------------------------------
-# Acquisition model
-# ------------------------------------------------------------------------------
 
 
 class Acquisition(_BaseModel):
@@ -75,11 +72,6 @@ class Acquisition(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Column model
-# ------------------------------------------------------------------------------
-
-
 class Column(_BaseModel):
     """A column in the plate grid.
 
@@ -100,11 +92,6 @@ class Column(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Row model
-# ------------------------------------------------------------------------------
-
-
 class Row(_BaseModel):
     """A row in the plate grid.
 
@@ -122,11 +109,6 @@ class Row(_BaseModel):
         description="Row identifier (typically alphabetic, e.g., 'A', 'B', 'C')",
         pattern=r"^[A-Za-z0-9]+$",
     )
-
-
-# ------------------------------------------------------------------------------
-# Well model
-# ------------------------------------------------------------------------------
 
 
 class PlateWell(_BaseModel):
@@ -164,11 +146,6 @@ class PlateWell(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Plate model
-# ------------------------------------------------------------------------------
-
-
 class PlateDef(_BaseModel):
     """Plate layout and well organization.
 
@@ -176,37 +153,38 @@ class PlateDef(_BaseModel):
     This is the core content of the `plate` metadata field.
     """
 
+    # (uniqueItems is implied by the unique names and paths, see `check_plate_layout`)
     columns: Annotated[
-        UniqueList[Column],
+        list[Column],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-PL-015",
             list="YZ-PL-016",
             object="YZ-PL-016",
             too_short="YZ-PL-037",
-            listItemsNotUnique="YZ-PL-019",
         ),
     ] = Field(description="Column definitions for the plate grid")
     rows: Annotated[
-        UniqueList[Row],
+        list[Row],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-PL-022",
             list="YZ-PL-023",
             object="YZ-PL-023",
             too_short="YZ-PL-038",
-            listItemsNotUnique="YZ-PL-027",
         ),
     ] = Field(description="Row definitions for the plate grid")
     wells: Annotated[
-        UniqueList[PlateWell],
+        list[PlateWell],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-PL-028",
             list="YZ-PL-029",
             object="YZ-PL-029",
             too_short="YZ-PL-039",
-            listItemsNotUnique="YZ-PL-040",
         ),
     ] = Field(
         description="List of all wells present in this plate with their grid positions"
@@ -231,20 +209,9 @@ class PlateDef(_BaseModel):
     version: Literal["0.4"] = "0.4"
 
     @model_validator(mode="after")
-    def _validate_well_indices(self) -> Self:
-        for well in self.wells:
-            if well.rowIndex >= len(self.rows):
-                raise rule_error(
-                    "YZ-PL-004",
-                    f"Well {well.path} has rowIndex {well.rowIndex} "
-                    f"but only {len(self.rows)} rows exist",
-                )
-            if well.columnIndex >= len(self.columns):
-                raise rule_error(
-                    "YZ-PL-005",
-                    f"Well {well.path} has columnIndex {well.columnIndex} "
-                    f"but only {len(self.columns)} columns exist",
-                )
+    def _validate_layout(self) -> Self:
+        # (the same rules as in v0.5)
+        check_plate_layout(self.rows, self.columns, self.wells, self.acquisitions)
         return self
 
 
@@ -262,7 +229,6 @@ class FieldOfView(_BaseModel):
             "Relative path to this field's image group "
             "(typically a number like '0', '1', etc.)"
         ),
-        # pattern=r"^[A-Za-z0-9]+$",
     )
     acquisition: Annotated[int | None, RuleCodes(int="YZ-WL-007")] = Field(
         default=None,
@@ -281,24 +247,29 @@ class WellDef(_BaseModel):
     """
 
     images: Annotated[
-        UniqueList[FieldOfView],
+        list[FieldOfView],
+        UNIQUE_ITEMS,
         MinLen(1),
         RuleCodes(
             missing="YZ-WL-004",
             list="YZ-WL-005",
             object="YZ-WL-005",
             too_short="YZ-WL-012",
-            listItemsNotUnique="YZ-WL-002",
         ),
     ] = Field(
         description="List of all fields-of-view imaged in this well",
     )
     version: Literal["0.4"] = "0.4"
 
-
-# ------------------------------------------------------------------------------
-# Well model (top-level)
-# ------------------------------------------------------------------------------
+    @model_validator(mode="after")
+    def _validate_unique_paths(self) -> Self:
+        # The `path` ... MUST NOT be a duplicate of any other `path` in the `images`
+        # list.  (This implies the schema's uniqueItems.)
+        if dupes := duplicates([img.path for img in self.images]):
+            raise rule_error(
+                "YZ-WL-002", f"Field of view paths must be unique. Duplicates: {dupes}"
+            )
+        return self
 
 
 class Well(ZarrGroupModel):
@@ -323,11 +294,6 @@ class Well(ZarrGroupModel):
     well: WellDef = Field(
         description="Field-of-view organization for this well",
     )
-
-
-# ------------------------------------------------------------------------------
-# Plate model (top-level)
-# ------------------------------------------------------------------------------
 
 
 class Plate(ZarrGroupModel):
@@ -362,4 +328,14 @@ class Plate(ZarrGroupModel):
 
     plate: PlateDef = Field(
         description="Plate layout and well organization",
+    )
+
+    # If the top-level group represents a plate, the "bioformats2raw.layout" metadata
+    # will be present but the "plate" key MUST also be present
+    bioformats2raw_layout: Literal[3] | None = Field(
+        default=None,
+        alias="bioformats2raw.layout",
+        description=(
+            "Marker indicating this plate was created by bioformats2raw version 3"
+        ),
     )

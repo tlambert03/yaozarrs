@@ -8,10 +8,6 @@ from pydantic import ConfigDict, Field
 from yaozarrs._base import _BaseModel
 from yaozarrs._rules import RuleCodes
 
-# ------------------------------------------------------------------------------
-# Color model
-# ------------------------------------------------------------------------------
-
 Int8bit = Annotated[int, Interval(ge=0, le=255)]
 
 
@@ -50,11 +46,6 @@ class LabelColor(_BaseModel):
     )
 
 
-# ------------------------------------------------------------------------------
-# Properties model
-# ------------------------------------------------------------------------------
-
-
 class LabelProperty(_BaseModel):
     """Custom metadata for a label value.
 
@@ -79,11 +70,6 @@ class LabelProperty(_BaseModel):
         description="Integer label value from the segmentation image",
         alias="label-value",
     )
-
-
-# ------------------------------------------------------------------------------
-# Source model
-# ------------------------------------------------------------------------------
 
 
 class LabelSource(_BaseModel):

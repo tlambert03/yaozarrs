@@ -9,8 +9,9 @@ from yaozarrs._rules import RuleCodes
 
 class Bf2Raw(ZarrGroupModel):
     bioformats2raw_layout: Annotated[
-        Literal[3], RuleCodes(missing="YZ-BF-003", literal_error="YZ-BF-003")
+        Literal[3], RuleCodes(literal_error="YZ-BF-003")
     ] = Field(
+        default=3,
         alias="bioformats2raw.layout",
         description="The top-level identifier metadata added by bioformats2raw",
     )

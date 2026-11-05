@@ -65,7 +65,7 @@ You can create OME-Zarr metadata objects using the pydantic models in
     )
 
     # Export
-    image.model_dump_json(exclude_unset=True, indent=2)  # (1)!
+    image.model_dump_json(indent=2)  # (1)!
     ```
 
     1. [`model_dump_json`][pydantic.BaseModel.model_dump_json] is part of the
@@ -106,7 +106,7 @@ You can create OME-Zarr metadata objects using the pydantic models in
     )
 
     # Export
-    image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
+    image.model_dump_json(indent=2)  # (2)!
     ```
 
     1. [`model_validate`][pydantic.BaseModel.model_validate] is part of the
@@ -140,7 +140,7 @@ You can create OME-Zarr metadata objects using the pydantic models in
     )
 
     # Export
-    image.model_dump_json(exclude_unset=True, indent=2)  # (2)!
+    image.model_dump_json(indent=2)  # (2)!
     ```
     
     1. :eyes: [`yaozarrs.DimSpec`][] is a convenience class for use with
@@ -156,6 +156,8 @@ You can create OME-Zarr metadata objects using the pydantic models in
 
 If you have an existing JSON file, string, or python object, you can
 validate it and cast it to the appropriate typed `yaozarrs` model:
+
+<!-- no-test -->
 
 ```python
 import yaozarrs
@@ -175,6 +177,14 @@ yaozarrs.validate_zarr_store(uri)  # (3)!
 3. [`yaozarrs.validate_zarr_store`][]. Requires the `yaozarrs[io]`
    extra to support remote URIs.
 
+???note "Keys the spec doesn't define"
+
+    The spec doesn't forbid keys it doesn't define, and neither do the JSON
+    schemas (except in the `input` and `output` of v0.6 scene transformations),
+    so yaozarrs keeps them: they're in each model's `model_extra`, and
+    `model_dump()` / `model_dump_json()` write them back out. So a misspelled
+    *optional* key is (unfortunately) kept as an unknown key, not reported.
+
 ???tip "Storage Validation Errors"
 
     Validation errors that relate to the structure of the OME-Zarr itself
@@ -193,7 +203,7 @@ yaozarrs.validate_zarr_store(uri)  # (3)!
     ```
 
     ```txt
-    yaozarrs._storage.StorageValidationError: 14 validation error(s) for StorageValidationError
+    yaozarrs.StorageValidationError: 14 validation error(s) for StorageValidationError
     ome.plate.wells.0.well.images.0.multiscales.0.datasets.0.path
     Dataset path '0' not found in zarr group [type=dataset_path_not_found, fs_path='broken_v05.ome.zarr/A/1/0/0', expected='zarr array']
 
@@ -247,11 +257,75 @@ yaozarrs.validate_zarr_store(uri)  # (3)!
         For further information visit https://errors.pydantic.dev/2.12/v/union_tag_not_found
     ```
 
+### Doing the IO yourself
+
+Validation never reads array data, and only the parts that compare documents need to
+read anything at all:
+
+| What is validated | How | IO |
+| --- | --- | --- |
+| Fields, and the consistency of one document | `validate_ome_json`, `validate_ome_object`, or the models directly | None: you pass in the document |
+| Consistency across a hierarchy of documents | `validate_zarr_store` | Metadata only: `fsspec`, or a mapping that you provide |
+| Values stored in arrays (e.g. the orthonormality of a `rotation` stored at a `path`) | Not validated | |
+
+`validate_zarr_store` and `open_group` accept any `Mapping[str, bytes]` of store keys to
+metadata documents, so you decide how those documents are fetched.  A custom mapping
+can fetch them lazily in `__getitem__`, or you can fetch them up front and pass a dict:
+
+```python
+import json
+import yaozarrs
+
+image_meta = {
+    "version": "0.5",
+    "multiscales": [
+        {
+            "axes": [
+                {"name": "y", "type": "space", "unit": "micrometer"},
+                {"name": "x", "type": "space", "unit": "micrometer"},
+            ],
+            "datasets": [
+                {
+                    "path": "0",
+                    "coordinateTransformations": [
+                        {"type": "scale", "scale": [1.0, 1.0]}
+                    ],
+                }
+            ],
+        }
+    ],
+}
+group = {"zarr_format": 3, "node_type": "group", "attributes": {"ome": image_meta}}
+array = {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [64, 64],
+    "data_type": "uint8",
+    "chunk_grid": {"name": "regular", "configuration": {"chunk_shape": [64, 64]}},
+    "chunk_key_encoding": {"name": "default"},
+    "fill_value": 0,
+    "codecs": [{"name": "bytes"}],
+    "dimension_names": ["y", "x"],
+}
+
+store = {
+    f"{path}zarr.json": json.dumps(doc).encode()
+    for path, doc in [("", group), ("0/", array)]
+}
+yaozarrs.validate_zarr_store(store)
+```
+
+!!! note
+    Anything that needs a URI (`store_path`, `to_zarr_python()` and
+    `to_tensorstore()`) raises a `TypeError` for these stores.
+
 ### Writing OME-Zarr Stores
 
 See [`yaozarrs.write.v05`][] for convenience functions to write OME-Zarr v0.5
 stores using your metadata objects, with either `zarr-python`, `tensorstore`,
 or custom backends.
+
+<!-- no-test -->
 
 ```python
 import numpy as np
@@ -342,6 +416,8 @@ extra](./installation.md#structural-validation) to support remote URIs.  This
 class is used behind the scenes for structural validation, but can also be used
 directly.
 
+<!-- no-test -->
+
 ```python
 import yaozarrs
 
@@ -359,6 +435,8 @@ child = group["0"]  # (2)!
 
 You can also get a tree view of the hierarchy programmatically with
 [`ZarrGroup.tree()`][yaozarrs._zarr.ZarrGroup.tree]:
+
+<!-- no-test -->
 
 ```python
 print(group.tree(depth=2))

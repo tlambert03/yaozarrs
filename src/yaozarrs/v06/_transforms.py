@@ -3,7 +3,6 @@ from typing import Annotated, Any, Literal, NoReturn, TypeAlias
 
 from annotated_types import MinLen
 from pydantic import (
-    Discriminator,
     Field,
     NonNegativeInt,
     field_validator,
@@ -13,6 +12,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._rules import RuleCodes, rewrap_error, rule_error, warn_rule
+from yaozarrs._types import duplicates
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "CoordinateTransformation",
@@ -298,8 +298,7 @@ class ByDimensionTransformation(_TransformBase):
                     f"byDimension transformations[{i}].outputAxes has duplicate axes: "
                     f"{item.outputAxes}",
                 )
-        out = [ax for item in v for ax in item.outputAxes]
-        if dupes := sorted({ax for ax in out if out.count(ax) > 1}):
+        if dupes := duplicates([ax for item in v for ax in item.outputAxes]):
             raise rule_error(
                 "YZ-CT-037",
                 f"byDimension output axes {dupes} appear in more than one "
@@ -377,7 +376,10 @@ CoordinateTransformation: TypeAlias = Annotated[
     | BijectionTransformation
     | DisplacementsTransformation
     | CoordinatesTransformation,
-    Discriminator("type"),
+    # NOTE: not `Discriminator("type")`: on pydantic 2.11.0-2.11.6 that gets applied
+    # twice to this recursive alias, raising "Discriminator must be used with a
+    # Union type" (pydantic/pydantic#11980, fixed in 2.11.7).
+    Field(discriminator="type"),
 ]
 # Resolve the forward references to CoordinateTransformation.  Older pydantic (2.5)
 # needs these explicit rebuilds, but DON'T rebuild BijectionTransformation (which
@@ -606,7 +608,6 @@ def _is_closed_form_invertible(t: Any) -> bool:
             IdentityTransformation,
             MapAxisTransformation,
             TranslationTransformation,
-            ScaleTransformation,
             RotationTransformation,
         ),
     )

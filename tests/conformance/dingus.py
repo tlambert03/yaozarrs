@@ -10,7 +10,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 import yaozarrs
-from yaozarrs._storage import StorageValidationError
+from yaozarrs._errors import StorageValidationError
 
 path = Path(sys.argv[-1])
 strict = "--strict" in sys.argv[1:-1]
@@ -19,7 +19,7 @@ try:
     if path.is_dir():
         yaozarrs.validate_zarr_store(path, strict=strict)
     else:
-        yaozarrs.validate_ome_object(json.loads(path.read_text()), strict=strict)
+        yaozarrs.validate_ome_json(path.read_text(), strict=strict)
 # anything else is a crash: oztest reports the nonzero exit as an `error`
 except (ValidationError, StorageValidationError) as e:
     print(json.dumps({"validity": "invalid", "message": str(e)}))

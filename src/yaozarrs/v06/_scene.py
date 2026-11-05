@@ -6,6 +6,7 @@ from typing_extensions import Self
 
 from yaozarrs._base import _BaseModel, _OMEDocument
 from yaozarrs._rules import RuleCodes, rewrap_error, rule_error
+from yaozarrs._types import UNIQUE_ITEMS
 
 from ._coordinate_systems import CoordinateSystemsList
 from ._transforms import (
@@ -61,8 +62,8 @@ class SceneDef(_BaseModel):
     # It MAY contain the field `coordinateSystems`, whose values MUST be an array of
     # valid coordinate systems.
     coordinateSystems: Annotated[
-        CoordinateSystemsList | None,
-        RuleCodes(list="YZ-SC-003", listItemsNotUnique="YZ-CS-003"),
+        Annotated[CoordinateSystemsList, UNIQUE_ITEMS] | None,
+        RuleCodes(list="YZ-SC-003"),
     ] = Field(
         default=None,
         description=(
@@ -84,6 +85,14 @@ class SceneDef(_BaseModel):
                     "YZ-SC-004", f"{loc}: must have both an 'input' and an 'output'."
                 )
             for side, ref in (("input", t.input), ("output", t.output)):
+                # (the spec is silent, but scene.schema has no other keys here:
+                # `additionalProperties: false`, unlike anywhere else)
+                if ref.model_extra:
+                    raise rule_error(
+                        "YZ-SC-008",
+                        f"{loc}: {side} may only contain 'name' and 'path', "
+                        f"not {sorted(ref.model_extra)}.",
+                    )
                 if ref.name is None:
                     raise rule_error(
                         "YZ-SC-005", f"{loc}: {side} must specify a 'name'."

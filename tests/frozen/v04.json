@@ -1,5 +1,5 @@
 {
-  "pydantic": "2.13",
+  "pydantic": "2.14",
   "public": {
     "Acquisition": {
       "$ref": "#/$defs/Acquisition"
@@ -135,6 +135,7 @@
   },
   "$defs": {
     "Acquisition": {
+      "additionalProperties": true,
       "properties": {
         "id": {
           "minimum": 0,
@@ -205,6 +206,7 @@
       "type": "object"
     },
     "Bf2Raw": {
+      "additionalProperties": true,
       "properties": {
         "uri": {
           "anyOf": [
@@ -219,15 +221,14 @@
         },
         "bioformats2raw.layout": {
           "const": 3,
+          "default": 3,
           "type": "integer"
         }
       },
-      "required": [
-        "bioformats2raw.layout"
-      ],
       "type": "object"
     },
     "ChannelAxis": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "type": "string"
@@ -255,6 +256,7 @@
       "type": "object"
     },
     "Column": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "pattern": "^[A-Za-z0-9]+$",
@@ -267,6 +269,7 @@
       "type": "object"
     },
     "CustomAxis": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "type": "string"
@@ -300,6 +303,7 @@
       "type": "object"
     },
     "Dataset": {
+      "additionalProperties": true,
       "properties": {
         "path": {
           "type": "string"
@@ -326,6 +330,7 @@
       "type": "object"
     },
     "FieldOfView": {
+      "additionalProperties": true,
       "properties": {
         "path": {
           "type": "string"
@@ -348,6 +353,7 @@
       "type": "object"
     },
     "Image": {
+      "additionalProperties": true,
       "properties": {
         "uri": {
           "anyOf": [
@@ -386,6 +392,7 @@
       "type": "object"
     },
     "ImageLabel": {
+      "additionalProperties": true,
       "properties": {
         "colors": {
           "anyOf": [
@@ -439,9 +446,17 @@
       "type": "object"
     },
     "LabelColor": {
+      "additionalProperties": true,
       "properties": {
         "label-value": {
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
         },
         "rgba": {
           "anyOf": [
@@ -468,6 +483,7 @@
       "type": "object"
     },
     "LabelImage": {
+      "additionalProperties": true,
       "properties": {
         "uri": {
           "anyOf": [
@@ -510,6 +526,7 @@
       "type": "object"
     },
     "LabelProperty": {
+      "additionalProperties": true,
       "properties": {
         "label-value": {
           "type": "integer"
@@ -521,6 +538,7 @@
       "type": "object"
     },
     "LabelSource": {
+      "additionalProperties": true,
       "properties": {
         "image": {
           "anyOf": [
@@ -537,6 +555,7 @@
       "type": "object"
     },
     "LabelsGroup": {
+      "additionalProperties": true,
       "properties": {
         "labels": {
           "items": {
@@ -551,6 +570,7 @@
       "type": "object"
     },
     "Multiscale": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "anyOf": [
@@ -590,8 +610,7 @@
             "$ref": "#/$defs/Dataset"
           },
           "minItems": 1,
-          "type": "array",
-          "uniqueItems": true
+          "type": "array"
         },
         "coordinateTransformations": {
           "anyOf": [
@@ -710,6 +729,7 @@
       "type": "object"
     },
     "OmeroChannel": {
+      "additionalProperties": true,
       "properties": {
         "window": {
           "$ref": "#/$defs/OmeroWindow"
@@ -837,6 +857,7 @@
       "type": "object"
     },
     "OmeroWindow": {
+      "additionalProperties": true,
       "properties": {
         "start": {
           "type": "number"
@@ -860,6 +881,7 @@
       "type": "object"
     },
     "Plate": {
+      "additionalProperties": true,
       "properties": {
         "uri": {
           "anyOf": [
@@ -874,6 +896,18 @@
         },
         "plate": {
           "$ref": "#/$defs/PlateDef"
+        },
+        "bioformats2raw.layout": {
+          "anyOf": [
+            {
+              "const": 3,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -882,6 +916,7 @@
       "type": "object"
     },
     "PlateDef": {
+      "additionalProperties": true,
       "properties": {
         "columns": {
           "items": {
@@ -958,6 +993,7 @@
       "type": "object"
     },
     "PlateWell": {
+      "additionalProperties": true,
       "properties": {
         "path": {
           "pattern": "^[A-Za-z0-9]+/[A-Za-z0-9]+$",
@@ -980,6 +1016,7 @@
       "type": "object"
     },
     "Row": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "pattern": "^[A-Za-z0-9]+$",
@@ -992,6 +1029,7 @@
       "type": "object"
     },
     "ScaleTransformation": {
+      "additionalProperties": true,
       "properties": {
         "type": {
           "const": "scale",
@@ -1012,6 +1050,7 @@
       "type": "object"
     },
     "Series": {
+      "additionalProperties": true,
       "properties": {
         "uri": {
           "anyOf": [
@@ -1038,6 +1077,7 @@
       "type": "object"
     },
     "SpaceAxis": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "type": "string"
@@ -1096,6 +1136,7 @@
       "type": "object"
     },
     "TimeAxis": {
+      "additionalProperties": true,
       "properties": {
         "name": {
           "type": "string"
@@ -1151,6 +1192,7 @@
       "type": "object"
     },
     "TranslationTransformation": {
+      "additionalProperties": true,
       "properties": {
         "type": {
           "const": "translation",
@@ -1171,6 +1213,7 @@
       "type": "object"
     },
     "Well": {
+      "additionalProperties": true,
       "properties": {
         "uri": {
           "anyOf": [
@@ -1193,6 +1236,7 @@
       "type": "object"
     },
     "WellDef": {
+      "additionalProperties": true,
       "properties": {
         "images": {
           "items": {

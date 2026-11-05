@@ -1,10 +1,31 @@
-import os
-from typing import Annotated, Any, TypeAlias, TypeVar, overload
+from __future__ import annotations
 
-from pydantic import Discriminator, Tag, TypeAdapter
+import json
+import warnings
+from typing import TYPE_CHECKING, Annotated, Any, TypeAlias, TypeVar, overload
+
+from pydantic import Discriminator, Tag, TypeAdapter, ValidationError
 
 from . import v04, v05, v06
+from ._base import MISSING_VERSION, REQUIRE_VERSION, type_adapter
+from ._errors import (
+    ErrorDetails,
+    StorageErrorType,
+    StorageValidationError,
+    StorageValidationWarning,
+    ValidationResult,
+    ValidationWarning,
+)
+from ._rules import RuleWarning, rule_error
+from ._zarr import ZarrGroup, open_group
 from .v06._version import VERSIONS as V06_VERSIONS
+
+if TYPE_CHECKING:
+    import os
+    from collections.abc import Mapping
+    from pathlib import Path
+
+    from pydantic_core import InitErrorDetails
 
 AnyOMEGroup: TypeAlias = (
     v04.OMEZarrGroupJSON | v05.OMEZarrGroupJSON | v06.OMEZarrGroupJSON
@@ -22,29 +43,35 @@ T = TypeVar("T", bound=AnyOME)
 _VERSIONS = {"0.4": "v04", "0.5": "v05", **dict.fromkeys(V06_VERSIONS, "v06")}
 
 
+def _find_version(obj: Any) -> tuple[Any, tuple[str | int, ...]] | None:
+    """Return the OME version that `obj` declares (if any), and where it is."""
+    loc: tuple[str | int, ...] = ()
+    if isinstance(obj, dict) and isinstance(obj.get("attributes"), dict):
+        obj, loc = obj["attributes"].get("ome"), ("attributes", "ome")  # zarr.json
+    elif isinstance(obj, dict) and "ome" in obj:
+        obj, loc = obj["ome"], ("ome",)  # the attributes of a zarr.json document
+    if not isinstance(obj, dict):
+        return None
+    if obj.get("version") is not None:
+        return obj["version"], (*loc, "version")
+    # (v0.4 declares it inside the metadata object, e.g. multiscales[0].version)
+    for key in ("multiscales", "plate", "well", "image-label"):
+        inner, inner_loc = obj.get(key), (*loc, key)
+        if isinstance(inner, list) and inner:
+            inner, inner_loc = inner[0], (*inner_loc, 0)
+        if isinstance(inner, dict) and inner.get("version") is not None:
+            return inner["version"], (*inner_loc, "version")
+    return None
+
+
 def _declared_version(obj: Any) -> str | None:
     """Return the package for the OME version that `obj` declares (if any).
 
     An unknown version returns a tag that matches no model, so that it gets rejected.
     """
-    if isinstance(obj, dict) and isinstance(obj.get("attributes"), dict):
-        obj = obj["attributes"].get("ome")  # a zarr.json document
-    elif isinstance(obj, dict) and "ome" in obj:
-        obj = obj["ome"]  # the attributes of a zarr.json document
-    if not isinstance(obj, dict):
+    if (found := _find_version(obj)) is None:
         return None
-    version = obj.get("version")
-    if version is None:
-        # (v0.4 declares it inside the metadata object, e.g. multiscales[0].version)
-        for key in ("multiscales", "plate", "well", "image-label"):
-            inner = obj.get(key)
-            if isinstance(inner, list) and inner:
-                inner = inner[0]
-            if isinstance(inner, dict) and "version" in inner:
-                version = inner["version"]
-                break
-    if version is None:
-        return None
+    version = found[0]
     return _VERSIONS.get(str(version), f"version {version!r}")
 
 
@@ -86,6 +113,50 @@ _AnyOMEByVersion: TypeAlias = Annotated[
 ]
 
 
+# The version-independent functions can't guess a document's version: the v0.5 and
+# v0.6 models would each fill in their own, so every document they share (e.g. a
+# plate) would pass as the first of them.  They require it instead (as every
+# document validated from JSON must), which still leaves the documents that don't
+# need one: v0.4 metadata, and v0.5 labels groups.
+_CONTEXT = {REQUIRE_VERSION: True}
+
+
+def _missing_version_error(obj: Any) -> ValidationError | None:
+    """A single error for an `ome` object without a version (instead of one per model).
+
+    `obj` can be a zarr.json document or its attributes.
+    """
+    loc: tuple[str, ...] = ("ome",)
+    if isinstance(obj, dict) and isinstance(obj.get("attributes"), dict):
+        obj, loc = obj["attributes"], ("attributes", "ome")
+    if not isinstance(obj, dict) or not isinstance(ome := obj.get("ome"), dict):
+        return None
+    if "version" in ome:
+        return None
+    error = rule_error("YZ-GN-001", MISSING_VERSION)
+    line: InitErrorDetails = {"type": error, "loc": (*loc, "version"), "input": ome}
+    return ValidationError.from_exception_data("OME metadata", [line])
+
+
+def _unsupported_version_error(obj: Any) -> ValidationError | None:
+    """A single error for a version we don't know (instead of the union's errors)."""
+    if (found := _find_version(obj)) is None or str(found[0]) in _VERSIONS:
+        return None
+    version, loc = found
+    supported = ", ".join(v for v in _VERSIONS if v.replace(".", "").isdigit())
+    error = rule_error(
+        "YZ-006",
+        f"Unsupported OME-Zarr version '{version}' (expected one of {supported})",
+    )
+    line: InitErrorDetails = {"type": error, "loc": loc, "input": version}
+    return ValidationError.from_exception_data("OME metadata", [line])
+
+
+def _version_error(obj: Any) -> ValidationError | None:
+    """A clearer error for a missing or unsupported version, if that's the problem."""
+    return _missing_version_error(obj) or _unsupported_version_error(obj)
+
+
 @overload
 def validate_ome_object(
     node: Any, cls: type[T], *, strict: bool | None = None
@@ -96,6 +167,10 @@ def validate_ome_object(
     node: Any, cls: type[T] | Any = None, *, strict: bool | None = None
 ) -> T | AnyOME:
     """Validate any python object representing an OME-Zarr document or node.
+
+    Without `cls`, a v0.5 or v0.6 document must declare its `version` (as the spec
+    requires): it can't be guessed, since many documents are the same in both.  With
+    a `cls` of a given version (e.g. `v06.Plate`), a missing version is filled in.
 
     Parameters
     ----------
@@ -118,8 +193,15 @@ def validate_ome_object(
     pydantic.ValidationError
         If the validation fails.
     """
-    adapter: TypeAdapter[T | AnyOME] = TypeAdapter(cls or _AnyOMEByVersion)
-    return adapter.validate_python(node, strict=strict)
+    if cls is not None:
+        return type_adapter(cls).validate_python(node, strict=strict)
+    adapter: TypeAdapter[AnyOME] = type_adapter(_AnyOMEByVersion)
+    try:
+        return adapter.validate_python(node, strict=strict, context=_CONTEXT)
+    except ValidationError:
+        if error := _version_error(node):
+            raise error from None
+        raise
 
 
 @overload
@@ -142,7 +224,8 @@ def validate_ome_json(
     This includes ome-zarr group documents for v04 (found at .zattrs in the zarr group)
     and v05/v06 (found at zarr.json in the zarr group).  For v05 and v06 objects, it
     also detects data that would be valid as the value of the
-    `data["attributes"]["ome"]` key inside a zarr.json document.
+    `data["attributes"]["ome"]` key inside a zarr.json document.  A v0.5 or v0.6
+    document must declare its `version`.
 
     Parameters
     ----------
@@ -165,8 +248,19 @@ def validate_ome_json(
     pydantic.ValidationError
         If the validation fails.
     """
-    adapter: TypeAdapter[T | AnyOME] = TypeAdapter(cls or _AnyOMEByVersion)
-    return adapter.validate_json(data, strict=strict)
+    if cls is not None and cls is not _AnyOMEGroupByVersion:
+        return type_adapter(cls).validate_json(data, strict=strict)
+    adapter: TypeAdapter[AnyOME] = type_adapter(cls or _AnyOMEByVersion)
+    try:
+        return adapter.validate_json(data, strict=strict)
+    except ValidationError:
+        try:
+            error = _version_error(json.loads(data))
+        except ValueError:  # (not JSON)
+            error = None
+        if error:
+            raise error from None
+        raise
 
 
 @overload
@@ -227,3 +321,123 @@ def validate_ome_uri(
     obj = validate_ome_json(json_content, cls, strict=strict)  # type: ignore
     obj.uri = uri_str
     return obj
+
+
+def validate_zarr_store(
+    obj: ZarrGroup | str | Path | Mapping[str, bytes] | Any,
+    *,
+    strict: bool | None = None,
+) -> ZarrGroup:
+    """Validate both structure and metadata of an OME-Zarr hierarchy.
+
+    !!!important
+        Requires `yaozarrs[io]` or `fsspec` to be installed, unless `obj` is a mapping
+        or a [`yaozarrs.ZarrGroup`][] opened from one.
+
+    This is a high-level function to validate both the metadata and the structure
+    of a complete OME-Zarr store.  This is the function used by the `yaozarrs validate`
+    CLI command.
+
+    Supports OME-Zarr versions 0.4, 0.5 and 0.6.
+
+    Parameters
+    ----------
+    obj : ZarrGroup | str | Path | Mapping[str, bytes] | Any
+        The zarr store to validate. Can be a URI string, a Path, a ZarrGroup instance,
+        a zarr.Group object (for backwards compatibility), or a mapping of store keys
+        to the bytes of the metadata documents, if you want to do the IO yourself (see
+        [`yaozarrs.open_group`][]).  To validate a single document without a store,
+        use [`yaozarrs.validate_ome_object`][] or [`yaozarrs.validate_ome_json`][].
+    strict : bool | None
+        If `True`, reject metadata that would otherwise be coerced to the right type
+        (e.g. `"1"` for an integer). By default, such metadata is accepted.
+
+    Returns
+    -------
+    ZarrGroup
+        The opened ZarrGroup if validation is successful.
+
+    Raises
+    ------
+    StorageValidationError
+        If the storage structure is invalid.
+    """
+    zarr_group = open_group(obj)
+    ome_version = zarr_group.ome_version()
+    if not ome_version and "ome" in zarr_group.attrs:
+        # (OME metadata, so an invalid OME-Zarr group rather than not one at all)
+        error = ValidationResult().add_error(
+            StorageErrorType.version_missing,
+            "YZ-GN-001",
+            ("ome", "version"),
+            "The OME metadata must declare its 'version'",
+        )
+        raise StorageValidationError(error.errors)
+    if not ome_version:
+        raise ValueError(
+            f"Unable to determine OME-Zarr version for {zarr_group}. "
+            "Is this an OME-Zarr group?"
+        )
+
+    # (imported here: each version's storage validator imports this module)
+    if ome_version == "0.5":
+        from .v05._storage import StorageValidatorV05
+
+        Validator = StorageValidatorV05
+    elif ome_version == "0.4":
+        from .v04._storage import StorageValidatorV04
+
+        Validator = StorageValidatorV04
+    elif ome_version in V06_VERSIONS:
+        from .v06._storage import StorageValidatorV06
+
+        Validator = StorageValidatorV06
+    else:
+        error = ValidationResult().add_error(
+            StorageErrorType.unsupported_version,
+            "YZ-006",
+            ("version",),
+            f"Unsupported OME-Zarr version {ome_version!r}",
+        )
+        raise StorageValidationError(error.errors)
+
+    # Capture RuntimeWarnings from pydantic validators during validation
+    # and convert them to StorageValidationWarning
+    with warnings.catch_warnings(record=True) as captured_warnings:
+        warnings.filterwarnings("always", category=ValidationWarning)
+        result = Validator.validate_group(zarr_group, strict=strict)
+
+    # prepend captured warnings to the result
+    for w in captured_warnings:
+        details: ErrorDetails = {
+            "type": "model_warning",
+            "loc": (),
+            "msg": str(w.message),
+        }
+        if isinstance(w.message, RuleWarning):
+            details["code"] = w.message.code
+            details["url"] = w.message.url
+        result.warnings.insert(0, details)
+
+    # Emit warnings for SHOULD directives from structural validation
+    if result.warnings:
+        # Use a custom formatter to match exception style
+        warning_instance = StorageValidationWarning(result.warnings)
+
+        _original_formatwarning = warnings.formatwarning
+
+        def _custom_formatwarning(message, category, *_, **__) -> str:
+            # Format like an exception: module.Class: message
+            return f"{category.__module__}.{category.__name__}: {message}\n"
+
+        warnings.formatwarning = _custom_formatwarning  # ty: ignore[invalid-assignment]
+        try:
+            warnings.warn(warning_instance, stacklevel=2)
+        finally:
+            warnings.formatwarning = _original_formatwarning
+
+    # Raise error if any validation issues found
+    if not result.is_valid:
+        raise StorageValidationError(result.errors)
+
+    return zarr_group

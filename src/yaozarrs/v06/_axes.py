@@ -3,10 +3,10 @@ from typing import Annotated, Any, Literal, TypeAlias
 
 from annotated_types import MinLen
 from pydantic import (
+    AfterValidator,
     Discriminator,
     Field,
     Tag,
-    WrapValidator,
     field_validator,
     model_validator,
 )
@@ -14,7 +14,7 @@ from pydantic import (
 from yaozarrs._base import _BaseModel
 from yaozarrs._common._units import SpaceUnits, TimeUnits
 from yaozarrs._rules import RuleCodes, rule_error, warn_rule
-from yaozarrs._types import UniqueList
+from yaozarrs._types import UNIQUE_ITEMS, duplicates
 
 __all__ = [  # noqa: RUF022  (don't resort, this is used for docs ordering)
     "Axis",
@@ -127,8 +127,7 @@ def _validate_axes(axes: list[Axis]) -> list[Axis]:
     stricter than the prose, we follow the prose.
     """
     # The values in the `name` fields MUST be unique within the same coordinate system.
-    names = [ax.name for ax in axes]
-    if dupes := sorted({n for n in names if names.count(n) > 1}):
+    if dupes := duplicates([ax.name for ax in axes]):
         raise rule_error(
             "YZ-AX-001",
             "Axis names must be unique within a coordinate system. "
@@ -139,10 +138,10 @@ def _validate_axes(axes: list[Axis]) -> list[Axis]:
 
 
 AxesList: TypeAlias = Annotated[
-    UniqueList[Axis],
+    list[Axis],
+    UNIQUE_ITEMS,  # (implied by the unique names)
     MinLen(1),
-    # hack to get around ordering of multiple after validators
-    WrapValidator(lambda v, h: _validate_axes(h(v))),
+    AfterValidator(_validate_axes),
 ]
 
 

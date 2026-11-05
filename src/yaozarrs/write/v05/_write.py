@@ -137,7 +137,8 @@ def write_image(
     chunks : tuple[int, ...] | "auto" | None, optional
         Chunk shape for storage. "auto" (default) calculates ~4MB chunks with
         non-spatial dims set to 1. None uses the full array shape (single chunk).
-        Tuple values are clamped to the array shape.
+        Tuple values must have one entry per array dimension, and are clamped
+        to the array shape.
     shards : tuple[int, ...] | None, optional
         Shard shape for Zarr v3 sharding. Default is None (no sharding).
         When present, shard_shape must be divisible by chunk shape.
@@ -284,6 +285,7 @@ def write_plate(
         Mapping of `{(row, col, fov) -> (image_model, [datasets, ...])}`.
         Each tuple key specifies (row_name, column_name, field_of_view) like
         ("A", "1", "0"). Row and column names are auto-extracted from the keys.
+        (Zero-padded column names like "01" are kept as they are.)
     plate : Plate | dict[str, Any] | None, optional
         Optional plate metadata. Can be:
         - None (default): Auto-generate from images dict keys
@@ -863,6 +865,8 @@ class PlateBuilder(PlateBuilderBase[Image]):
         When present, shard_shape must be divisible by chunk shape.
     overwrite : bool, optional
         If True, overwrite existing groups. Default is False.
+        If False and `dest` already holds a plate, the wells written are added
+        to it.
         Note: existing directories that don't look like zarr groups will NOT be removed,
         an exception will be raised instead.
     compression : "blosc-zstd" | "blosc-lz4" | "zstd" | "none", optional

@@ -1,10 +1,10 @@
 from typing import Annotated, TypeAlias
 
-from pydantic import Field, WrapValidator
+from pydantic import AfterValidator, Field
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._rules import RuleCodes, rule_error
-from yaozarrs._types import UniqueList
+from yaozarrs._types import duplicates
 
 from ._axes import AxesList
 
@@ -40,8 +40,7 @@ class CoordinateSystem(_BaseModel):
 def _validate_names(systems: list[CoordinateSystem]) -> list[CoordinateSystem]:
     # [name] MUST be a non-empty string that is unique among all entries in a
     # `coordinateSystems` array.
-    names = [cs.name for cs in systems]
-    if dupes := sorted({n for n in names if names.count(n) > 1}):
+    if dupes := duplicates([cs.name for cs in systems]):
         raise rule_error(
             "YZ-CS-003",
             f"Coordinate system names must be unique. Duplicates: {dupes}",
@@ -49,8 +48,8 @@ def _validate_names(systems: list[CoordinateSystem]) -> list[CoordinateSystem]:
     return systems
 
 
+# (unique names imply uniqueItems, which coordinate_systems.schema declares, but
+# image.schema doesn't for a multiscale's coordinateSystems; see `SceneDef`)
 CoordinateSystemsList: TypeAlias = Annotated[
-    UniqueList[CoordinateSystem],
-    # hack to get around ordering of multiple after validators
-    WrapValidator(lambda v, h: _validate_names(h(v))),
+    list[CoordinateSystem], AfterValidator(_validate_names)
 ]
