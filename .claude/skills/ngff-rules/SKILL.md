@@ -21,8 +21,9 @@ The pieces are:
 - `src/yaozarrs/_rules/rules.toml`: the registry and single source of truth. It holds
   the pinned spec files (`[spec."<version>"]`, whose keys are the tracked versions)
   and every rule (`[rules.<CODE>]`), with its quotes and line numbers.
-- `tests/rule_examples.toml`: a minimal failing example for each rule that yaozarrs
-  checks, keyed by code. Only the tests and the docs script read it.
+- `src/yaozarrs/_rules/rule_examples.toml`: a minimal failing example for each rule
+  that yaozarrs checks, keyed by code (`Rule.example`/`Rule.examples`, loaded on first
+  use). The tests and the docs script use them.
 - `src/yaozarrs/_rules/__init__.py`: `rule_error(code, msg)` (raise it inside a pydantic
   validator), `warn_rule(code, msg, stacklevel)`, `rewrap_error(e, prefix, suffix, code)`
   (add context to an error's message and keep its code), `error_code(e)`, and
@@ -53,7 +54,7 @@ quote = 'The values MUST be unique across all "name" fields.'
 lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
 ```
 
-and its example, in `tests/rule_examples.toml`:
+and its example, in `rule_examples.toml`:
 
 ```toml
 [YZ-AX-001.example]
@@ -230,7 +231,7 @@ propose errors or warnings for it, and don't mint codes for those statements.
    `warn_rule("<code>", msg, stacklevel=...)`. Keep existing message text, because
    tests and users match on it. For an error that pydantic raises itself, add the code
    to the field's `RuleCodes` instead (see "Field-shape rules").
-4. Add an `example` to `tests/rule_examples.toml`: the model class name plus a minimal failing JSON document, or a
+4. Add an `example` to `rule_examples.toml`: the model class name plus a minimal failing JSON document, or a
    `store` for storage checks. Then run `scripts/ngff_rules.py coverage` to confirm where
    it fires. An example should trigger only its own rule, apart from errors that can't
    be avoided; check what it emits with `emitted_codes()`.

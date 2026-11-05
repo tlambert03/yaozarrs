@@ -1,6 +1,6 @@
-# Minimal failing examples for the rules in `src/yaozarrs/_rules/rules.toml`, keyed by
-# rule code. Only the tests and the docs script read them (`scripts/ngff_rules.py`):
-# they check that each rule's code fires exactly where the spec states the rule.
+# Minimal failing examples for the rules in `rules.toml`, keyed by rule code
+# (`Rule.example` and `Rule.examples`, loaded on first use). The tests and the docs
+# script use them, to check that each code fires exactly where the spec states the rule.
 #
 # `[<CODE>.example]` is in the v0.5 format, and is converted for the other versions.
 # `[<CODE>.examples."<version>"]` replaces it for one version, in that version's format.

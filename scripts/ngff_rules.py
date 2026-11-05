@@ -16,11 +16,10 @@ import json
 import os
 import sys
 import tempfile
-import tomllib
 import urllib.request
 import warnings
 from contextlib import contextmanager
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -35,11 +34,11 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from types import ModuleType
 
+    from yaozarrs._rules._model import Example
 
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_SOURCES = ROOT / "tests" / "spec_sources"
 DOCS_DIR = ROOT / "docs" / "rules"
-EXAMPLES_FILE = ROOT / "tests" / "rule_examples.toml"
 
 # yaozarrs model module for each spec version it implements
 MODULES: dict[str, ModuleType] = {"0.4": v04, "0.5": v05, "0.6": v06}
@@ -194,65 +193,11 @@ def to_v06_store(files: dict[str, dict]) -> dict[str, dict]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# examples
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class Example:
-    """A minimal input that violates a rule.
-
-    Either a JSON document validated as `model`, or a `store`: a JSON object mapping
-    metadata file paths (`zarr.json`, `s0/zarr.json`, ...) to their contents, validated
-    with `validate_zarr_store`.
-    """
-
-    model: str | None = None  # name of a model class in a version module
-    json: str | None = None
-    store: str | None = None
-
-    @property
-    def data(self) -> object:
-        """The parsed `json` document."""
-        return json.loads(self.json or "null")
-
-    @property
-    def files(self) -> dict[str, dict]:
-        """The parsed `store`: file path -> contents."""
-        return json.loads(self.store or "{}")
-
-
-@dataclass(frozen=True)
-class RuleExamples:
-    """A rule's examples: `default` in the v0.5 format, `versions` in their own."""
-
-    default: Example | None = None
-    versions: dict[str, Example] = field(default_factory=dict)
-
-
-def load_examples() -> dict[str, RuleExamples]:
-    """Load `tests/rule_examples.toml`, keyed by rule code."""
-    data = tomllib.loads(EXAMPLES_FILE.read_text(encoding="utf-8"))
-    return {
-        code: RuleExamples(
-            default=Example(**e["example"]) if "example" in e else None,
-            versions={v: Example(**x) for v, x in e.get("examples", {}).items()},
-        )
-        for code, e in data.items()
-    }
-
-
-EXAMPLES = load_examples()
-
-
 def example_for(rule: Rule, version: str) -> Example | None:
     """Return `rule`'s example for `version`, in that version's format."""
-    if (examples := EXAMPLES.get(rule.code)) is None:
-        return None
-    if version in examples.versions:
-        return examples.versions[version]
-    if (ex := examples.default) is None:
+    if version in rule.examples:
+        return rule.examples[version]
+    if (ex := rule.example) is None:
         return None
     if ex.store is not None:
         convert = {"0.4": to_v04_store, "0.6": to_v06_store}.get(version)
