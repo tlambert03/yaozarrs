@@ -20,8 +20,9 @@ The pieces are:
 
 - `src/yaozarrs/_rules/rules.toml`: the registry and single source of truth. It holds
   the pinned spec files (`[spec."<version>"]`, whose keys are the tracked versions)
-  and every rule (`[rules.<CODE>]`), with its quotes, line numbers, and a minimal
-  failing `example`.
+  and every rule (`[rules.<CODE>]`), with its quotes and line numbers.
+- `tests/rule_examples.toml`: a minimal failing example for each rule that yaozarrs
+  checks, keyed by code. Only the tests and the docs script read it.
 - `src/yaozarrs/_rules/__init__.py`: `rule_error(code, msg)` (raise it inside a pydantic
   validator), `warn_rule(code, msg, stacklevel)`, `rewrap_error(e, prefix, suffix, code)`
   (add context to an error's message and keep its code), `error_code(e)`, and
@@ -50,8 +51,12 @@ introduced = '0.4'
 [[rules.YZ-AX-001.sources]]
 quote = 'The values MUST be unique across all "name" fields.'
 lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
+```
 
-[rules.YZ-AX-001.example]
+and its example, in `tests/rule_examples.toml`:
+
+```toml
+[YZ-AX-001.example]
 model = 'Multiscale'   # class name in yaozarrs.v04 / yaozarrs.v05
 json = '''
 {"axes": [...], "datasets": [...]}
@@ -70,7 +75,7 @@ statement.
 derives the other versions: `to_v04_store`, `to_v06_store`, and the `Multiscale` and
 `Dataset` conversions to v0.6 (`axes` to a `coordinateSystems` entry named `physical`,
 with `input` and `output` on each dataset's transformation). Where that doesn't work,
-add `[rules.<CODE>.examples."<version>"]`, in that version's own format. A rule that
+add `[<CODE>.examples."<version>"]`, in that version's own format. A rule that
 only exists in one version has only that entry. Model examples are validated as JSON
 (`model_validate_json`), so documents with a `version` field need one in the example.
 
@@ -82,7 +87,7 @@ prose disagree, keep yaozarrs' behavior (use `severity` if it only warns), and d
 the disagreement in `notes`.
 
 Optional fields: `notes`, `severity` (default: `warning` for SHOULD, else `error`),
-`status` (`stable` by default), `removed`, `supersedes`, `aliases`, `examples`, and
+`status` (`stable` by default), `removed`, `supersedes`, `aliases`, and
 `checkable = false`.
 
 ## Field-shape rules
@@ -225,7 +230,7 @@ propose errors or warnings for it, and don't mint codes for those statements.
    `warn_rule("<code>", msg, stacklevel=...)`. Keep existing message text, because
    tests and users match on it. For an error that pydantic raises itself, add the code
    to the field's `RuleCodes` instead (see "Field-shape rules").
-4. Add an `example`: the model class name plus a minimal failing JSON document, or a
+4. Add an `example` to `tests/rule_examples.toml`: the model class name plus a minimal failing JSON document, or a
    `store` for storage checks. Then run `scripts/ngff_rules.py coverage` to confirm where
    it fires. An example should trigger only its own rule, apart from errors that can't
    be avoided; check what it emits with `emitted_codes()`.

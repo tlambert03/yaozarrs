@@ -44,23 +44,6 @@ lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
 quote = 'The values in the `name` fields MUST be unique within the same coordinate system.'
 lines = { "0.6" = [260, 260] }
 
-[rules.YZ-AX-001.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [
-    {"name": "x", "type": "space"},
-    {"name": "x", "type": "space", "unit": "meter"}
-  ],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-AX-002]
 slug = 'axes-space-count'
 level = 'MUST'
@@ -76,20 +59,6 @@ lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
 quote = '`axes` MUST contain 2 or 3 entries of `type:space`'
 lines = { "0.6" = [1289, 1289] }
 
-[rules.YZ-AX-002.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [{"name": "c", "type": "channel"}, {"name": "x", "type": "space"}],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-AX-003]
 slug = 'axes-time-at-most-one'
 level = 'MAY'
@@ -103,25 +72,6 @@ lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
 [[rules.YZ-AX-003.sources]]
 quote = 'MAY contain one additional entry of `type:time`'
 lines = { "0.6" = [1290, 1290] }
-
-[rules.YZ-AX-003.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [
-    {"name": "t", "type": "time"},
-    {"name": "t2", "type": "time"},
-    {"name": "y", "type": "space"},
-    {"name": "x", "type": "space"}
-  ],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    }
-  ]
-}
-'''
 
 [rules.YZ-AX-004]
 slug = 'axes-channel-at-most-one'
@@ -138,25 +88,6 @@ lines = { "0.4" = [360, 360], "0.5" = [304, 304] }
 quote = 'MAY contain one additional entry of `type:channel` or a null / custom type'
 lines = { "0.6" = [1291, 1291] }
 
-[rules.YZ-AX-004.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [
-    {"name": "c", "type": "channel"},
-    {"name": "c2", "type": "channel"},
-    {"name": "y", "type": "space"},
-    {"name": "x", "type": "space"}
-  ],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-AX-005]
 slug = 'axes-type-order'
 level = 'MUST'
@@ -171,24 +102,6 @@ lines = { "0.4" = [361, 361], "0.5" = [305, 305] }
 quote = '`axes` entries MUST be ordered by `type` where the `time` axis must come first (if present), followed by the `channel` or custom axis (if present) and the axes of type `space`.'
 lines = { "0.6" = [1292, 1293] }
 
-[rules.YZ-AX-005.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [
-    {"name": "y", "type": "space"},
-    {"name": "t", "type": "time"},
-    {"name": "x", "type": "space"}
-  ],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-AX-006]
 slug = 'axis-unit-recognized'
 level = 'SHOULD'
@@ -199,13 +112,6 @@ notes = 'yaozarrs checks this for `space` and `time` axes.'
 [[rules.YZ-AX-006.sources]]
 quote = 'The value SHOULD be one of the following strings, which are valid units according to UDUNITS-2.'
 lines = { "0.4" = [245, 245], "0.5" = [185, 185], "0.6" = [252, 253] }
-
-[rules.YZ-AX-006.example]
-model = 'SpaceAxis'
-json = '''
-{"name": "x", "type": "space", "unit": "lightyear"}
-'''
-
 
 [rules.YZ-AX-007]
 slug = 'dimension-names-present'
@@ -220,41 +126,6 @@ notes = 'yaozarrs only warns, because zarr-python omits `dimension_names` unless
 quote = 'The "dimension_names" attribute MUST be included in the `zarr.json` of the Zarr array of a multiscale level'
 lines = { "0.5" = [191, 191] }
 
-[rules.YZ-AX-007.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8"
-  }
-}
-'''
-
 [rules.YZ-AX-008]
 slug = 'dimension-names-match-axes'
 level = 'MUST'
@@ -267,41 +138,6 @@ notes = 'For 0.4 stores, yaozarrs checks a non-standard `dimension_names` array 
 quote = 'and MUST match the names in the "axes" metadata.'
 lines = { "0.5" = [191, 191] }
 
-[rules.YZ-AX-008.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["a", "b"]
-  }
-}
-'''
 [rules.YZ-AX-009]
 slug = 'axis-name-present'
 level = 'MUST'
@@ -316,15 +152,6 @@ lines = { "0.4" = [243, 243], "0.5" = [183, 183] }
 quote = 'MUST contain the field `name` that gives the name for this dimension.'
 lines = { "0.6" = [243, 243] }
 
-[rules.YZ-AX-009.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [{"type": "space"}, {"name": "x", "type": "space"}],
-  "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
-}
-'''
-
 [rules.YZ-AX-010]
 slug = 'axis-name-nonempty-string'
 level = 'MUST'
@@ -334,13 +161,6 @@ introduced = '0.6'
 [[rules.YZ-AX-010.sources]]
 quote = 'The value MUST be a non-empty string.'
 lines = { "0.6" = [244, 244] }
-
-[rules.YZ-AX-010.examples."0.6"]
-model = 'SpaceAxis'
-json = '''
-{"name": ""}
-'''
-
 
 [rules.YZ-AX-011]
 slug = 'axis-long-name-string'
@@ -352,13 +172,6 @@ introduced = '0.6'
 quote = 'MAY contain the field `longName`. The value MUST be a string'
 lines = { "0.6" = [256, 257] }
 
-[rules.YZ-AX-011.examples."0.6"]
-model = 'SpaceAxis'
-json = '''
-{"name": "x", "longName": 1}
-'''
-
-
 [rules.YZ-AX-012]
 slug = 'axis-discrete-boolean'
 level = 'MUST'
@@ -368,13 +181,6 @@ introduced = '0.6'
 [[rules.YZ-AX-012.sources]]
 quote = 'MAY contain the field `discrete`. The value MUST be a boolean'
 lines = { "0.6" = [248, 249] }
-
-[rules.YZ-AX-012.examples."0.6"]
-model = 'SpaceAxis'
-json = '''
-{"name": "x", "discrete": "nope"}
-'''
-
 
 [rules.YZ-AX-013]
 slug = 'multiscale-axes-min-count'
@@ -387,12 +193,6 @@ notes = 'The 0.6 spec writes this in lowercase, as the start of a sentence that 
 quote = 'The length of `axes` must be between 2 and 5'
 implied = true
 lines = { "0.6" = [1288, 1288] }
-
-[rules.YZ-AX-013.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-CS
@@ -408,13 +208,6 @@ introduced = '0.6'
 quote = 'Every coordinate system: - MUST contain the field `name`.'
 lines = { "0.6" = [199, 200] }
 
-[rules.YZ-CS-001.examples."0.6"]
-model = 'CoordinateSystem'
-json = '''
-{"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
-'''
-
-
 [rules.YZ-CS-002]
 slug = 'coordinate-system-name-nonempty-string'
 level = 'MUST'
@@ -424,13 +217,6 @@ introduced = '0.6'
 [[rules.YZ-CS-002.sources]]
 quote = 'The value MUST be a non-empty string that is unique among all entries in a `coordinateSystems` array.'
 lines = { "0.6" = [201, 201] }
-
-[rules.YZ-CS-002.examples."0.6"]
-model = 'CoordinateSystem'
-json = '''
-{"name": "", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
-'''
-
 
 [rules.YZ-CS-003]
 slug = 'coordinate-system-name-unique'
@@ -442,13 +228,6 @@ introduced = '0.6'
 quote = 'The value MUST be a non-empty string that is unique among all entries in a `coordinateSystems` array.'
 lines = { "0.6" = [201, 201] }
 
-[rules.YZ-CS-003.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "physical", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
-'''
-
-
 [rules.YZ-CS-004]
 slug = 'coordinate-system-axes-present'
 level = 'MUST'
@@ -458,12 +237,6 @@ introduced = '0.6'
 [[rules.YZ-CS-004.sources]]
 quote = 'MUST contain the field `axes`, whose value is an array of valid `axes`'
 lines = { "0.6" = [202, 202] }
-
-[rules.YZ-CS-004.examples."0.6"]
-model = 'CoordinateSystem'
-json = '''
-{"name": "physical"}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-MS
@@ -494,14 +267,6 @@ removed = '0.6'
 quote = 'Each "multiscales" dictionary MUST contain the field "axes"'
 lines = { "0.4" = [358, 358], "0.5" = [302, 302] }
 
-[rules.YZ-MS-002.example]
-model = 'Multiscale'
-json = '''
-{
-  "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
-}
-'''
-
 [rules.YZ-MS-003]
 slug = 'multiscales-datasets-present'
 level = 'MUST'
@@ -518,12 +283,6 @@ quote = '| `datasets` | JSON array of objects | yes |'
 implied = true
 lines = { "0.6" = [1278, 1278] }
 
-[rules.YZ-MS-003.example]
-model = 'Multiscale'
-json = '''
-{"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
-'''
-
 [rules.YZ-MS-004]
 slug = 'multiscales-coordinate-systems-present'
 level = 'MUST'
@@ -536,12 +295,6 @@ notes = 'The 0.6 spec states this in the `multiscales` field table ("Required: y
 quote = '| `coordinateSystems` | JSON array of objects | yes |'
 implied = true
 lines = { "0.6" = [1277, 1277] }
-
-[rules.YZ-MS-004.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-DS
@@ -562,24 +315,6 @@ lines = { "0.4" = [366, 366], "0.5" = [310, 310] }
 quote = 'The `path`s MUST be ordered from largest (i.e. highest resolution) to smallest.'
 lines = { "0.6" = [1312, 1312] }
 
-[rules.YZ-DS-001.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [2, 2]}]
-    },
-    {
-      "path": "1",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-DS-002]
 slug = 'datasets-same-ndim'
 level = 'MUST'
@@ -595,24 +330,6 @@ lines = { "0.4" = [368, 368], "0.5" = [312, 312] }
 quote = 'Every Zarr array referred to by a `path` MUST have the same number of dimensions and datatype,'
 lines = { "0.6" = [1313, 1313] }
 
-[rules.YZ-DS-002.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-    },
-    {
-      "path": "1",
-      "coordinateTransformations": [{"type": "scale", "scale": [2, 2, 2]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-DS-003]
 slug = 'datasets-max-5d'
 level = 'MUST'
@@ -622,54 +339,6 @@ introduced = '0.4'
 [[rules.YZ-DS-003.sources]]
 quote = 'MUST NOT have more than 5 dimensions.'
 lines = { "0.4" = [368, 368], "0.5" = [312, 312], "0.6" = [1314, 1314] }
-
-[rules.YZ-DS-003.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1, 1, 1, 1]}]
-    }
-  ]
-}
-'''
-
-[rules.YZ-DS-003.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{
-  "coordinateSystems": [
-    {
-      "name": "physical",
-      "axes": [
-        {"name": "a"},
-        {"name": "b"},
-        {"name": "c"},
-        {"name": "z", "type": "space"},
-        {"name": "y", "type": "space"},
-        {"name": "x", "type": "space"}
-      ]
-    }
-  ],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [
-        {
-          "type": "scale",
-          "scale": [1, 1, 1, 1, 1, 1],
-          "input": {"path": "0"},
-          "output": {"name": "physical"}
-        }
-      ]
-    }
-  ]
-}
-'''
-
 
 [rules.YZ-DS-004]
 slug = 'dataset-path-is-array'
@@ -685,35 +354,6 @@ lines = { "0.4" = [365, 365], "0.5" = [309, 309] }
 quote = 'Each object in `datasets` MUST contain the field `path`, whose value is a string containing the path to the Zarr array for this resolution relative'
 lines = { "0.6" = [1310, 1311] }
 
-[rules.YZ-DS-004.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  }
-}
-'''
-
 [rules.YZ-DS-005]
 slug = 'array-ndim-matches-axes'
 level = 'MUST'
@@ -728,40 +368,6 @@ lines = { "0.4" = [359, 359], "0.5" = [303, 303] }
 quote = 'MUST be equal to the dimensionality of the Zarr arrays storing the image data (see `datasets:path`).'
 lines = { "0.6" = [1288, 1288] }
 
-[rules.YZ-DS-005.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [2, 4, 4],
-    "data_type": "uint8"
-  }
-}
-'''
 [rules.YZ-DS-006]
 slug = 'dataset-path-present'
 level = 'MUST'
@@ -775,12 +381,6 @@ lines = { "0.4" = [365, 365], "0.5" = [309, 309] }
 [[rules.YZ-DS-006.sources]]
 quote = 'Each object in `datasets` MUST contain the field `path`'
 lines = { "0.6" = [1310, 1310] }
-
-[rules.YZ-DS-006.example]
-model = 'Dataset'
-json = '''
-{"coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}
-'''
 
 [rules.YZ-DS-007]
 slug = 'dataset-transforms-present'
@@ -796,12 +396,6 @@ lines = { "0.4" = [369, 369], "0.5" = [313, 313] }
 quote = 'Each object in `datasets` MUST contain the field `coordinateTransformations`'
 lines = { "0.6" = [1317, 1317] }
 
-[rules.YZ-DS-007.example]
-model = 'Dataset'
-json = '''
-{"path": "0"}
-'''
-
 [rules.YZ-DS-008]
 slug = 'datasets-same-dtype'
 level = 'MUST'
@@ -811,96 +405,6 @@ introduced = '0.6'
 [[rules.YZ-DS-008.sources]]
 quote = 'Every Zarr array referred to by a `path` MUST have the same number of dimensions and datatype,'
 lines = { "0.6" = [1313, 1313] }
-
-[rules.YZ-DS-008.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              },
-              {
-                "path": "s1",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      2,
-                      2
-                    ],
-                    "input": {
-                      "path": "s1"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "s1/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint16"
-  }
-}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-CT
@@ -917,18 +421,6 @@ removed = '0.6'
 quote = 'They MUST contain exactly one `scale` transformation'
 lines = { "0.4" = [371, 371], "0.5" = [315, 315] }
 
-[rules.YZ-CT-001.example]
-model = 'Dataset'
-json = '''
-{
-  "path": "0",
-  "coordinateTransformations": [
-    {"type": "scale", "scale": [1, 1]},
-    {"type": "scale", "scale": [1, 1]}
-  ]
-}
-'''
-
 [rules.YZ-CT-002]
 slug = 'translation-at-most-one'
 level = 'MAY'
@@ -940,19 +432,6 @@ removed = '0.6'
 quote = 'It MAY contain exactly one `translation`'
 lines = { "0.4" = [372, 372], "0.5" = [316, 316] }
 
-[rules.YZ-CT-002.example]
-model = 'Dataset'
-json = '''
-{
-  "path": "0",
-  "coordinateTransformations": [
-    {"type": "scale", "scale": [1, 1]},
-    {"type": "translation", "translation": [0, 0]},
-    {"type": "translation", "translation": [1, 1]}
-  ]
-}
-'''
-
 [rules.YZ-CT-003]
 slug = 'translation-after-scale'
 level = 'MUST'
@@ -963,18 +442,6 @@ removed = '0.6'
 [[rules.YZ-CT-003.sources]]
 quote = 'If `translation` is given it MUST be listed after `scale`'
 lines = { "0.4" = [372, 372], "0.5" = [316, 316] }
-
-[rules.YZ-CT-003.example]
-model = 'Dataset'
-json = '''
-{
-  "path": "0",
-  "coordinateTransformations": [
-    {"type": "translation", "translation": [0, 0]},
-    {"type": "scale", "scale": [1, 1]}
-  ]
-}
-'''
 
 [rules.YZ-CT-004]
 slug = 'transform-length-matches-axes'
@@ -994,20 +461,6 @@ lines = { "0.6" = [807, 808] }
 quote = 'Input and output dimensionality MUST be identical and MUST equal the length of the `scale` array (N).'
 lines = { "0.6" = [834, 835] }
 
-[rules.YZ-CT-004.example]
-model = 'Multiscale'
-json = '''
-{
-  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
-  "datasets": [
-    {
-      "path": "0",
-      "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1]}]
-    }
-  ]
-}
-'''
-
 [rules.YZ-CT-005]
 slug = 'dataset-transform-type'
 level = 'MUST'
@@ -1019,13 +472,6 @@ supersedes = ['YZ-CT-001', 'YZ-CT-002', 'YZ-CT-003']
 quote = '`coordinateTransformations` herein MUST - be restricted to a single `scale`, `identity` or `sequence` of a scale followed by a translation transformation.'
 lines = { "0.6" = [449, 450] }
 
-[rules.YZ-CT-005.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "translation", "translation": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
-'''
-
-
 [rules.YZ-CT-006]
 slug = 'dataset-transform-input-path'
 level = 'MUST'
@@ -1036,13 +482,6 @@ introduced = '0.6'
 quote = 'The `input` object MUST specify a `path` field matching the `path` field of the dataset.'
 lines = { "0.6" = [1323, 1323] }
 
-[rules.YZ-CT-006.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "output": {"name": "physical"}}]}
-'''
-
-
 [rules.YZ-CT-007]
 slug = 'dataset-transform-output-name'
 level = 'MUST'
@@ -1052,13 +491,6 @@ introduced = '0.6'
 [[rules.YZ-CT-007.sources]]
 quote = 'The `name` field of `output` MUST be the `name` of a coordinate system.'
 lines = { "0.6" = [1327, 1327] }
-
-[rules.YZ-CT-007.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}}]}
-'''
-
 
 [rules.YZ-CT-008]
 slug = 'dataset-transform-input-name-omitted'
@@ -1071,13 +503,6 @@ notes = 'Another section of the 0.6 spec says these transformations "MUST ... om
 quote = 'The `name` field under `input` SHOULD be omitted.'
 lines = { "0.6" = [1324, 1324] }
 
-[rules.YZ-CT-008.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0", "name": "a"}, "output": {"name": "physical"}}]}
-'''
-
-
 [rules.YZ-CT-009]
 slug = 'dataset-transform-output-path-omitted'
 level = 'SHOULD'
@@ -1089,13 +514,6 @@ notes = 'Another section of the 0.6 spec says these transformations "MUST ... om
 quote = 'The `path` field of `output` SHOULD be omitted.'
 lines = { "0.6" = [1329, 1329] }
 
-[rules.YZ-CT-009.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical", "path": "x"}}]}
-'''
-
-
 [rules.YZ-CT-010]
 slug = 'dataset-transform-same-output'
 level = 'MUST'
@@ -1105,13 +523,6 @@ introduced = '0.6'
 [[rules.YZ-CT-010.sources]]
 quote = 'It MUST be the same value for every resolution level in a single multiscales'
 lines = { "0.6" = [1328, 1328] }
-
-[rules.YZ-CT-010.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}, {"path": "s1", "coordinateTransformations": [{"type": "scale", "scale": [2, 2], "input": {"path": "s1"}, "output": {"name": "other"}}]}]}
-'''
-
 
 [rules.YZ-CT-011]
 slug = 'transform-input-output-present'
@@ -1130,13 +541,6 @@ quote = '| [`output`](#input-output-md) | object | yes, unless part of a wrapper
 implied = true
 lines = { "0.6" = [402, 402] }
 
-[rules.YZ-CT-011.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity"}]}
-'''
-
-
 [rules.YZ-CT-012]
 slug = 'multiscale-transform-references-intrinsic'
 level = 'MUST'
@@ -1147,13 +551,6 @@ introduced = '0.6'
 quote = '- One of `input` or `output` MUST reference the "[intrinsic](#spec:hint:multiscales-intrinsic-coordinate-system)" coordinate system by `name` (`path` MAY be omitted or null). - The other of `input` or `output` MUST reference either:'
 lines = { "0.6" = [1359, 1360] }
 
-[rules.YZ-CT-012.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "a", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "b", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}]}
-'''
-
-
 [rules.YZ-CT-013]
 slug = 'multiscale-transform-other-reference'
 level = 'MUST'
@@ -1163,13 +560,6 @@ introduced = '0.6'
 [[rules.YZ-CT-013.sources]]
 quote = 'The other of `input` or `output` MUST reference either: - A named coordinate system in the same multiscales group (by `name`, `path` MAY be omitted or null), or - A named coordinate system in a child [labels](#labels-md) group (by `name` and `path`).'
 lines = { "0.6" = [1360, 1362] }
-
-[rules.YZ-CT-013.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "physical"}, "output": {"name": "missing"}}]}
-'''
-
 
 [rules.YZ-CT-014]
 slug = 'label-transform-type'
@@ -1182,13 +572,6 @@ notes = 'yaozarrs also accepts a sequence of a scale and a translation, which th
 quote = 'When referencing a coordinate system in a child labels group, the transformation MUST be one of [`identity`](#identity-md), [`scale`](#scale-md), or [`translation`](#translation-md).'
 lines = { "0.6" = [1363, 1363] }
 
-[rules.YZ-CT-014.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "mapAxis", "mapAxis": [1, 0], "input": {"name": "physical"}, "output": {"name": "physical", "path": "labels/a"}}]}
-'''
-
-
 [rules.YZ-CT-015]
 slug = 'transform-params-match-ndim'
 level = 'MUST'
@@ -1198,13 +581,6 @@ introduced = '0.6'
 [[rules.YZ-CT-015.sources]]
 quote = 'The parameter values (e.g., `scale` for a [scale transformation](#scale-md)) MUST be compatible with input and output space dimensionality (see details).'
 lines = { "0.6" = [422, 422] }
-
-[rules.YZ-CT-015.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "physical"}, "output": {"name": "other"}}]}
-'''
-
 
 [rules.YZ-CT-016]
 slug = 'map-axis-present'
@@ -1216,13 +592,6 @@ introduced = '0.6'
 quote = 'Transformations MUST include a `mapAxis` field'
 lines = { "0.6" = [708, 708] }
 
-[rules.YZ-CT-016.examples."0.6"]
-model = 'MapAxisTransformation'
-json = '''
-{"type": "mapAxis"}
-'''
-
-
 [rules.YZ-CT-017]
 slug = 'map-axis-length'
 level = 'MUST'
@@ -1232,13 +601,6 @@ introduced = '0.6'
 [[rules.YZ-CT-017.sources]]
 quote = 'The length of the array MUST equal the number of dimensions in both the input and output coordinate systems.'
 lines = { "0.6" = [710, 710] }
-
-[rules.YZ-CT-017.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "mapAxis", "mapAxis": [0], "input": {"name": "physical"}, "output": {"name": "other"}}]}
-'''
-
 
 [rules.YZ-CT-018]
 slug = 'map-axis-valid-index'
@@ -1250,13 +612,6 @@ introduced = '0.6'
 quote = "Each integer in the array MUST be a valid zero-based index into the input coordinate system's axes"
 lines = { "0.6" = [711, 711] }
 
-[rules.YZ-CT-018.examples."0.6"]
-model = 'MapAxisTransformation'
-json = '''
-{"mapAxis": [0, 2]}
-'''
-
-
 [rules.YZ-CT-019]
 slug = 'map-axis-unique'
 level = 'MUST'
@@ -1266,13 +621,6 @@ introduced = '0.6'
 [[rules.YZ-CT-019.sources]]
 quote = 'Each index MUST appear exactly once in the array.'
 lines = { "0.6" = [713, 713] }
-
-[rules.YZ-CT-019.examples."0.6"]
-model = 'MapAxisTransformation'
-json = '''
-{"mapAxis": [0, 0]}
-'''
-
 
 [rules.YZ-CT-020]
 slug = 'project-axis-created-outputs-unique'
@@ -1284,13 +632,6 @@ introduced = '0.6'
 quote = 'The values in the `createdOutputs` array MUST be unique.'
 lines = { "0.6" = [752, 752] }
 
-[rules.YZ-CT-020.examples."0.6"]
-model = 'ProjectAxisTransformation'
-json = '''
-{"createdOutputs": [0, 0]}
-'''
-
-
 [rules.YZ-CT-021]
 slug = 'project-axis-dropped-inputs-unique'
 level = 'MUST'
@@ -1301,13 +642,6 @@ introduced = '0.6'
 quote = 'The values in the `droppedInputs` array MUST be unique.'
 lines = { "0.6" = [756, 756] }
 
-[rules.YZ-CT-021.examples."0.6"]
-model = 'ProjectAxisTransformation'
-json = '''
-{"droppedInputs": [0, 0]}
-'''
-
-
 [rules.YZ-CT-022]
 slug = 'scale-nonzero'
 level = 'SHOULD'
@@ -1317,13 +651,6 @@ introduced = '0.6'
 [[rules.YZ-CT-022.sources]]
 quote = 'Values in the `scale` array SHOULD be non-zero;'
 lines = { "0.6" = [836, 836] }
-
-[rules.YZ-CT-022.examples."0.6"]
-model = 'ScaleTransformation'
-json = '''
-{"scale": [0, 1]}
-'''
-
 
 [rules.YZ-CT-023]
 slug = 'affine-matrix-stored'
@@ -1336,13 +663,6 @@ notes = 'yaozarrs rejects a transformation with both.'
 quote = 'The matrix MUST be stored as a 2D array either as json or as a Zarr array.'
 lines = { "0.6" = [877, 877] }
 
-[rules.YZ-CT-023.examples."0.6"]
-model = 'AffineTransformation'
-json = '''
-{}
-'''
-
-
 [rules.YZ-CT-024]
 slug = 'affine-path-array'
 level = 'MUST'
@@ -1352,103 +672,6 @@ introduced = '0.6'
 [[rules.YZ-CT-024.sources]]
 quote = 'The array at this path MUST be 2D whose shape MUST be `(M)x(N+1)`.'
 lines = { "0.6" = [881, 881] }
-
-[rules.YZ-CT-024.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "affine",
-                "path": "m",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "m/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      6
-    ],
-    "data_type": "float64"
-  }
-}
-'''
-
 
 [rules.YZ-CT-025]
 slug = 'affine-inline-shape'
@@ -1460,13 +683,6 @@ introduced = '0.6'
 quote = 'where the outer array MUST be length `M` and the inner arrays MUST be length `N+1`.'
 lines = { "0.6" = [886, 886] }
 
-[rules.YZ-CT-025.examples."0.6"]
-model = 'AffineTransformation'
-json = '''
-{"affine": [[1, 0, 0], [0, 1]]}
-'''
-
-
 [rules.YZ-CT-026]
 slug = 'rotation-same-ndim'
 level = 'MUST'
@@ -1476,13 +692,6 @@ introduced = '0.6'
 [[rules.YZ-CT-026.sources]]
 quote = 'Input and output dimensionality (N) MUST be identical.'
 lines = { "0.6" = [962, 962] }
-
-[rules.YZ-CT-026.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "rotation", "path": "m", "input": {"name": "physical"}, "output": {"name": "other"}}]}
-'''
-
 
 [rules.YZ-CT-027]
 slug = 'rotation-orthonormal'
@@ -1495,13 +704,6 @@ notes = 'The spec defines no tolerance; yaozarrs allows 1e-4.'
 quote = 'and MUST have determinant equal to one, with orthonormal rows and columns.'
 lines = { "0.6" = [964, 964] }
 
-[rules.YZ-CT-027.examples."0.6"]
-model = 'RotationTransformation'
-json = '''
-{"rotation": [[2, 0], [0, 2]]}
-'''
-
-
 [rules.YZ-CT-028]
 slug = 'rotation-matrix-stored'
 level = 'MUST'
@@ -1513,13 +715,6 @@ notes = 'yaozarrs rejects a transformation with both.'
 quote = 'The matrix MUST be stored as a 2D array either as json or in a Zarr array.'
 lines = { "0.6" = [965, 965] }
 
-[rules.YZ-CT-028.examples."0.6"]
-model = 'RotationTransformation'
-json = '''
-{}
-'''
-
-
 [rules.YZ-CT-029]
 slug = 'rotation-path-array'
 level = 'MUST'
@@ -1529,103 +724,6 @@ introduced = '0.6'
 [[rules.YZ-CT-029.sources]]
 quote = 'The array at this path MUST be 2D whose shape MUST be `N x N`.'
 lines = { "0.6" = [970, 970] }
-
-[rules.YZ-CT-029.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "rotation",
-                "path": "m",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "m/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      4
-    ],
-    "data_type": "float64"
-  }
-}
-'''
-
 
 [rules.YZ-CT-030]
 slug = 'rotation-inline-shape'
@@ -1637,13 +735,6 @@ introduced = '0.6'
 quote = 'where the outer array MUST be length `N` and the inner arrays MUST be length `N`.'
 lines = { "0.6" = [974, 975] }
 
-[rules.YZ-CT-030.examples."0.6"]
-model = 'RotationTransformation'
-json = '''
-{"rotation": [[1, 0, 0], [0, 1, 0]]}
-'''
-
-
 [rules.YZ-CT-031]
 slug = 'field-path-multiscale'
 level = 'MUST'
@@ -1653,105 +744,6 @@ introduced = '0.6'
 [[rules.YZ-CT-031.sources]]
 quote = 'The multiscale group at `path` MUST satisfy:'
 lines = { "0.6" = [1098, 1098] }
-
-[rules.YZ-CT-031.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "displacements",
-                "path": "field",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "field/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1,
-      2
-    ],
-    "data_type": "float64"
-  }
-}
-'''
-
 
 [rules.YZ-CT-032]
 slug = 'field-vector-axis'
@@ -1765,152 +757,6 @@ quote = '''specify `"type": "displacement"` or `"type": "coordinate"` depending 
 implied = true
 lines = { "0.6" = [1060, 1062] }
 
-[rules.YZ-CT-032.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "displacements",
-                "path": "field",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "field/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "f",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "f"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "field/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  }
-}
-'''
-
-
 [rules.YZ-CT-033]
 slug = 'field-ndim'
 level = 'MUST'
@@ -1920,165 +766,6 @@ introduced = '0.6'
 [[rules.YZ-CT-033.sources]]
 quote = 'If the input coordinate system has `N` axes, the multiscale image at location `path` MUST have `N+1` dimensions.'
 lines = { "0.6" = [1099, 1099] }
-
-[rules.YZ-CT-033.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "displacements",
-                "path": "field",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "field/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "f",
-                "axes": [
-                  {
-                    "name": "d",
-                    "type": "displacement",
-                    "discrete": true
-                  },
-                  {
-                    "name": "z",
-                    "type": "space"
-                  },
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1,
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "f"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "field/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      2,
-      1,
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  }
-}
-'''
-
 
 [rules.YZ-CT-034]
 slug = 'coordinates-vector-length'
@@ -2090,159 +777,6 @@ introduced = '0.6'
 quote = 'For `coordinates` transformations, the length of the array along the `coordinate` dimension (last axis) MUST equal `M`,'
 lines = { "0.6" = [1101, 1101] }
 
-[rules.YZ-CT-034.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "coordinates",
-                "path": "field",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "field/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "f",
-                "axes": [
-                  {
-                    "name": "c",
-                    "type": "coordinate",
-                    "discrete": true
-                  },
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "f"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "field/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      3,
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  }
-}
-'''
-
-
 [rules.YZ-CT-035]
 slug = 'displacements-vector-length'
 level = 'MUST'
@@ -2252,159 +786,6 @@ introduced = '0.6'
 [[rules.YZ-CT-035.sources]]
 quote = 'For `displacements` transformations, the length of the array along the `displacement` dimension (last axis) MUST equal `N`,'
 lines = { "0.6" = [1103, 1103] }
-
-[rules.YZ-CT-035.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "displacements",
-                "path": "field",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  },
-  "field/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "f",
-                "axes": [
-                  {
-                    "name": "d",
-                    "type": "displacement",
-                    "discrete": true
-                  },
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "f"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "field/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      3,
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  }
-}
-'''
-
 
 [rules.YZ-CT-036]
 slug = 'by-dimension-item-fields'
@@ -2416,13 +797,6 @@ introduced = '0.6'
 quote = 'MUST be an array of objects where each object MUST contain the fields `inputAxes`, `outputAxes` and `transformation`.'
 lines = { "0.6" = [1173, 1174] }
 
-[rules.YZ-CT-036.examples."0.6"]
-model = 'ByDimensionItem'
-json = '''
-{}
-'''
-
-
 [rules.YZ-CT-037]
 slug = 'by-dimension-output-axes'
 level = 'MUST'
@@ -2432,13 +806,6 @@ introduced = '0.6'
 [[rules.YZ-CT-037.sources]]
 quote = "Every axis index in the parent byDimension's `output` coordinate system MUST appear in exactly one child transformation's `outputAxes` array."
 lines = { "0.6" = [1179, 1180] }
-
-[rules.YZ-CT-037.examples."0.6"]
-model = 'ByDimensionTransformation'
-json = '''
-{"transformations": [{"inputAxes": [0], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2]}}, {"inputAxes": [1], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2]}}]}
-'''
-
 
 [rules.YZ-CT-038]
 slug = 'by-dimension-axes-length'
@@ -2450,13 +817,6 @@ introduced = '0.6'
 quote = "The `inputAxes` and `outputAxes` arrays of each item MUST have the same length as that transformation's parameter arrays."
 lines = { "0.6" = [1181, 1182] }
 
-[rules.YZ-CT-038.examples."0.6"]
-model = 'ByDimensionItem'
-json = '''
-{"inputAxes": [0], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2, 2]}}
-'''
-
-
 [rules.YZ-CT-039]
 slug = 'bijection-not-closed-form-invertible'
 level = 'SHOULD'
@@ -2466,13 +826,6 @@ introduced = '0.6'
 [[rules.YZ-CT-039.sources]]
 quote = 'Each direction SHOULD be a transformation type that is not closed-form invertible.'
 lines = { "0.6" = [1231, 1231] }
-
-[rules.YZ-CT-039.examples."0.6"]
-model = 'BijectionTransformation'
-json = '''
-{"forward": {"type": "scale", "scale": [2]}, "inverse": {"type": "scale", "scale": [0.5]}}
-'''
-
 
 [rules.YZ-CT-040]
 slug = 'bijection-same-ndim'
@@ -2484,13 +837,6 @@ introduced = '0.6'
 quote = 'Its input and output spaces MUST have equal dimension.'
 lines = { "0.6" = [1232, 1232] }
 
-[rules.YZ-CT-040.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "bijection", "forward": {"type": "coordinates", "path": "f"}, "inverse": {"type": "coordinates", "path": "i"}, "input": {"name": "physical"}, "output": {"name": "other"}}]}
-'''
-
-
 [rules.YZ-CT-041]
 slug = 'bijection-directions-match'
 level = 'MUST'
@@ -2500,13 +846,6 @@ introduced = '0.6'
 [[rules.YZ-CT-041.sources]]
 quote = "The input and output dimensions for the both the forward and inverse transformations MUST match bijection's input and output space dimensions."
 lines = { "0.6" = [1233, 1234] }
-
-[rules.YZ-CT-041.examples."0.6"]
-model = 'Multiscale'
-json = '''
-{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "bijection", "forward": {"type": "scale", "scale": [2]}, "inverse": {"type": "coordinates", "path": "i"}, "input": {"name": "physical"}, "output": {"name": "other"}}]}
-'''
-
 
 [rules.YZ-CT-042]
 slug = 'transform-graph-connected'
@@ -2519,83 +858,6 @@ notes = 'The statement covers the multiscales and scene metadata combined, so ou
 quote = 'The graph MUST be connected (but need not be complete):'
 lines = { "0.6" = [482, 482] }
 
-[rules.YZ-CT-042.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  }
-}
-'''
-
-
 [rules.YZ-CT-043]
 slug = 'transform-parameters-location'
 level = 'SHOULD'
@@ -2605,72 +867,6 @@ introduced = '0.6'
 [[rules.YZ-CT-043.sources]]
 quote = 'those Zarr arrays SHOULD be stored in a Zarr group on the same level as images called "coordinateTransformations".'
 lines = { "0.6" = [145, 145] }
-
-[rules.YZ-CT-043.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "scene": {
-          "coordinateSystems": [
-            {
-              "name": "a",
-              "axes": [
-                {
-                  "name": "y",
-                  "type": "space"
-                },
-                {
-                  "name": "x",
-                  "type": "space"
-                }
-              ]
-            },
-            {
-              "name": "b",
-              "axes": [
-                {
-                  "name": "y",
-                  "type": "space"
-                },
-                {
-                  "name": "x",
-                  "type": "space"
-                }
-              ]
-            }
-          ],
-          "coordinateTransformations": [
-            {
-              "type": "affine",
-              "path": "m",
-              "input": {
-                "name": "a"
-              },
-              "output": {
-                "name": "b"
-              }
-            }
-          ]
-        }
-      }
-    }
-  },
-  "m/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      2,
-      3
-    ],
-    "data_type": "float64"
-  }
-}
-'''
 
 [rules.YZ-CT-044]
 slug = 'scale-positive'
@@ -2685,12 +881,6 @@ quote = '"type": "number", "exclusiveMinimum": 0'
 schema = 'coordinate_transformations.schema'
 lines = { "0.6" = [195, 196] }
 
-[rules.YZ-CT-044.examples."0.6"]
-model = 'Dataset'
-json = '''
-{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [-1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
-'''
-
 [rules.YZ-CT-045]
 slug = 'project-axis-fields'
 level = 'MUST'
@@ -2701,12 +891,6 @@ introduced = '0.6'
 quote = '"anyOf": [ {"required": ["droppedInputs"]}, {"required": ["createdOutputs"]} ]'
 schema = 'coordinate_transformations.schema'
 lines = { "0.6" = [176, 179] }
-
-[rules.YZ-CT-045.examples."0.6"]
-model = 'ProjectAxisTransformation'
-json = '''
-{}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-OM
@@ -2726,15 +910,6 @@ lines = { "0.5" = [385, 385] }
 [[rules.YZ-OM-001.sources]]
 quote = 'Each object in `channels` MUST contain the field `color`, which is a string of 6 hexadecimal digits specifying the color of the channel in RGB format.'
 lines = { "0.6" = [1456, 1457] }
-
-[rules.YZ-OM-001.example]
-model = 'OmeroChannel'
-json = '''
-{
-  "color": "GGGGGG",
-  "window": {"start": 0, "end": 1, "min": 0, "max": 1}
-}
-'''
 
 [rules.YZ-OM-002]
 slug = 'omero-channels-present'
@@ -2756,12 +931,6 @@ quote = '"required": [ "channels" ]'
 schema = 'image.schema'
 lines = { "0.4" = [104, 106] }
 
-[rules.YZ-OM-002.example]
-model = 'Omero'
-json = '''
-{"name": "image"}
-'''
-
 [rules.YZ-OM-003]
 slug = 'omero-channel-color-present'
 level = 'MUST'
@@ -2781,12 +950,6 @@ lines = { "0.6" = [1456, 1456] }
 quote = '"required": [ "window", "color" ]'
 schema = 'image.schema'
 lines = { "0.4" = [97, 100] }
-
-[rules.YZ-OM-003.example]
-model = 'OmeroChannel'
-json = '''
-{"window": {"start": 0, "end": 1, "min": 0, "max": 1}}
-'''
 
 [rules.YZ-OM-004]
 slug = 'omero-channel-window-present'
@@ -2808,12 +971,6 @@ quote = '"required": [ "window", "color" ]'
 schema = 'image.schema'
 lines = { "0.4" = [97, 100] }
 
-[rules.YZ-OM-004.example]
-model = 'OmeroChannel'
-json = '''
-{"color": "FF0000"}
-'''
-
 [rules.YZ-OM-005]
 slug = 'omero-window-min-max-present'
 level = 'MUST'
@@ -2833,12 +990,6 @@ lines = { "0.6" = [1460, 1460] }
 quote = '"required": [ "start", "min", "end", "max" ]'
 schema = 'image.schema'
 lines = { "0.4" = [77, 82] }
-
-[rules.YZ-OM-005.example]
-model = 'OmeroWindow'
-json = '''
-{"start": 0, "end": 1}
-'''
 
 [rules.YZ-OM-006]
 slug = 'omero-window-start-end-present'
@@ -2860,12 +1011,6 @@ quote = '"required": [ "start", "min", "end", "max" ]'
 schema = 'image.schema'
 lines = { "0.4" = [77, 82] }
 
-[rules.YZ-OM-006.example]
-model = 'OmeroWindow'
-json = '''
-{"min": 0, "max": 1}
-'''
-
 # ------------------------------------------------------------------------------
 # YZ-PL
 # ------------------------------------------------------------------------------
@@ -2879,17 +1024,6 @@ introduced = '0.4'
 [[rules.YZ-PL-001.sources]]
 quote = 'whose value MUST be an unique integer identifier greater than or equal to 0 within the context of the plate'
 lines = { "0.4" = [531, 532], "0.5" = [466, 467], "0.6" = [1597, 1597] }
-
-[rules.YZ-PL-001.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
-  "acquisitions": [{"id": 0}, {"id": 0, "name": "dupe"}]
-}
-'''
 
 [rules.YZ-PL-002]
 slug = 'plate-column-names-case-collision'
@@ -2905,16 +1039,6 @@ lines = { "0.4" = [548, 549], "0.5" = [483, 484] }
 quote = 'other `name` in the `columns` array. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
 lines = { "0.6" = [1616, 1617] }
 
-[rules.YZ-PL-002.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}, {"name": "a"}, {"name": "A"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
-
 [rules.YZ-PL-003]
 slug = 'plate-row-names-case-collision'
 level = 'SHOULD'
@@ -2929,16 +1053,6 @@ lines = { "0.4" = [563, 564], "0.5" = [498, 499] }
 quote = 'other `name` in the `rows` array. Care SHOULD be taken to avoid collisions on case-insensitive filesystems'
 lines = { "0.6" = [1634, 1635] }
 
-[rules.YZ-PL-003.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}, {"name": "a"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
-
 [rules.YZ-PL-004]
 slug = 'well-row-index-valid'
 level = 'MUST'
@@ -2952,16 +1066,6 @@ lines = { "0.4" = [574, 575], "0.5" = [509, 510] }
 [[rules.YZ-PL-004.sources]]
 quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` array'
 lines = { "0.6" = [1647, 1648] }
-
-[rules.YZ-PL-004.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 3, "columnIndex": 0}]
-}
-'''
 
 [rules.YZ-PL-005]
 slug = 'well-column-index-valid'
@@ -2982,16 +1086,6 @@ lines = { "0.5" = [510, 511] }
 quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` array'
 lines = { "0.6" = [1649, 1650] }
 
-[rules.YZ-PL-005.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 3}]
-}
-'''
-
 [rules.YZ-PL-006]
 slug = 'well-path-matches-indices'
 level = 'MUST'
@@ -3001,17 +1095,6 @@ introduced = '0.4'
 [[rules.YZ-PL-006.sources]]
 quote = '`rowIndex`, `columnIndex`, and `path` MUST all refer to the same row/column pair.'
 lines = { "0.4" = [577, 577], "0.5" = [512, 512], "0.6" = [1652, 1652] }
-
-[rules.YZ-PL-006.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}, {"name": "B"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 1, "columnIndex": 0}]
-}
-'''
-
 
 [rules.YZ-PL-007]
 slug = 'well-path-is-well-group'
@@ -3023,25 +1106,6 @@ introduced = '0.4'
 quote = 'Each well object MUST contain a `path` key whose value MUST be a string specifying the path to the well subgroup.'
 lines = { "0.4" = [570, 571], "0.5" = [505, 506], "0.6" = [1640, 1641] }
 
-[rules.YZ-PL-007.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "plate": {
-          "rows": [{"name": "A"}],
-          "columns": [{"name": "1"}],
-          "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-        }
-      }
-    }
-  }
-}
-'''
 [rules.YZ-PL-008]
 slug = 'plate-acquisitions-array'
 level = 'MUST'
@@ -3056,17 +1120,6 @@ lines = { "0.4" = [529, 530], "0.5" = [464, 465] }
 quote = 'The `plate` object MAY contain an `acquisitions` key whose value MUST be an array of JSON objects'
 lines = { "0.6" = [1594, 1595] }
 
-[rules.YZ-PL-008.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
-  "acquisitions": {"id": 0}
-}
-'''
-
 [rules.YZ-PL-009]
 slug = 'acquisition-id-present'
 level = 'MUST'
@@ -3076,12 +1129,6 @@ introduced = '0.4'
 [[rules.YZ-PL-009.sources]]
 quote = 'acquisition object MUST contain an `id` key'
 lines = { "0.4" = [531, 531], "0.5" = [466, 466], "0.6" = [1596, 1596] }
-
-[rules.YZ-PL-009.example]
-model = 'Acquisition'
-json = '''
-{"name": "first"}
-'''
 
 [rules.YZ-PL-010]
 slug = 'acquisition-id-nonnegative-integer'
@@ -3093,12 +1140,6 @@ introduced = '0.4'
 quote = 'whose value MUST be an unique integer identifier greater than or equal to 0'
 lines = { "0.4" = [531, 532], "0.5" = [466, 467], "0.6" = [1597, 1597] }
 
-[rules.YZ-PL-010.example]
-model = 'Acquisition'
-json = '''
-{"id": -1}
-'''
-
 [rules.YZ-PL-011]
 slug = 'acquisition-name-string'
 level = 'MUST'
@@ -3108,12 +1149,6 @@ introduced = '0.4'
 [[rules.YZ-PL-011.sources]]
 quote = 'Each acquisition object SHOULD contain a `name` key whose value MUST be a string'
 lines = { "0.4" = [534, 534], "0.5" = [469, 469], "0.6" = [1599, 1599] }
-
-[rules.YZ-PL-011.example]
-model = 'Acquisition'
-json = '''
-{"id": 0, "name": 1}
-'''
 
 [rules.YZ-PL-012]
 slug = 'acquisition-maximumfieldcount-positive'
@@ -3125,12 +1160,6 @@ introduced = '0.4'
 quote = 'key whose value MUST be a positive integer indicating the maximum number of fields of view'
 lines = { "0.4" = [536, 536], "0.5" = [471, 471], "0.6" = [1601, 1602] }
 
-[rules.YZ-PL-012.example]
-model = 'Acquisition'
-json = '''
-{"id": 0, "maximumfieldcount": 0}
-'''
-
 [rules.YZ-PL-013]
 slug = 'acquisition-description-string'
 level = 'MUST'
@@ -3140,12 +1169,6 @@ introduced = '0.4'
 [[rules.YZ-PL-013.sources]]
 quote = 'Each acquisition object MAY contain a `description` key whose value MUST be a string'
 lines = { "0.4" = [537, 538], "0.5" = [472, 473], "0.6" = [1603, 1604] }
-
-[rules.YZ-PL-013.example]
-model = 'Acquisition'
-json = '''
-{"id": 0, "description": 1}
-'''
 
 [rules.YZ-PL-014]
 slug = 'acquisition-times-integer'
@@ -3157,12 +1180,6 @@ notes = "yaozarrs also requires them to be greater than or equal to 0, which the
 [[rules.YZ-PL-014.sources]]
 quote = 'a `starttime` and/or `endtime` key whose values MUST be integer epoch timestamps'
 lines = { "0.4" = [539, 539], "0.5" = [474, 474], "0.6" = [1605, 1606] }
-
-[rules.YZ-PL-014.example]
-model = 'Acquisition'
-json = '''
-{"id": 0, "starttime": 1.5}
-'''
 
 [rules.YZ-PL-015]
 slug = 'plate-columns-present'
@@ -3177,15 +1194,6 @@ lines = { "0.4" = [542, 542], "0.5" = [477, 477] }
 [[rules.YZ-PL-015.sources]]
 quote = 'The `plate` object MUST contain a `columns` key'
 lines = { "0.6" = [1608, 1608] }
-
-[rules.YZ-PL-015.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
 
 [rules.YZ-PL-016]
 slug = 'plate-columns-array'
@@ -3202,16 +1210,6 @@ lines = { "0.4" = [542, 543], "0.5" = [477, 478] }
 quote = '`columns` key whose value MUST be an array of JSON objects defining the columns of the plate'
 lines = { "0.6" = [1608, 1609] }
 
-[rules.YZ-PL-016.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": {"name": "1"},
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
-
 [rules.YZ-PL-017]
 slug = 'column-name-present'
 level = 'MUST'
@@ -3222,12 +1220,6 @@ introduced = '0.4'
 quote = 'Each column object MUST contain a `name` key'
 lines = { "0.4" = [545, 546], "0.5" = [480, 481], "0.6" = [1613, 1613] }
 
-[rules.YZ-PL-017.example]
-model = 'Column'
-json = '''
-{}
-'''
-
 [rules.YZ-PL-018]
 slug = 'column-name-alphanumeric'
 level = 'MUST'
@@ -3237,12 +1229,6 @@ introduced = '0.4'
 [[rules.YZ-PL-018.sources]]
 quote = 'specifying the column name. The `name` MUST contain only alphanumeric characters'
 lines = { "0.4" = [546, 547], "0.5" = [481, 482], "0.6" = [1613, 1614] }
-
-[rules.YZ-PL-018.example]
-model = 'Column'
-json = '''
-{"name": "1-a"}
-'''
 
 [rules.YZ-PL-019]
 slug = 'column-name-unique'
@@ -3258,16 +1244,6 @@ lines = { "0.4" = [547, 548], "0.5" = [482, 483] }
 quote = 'MUST NOT be a duplicate of any other `name` in the `columns` array'
 lines = { "0.6" = [1616, 1616] }
 
-[rules.YZ-PL-019.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}, {"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
-
 [rules.YZ-PL-020]
 slug = 'plate-field-count-positive'
 level = 'MUST'
@@ -3281,17 +1257,6 @@ lines = { "0.4" = [551, 551], "0.5" = [486, 486] }
 [[rules.YZ-PL-020.sources]]
 quote = 'The `plate` object SHOULD contain a `field_count` key whose value MUST be a positive integer'
 lines = { "0.6" = [1620, 1621] }
-
-[rules.YZ-PL-020.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
-  "field_count": 0
-}
-'''
 
 [rules.YZ-PL-021]
 slug = 'plate-name-string'
@@ -3307,17 +1272,6 @@ lines = { "0.4" = [554, 554], "0.5" = [489, 489] }
 quote = 'The `plate` object SHOULD contain a `name` key whose value MUST be a string'
 lines = { "0.6" = [1623, 1624] }
 
-[rules.YZ-PL-021.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
-  "name": 1
-}
-'''
-
 [rules.YZ-PL-022]
 slug = 'plate-rows-present'
 level = 'MUST'
@@ -3331,15 +1285,6 @@ lines = { "0.4" = [557, 557], "0.5" = [492, 492] }
 [[rules.YZ-PL-022.sources]]
 quote = 'The `plate` object MUST contain a `rows` key'
 lines = { "0.6" = [1626, 1626] }
-
-[rules.YZ-PL-022.example]
-model = 'PlateDef'
-json = '''
-{
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
 
 [rules.YZ-PL-023]
 slug = 'plate-rows-array'
@@ -3356,16 +1301,6 @@ lines = { "0.4" = [557, 558], "0.5" = [492, 493] }
 quote = '`rows` key whose value MUST be an array of JSON objects defining the rows of the plate'
 lines = { "0.6" = [1626, 1627] }
 
-[rules.YZ-PL-023.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": {"name": "A"},
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
-
 [rules.YZ-PL-024]
 slug = 'row-name-present'
 level = 'MUST'
@@ -3375,12 +1310,6 @@ introduced = '0.4'
 [[rules.YZ-PL-024.sources]]
 quote = 'Each defined row MUST contain a `name` key'
 lines = { "0.4" = [560, 561], "0.5" = [495, 496], "0.6" = [1631, 1631] }
-
-[rules.YZ-PL-024.example]
-model = 'Row'
-json = '''
-{}
-'''
 
 [rules.YZ-PL-025]
 slug = 'row-name-string'
@@ -3392,12 +1321,6 @@ introduced = '0.4'
 quote = 'whose value MUST be a string defining the row name'
 lines = { "0.4" = [561, 561], "0.5" = [496, 496], "0.6" = [1631, 1631] }
 
-[rules.YZ-PL-025.example]
-model = 'Row'
-json = '''
-{"name": 1}
-'''
-
 [rules.YZ-PL-026]
 slug = 'row-name-alphanumeric'
 level = 'MUST'
@@ -3407,12 +1330,6 @@ introduced = '0.4'
 [[rules.YZ-PL-026.sources]]
 quote = 'defining the row name. The `name` MUST contain only alphanumeric characters'
 lines = { "0.4" = [561, 562], "0.5" = [496, 497], "0.6" = [1631, 1632] }
-
-[rules.YZ-PL-026.example]
-model = 'Row'
-json = '''
-{"name": "A_1"}
-'''
 
 [rules.YZ-PL-027]
 slug = 'row-name-unique'
@@ -3428,16 +1345,6 @@ lines = { "0.4" = [562, 563], "0.5" = [497, 498] }
 quote = 'MUST NOT be a duplicate of any other `name` in the `rows` array'
 lines = { "0.6" = [1634, 1634] }
 
-[rules.YZ-PL-027.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}, {"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
-}
-'''
-
 [rules.YZ-PL-028]
 slug = 'plate-wells-present'
 level = 'MUST'
@@ -3452,12 +1359,6 @@ lines = { "0.4" = [569, 569], "0.5" = [504, 504] }
 quote = 'The `plate` object MUST contain a `wells` key'
 lines = { "0.6" = [1638, 1638] }
 
-[rules.YZ-PL-028.example]
-model = 'PlateDef'
-json = '''
-{"rows": [{"name": "A"}], "columns": [{"name": "1"}]}
-'''
-
 [rules.YZ-PL-029]
 slug = 'plate-wells-array'
 level = 'MUST'
@@ -3469,16 +1370,6 @@ notes = 'An empty list is YZ-PL-039, and identical entries are YZ-PL-040.'
 quote = '`wells` key whose value MUST be a list of JSON objects defining the wells of the plate'
 lines = { "0.4" = [569, 570], "0.5" = [504, 505], "0.6" = [1638, 1639] }
 
-[rules.YZ-PL-029.example]
-model = 'PlateDef'
-json = '''
-{
-  "rows": [{"name": "A"}],
-  "columns": [{"name": "1"}],
-  "wells": {"path": "A/1", "rowIndex": 0, "columnIndex": 0}
-}
-'''
-
 [rules.YZ-PL-030]
 slug = 'well-path-present'
 level = 'MUST'
@@ -3489,12 +1380,6 @@ introduced = '0.4'
 quote = 'Each well object MUST contain a `path` key'
 lines = { "0.4" = [570, 570], "0.5" = [505, 505], "0.6" = [1640, 1640] }
 
-[rules.YZ-PL-030.example]
-model = 'PlateWell'
-json = '''
-{"rowIndex": 0, "columnIndex": 0}
-'''
-
 [rules.YZ-PL-031]
 slug = 'well-path-string'
 level = 'MUST'
@@ -3504,12 +1389,6 @@ introduced = '0.4'
 [[rules.YZ-PL-031.sources]]
 quote = 'whose value MUST be a string specifying the path to the well subgroup'
 lines = { "0.4" = [570, 571], "0.5" = [505, 506], "0.6" = [1641, 1641] }
-
-[rules.YZ-PL-031.example]
-model = 'PlateWell'
-json = '''
-{"path": 1, "rowIndex": 0, "columnIndex": 0}
-'''
 
 [rules.YZ-PL-032]
 slug = 'well-path-row-column'
@@ -3526,12 +1405,6 @@ lines = { "0.4" = [571, 572], "0.5" = [506, 507] }
 quote = 'The `path` MUST consist of a `name` in the `rows` array, a file separator (`/`), and a `name` from the `columns` array, in that order.'
 lines = { "0.6" = [1642, 1645] }
 
-[rules.YZ-PL-032.example]
-model = 'PlateWell'
-json = '''
-{"path": "A1", "rowIndex": 0, "columnIndex": 0}
-'''
-
 [rules.YZ-PL-033]
 slug = 'well-indices-present'
 level = 'MUST'
@@ -3541,12 +1414,6 @@ introduced = '0.4'
 [[rules.YZ-PL-033.sources]]
 quote = 'Each well object MUST contain both a `rowIndex` key'
 lines = { "0.4" = [574, 574], "0.5" = [509, 509], "0.6" = [1647, 1647] }
-
-[rules.YZ-PL-033.example]
-model = 'PlateWell'
-json = '''
-{"path": "A/1", "columnIndex": 0}
-'''
 
 [rules.YZ-PL-034]
 slug = 'well-row-index-integer'
@@ -3562,12 +1429,6 @@ lines = { "0.4" = [574, 575], "0.5" = [509, 510] }
 [[rules.YZ-PL-034.sources]]
 quote = 'a `rowIndex` key whose value MUST be an integer identifying the index into the `rows` array'
 lines = { "0.6" = [1647, 1648] }
-
-[rules.YZ-PL-034.example]
-model = 'PlateWell'
-json = '''
-{"path": "A/1", "rowIndex": "A", "columnIndex": 0}
-'''
 
 [rules.YZ-PL-035]
 slug = 'well-column-index-integer'
@@ -3588,12 +1449,6 @@ lines = { "0.5" = [510, 511] }
 quote = 'a `columnIndex` key whose value MUST be an integer identifying the index into the `columns` array'
 lines = { "0.6" = [1649, 1650] }
 
-[rules.YZ-PL-035.example]
-model = 'PlateWell'
-json = '''
-{"path": "A/1", "rowIndex": 0, "columnIndex": "A"}
-'''
-
 [rules.YZ-PL-036]
 slug = 'column-name-string'
 level = 'MUST'
@@ -3603,12 +1458,6 @@ introduced = '0.4'
 [[rules.YZ-PL-036.sources]]
 quote = 'Each column object MUST contain a `name` key whose value is a string specifying the column name.'
 lines = { "0.4" = [545, 546], "0.5" = [480, 481], "0.6" = [1613, 1613] }
-
-[rules.YZ-PL-036.example]
-model = 'Column'
-json = '''
-{"name": 1}
-'''
 
 [rules.YZ-PL-037]
 slug = 'plate-columns-nonempty'
@@ -3621,12 +1470,6 @@ quote = '"required": [ "name" ] }, "minItems": 1, "uniqueItems": true }, "rows":
 schema = 'plate.schema'
 lines = { "0.4" = [79, 86], "0.5" = [76, 83], "0.6" = [76, 83] }
 
-[rules.YZ-PL-037.example]
-model = 'PlateDef'
-json = '''
-{"columns": [], "rows": [{"name": "A"}], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
-'''
-
 [rules.YZ-PL-038]
 slug = 'plate-rows-nonempty'
 level = 'MUST'
@@ -3637,12 +1480,6 @@ introduced = '0.4'
 quote = '"required": [ "name" ] }, "minItems": 1, "uniqueItems": true }, "wells": {'
 schema = 'plate.schema'
 lines = { "0.4" = [98, 105], "0.5" = [95, 102], "0.6" = [95, 102] }
-
-[rules.YZ-PL-038.example]
-model = 'PlateDef'
-json = '''
-{"columns": [{"name": "1"}], "rows": [], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
-'''
 
 [rules.YZ-PL-039]
 slug = 'plate-wells-nonempty'
@@ -3655,12 +1492,6 @@ quote = '"columnIndex" ] }, "minItems": 1, "uniqueItems": true }'
 schema = 'plate.schema'
 lines = { "0.4" = [128, 133], "0.5" = [127, 132], "0.6" = [127, 132] }
 
-[rules.YZ-PL-039.example]
-model = 'PlateDef'
-json = '''
-{"columns": [{"name": "1"}], "rows": [{"name": "A"}], "wells": []}
-'''
-
 [rules.YZ-PL-040]
 slug = 'plate-wells-unique'
 level = 'MUST'
@@ -3671,12 +1502,6 @@ introduced = '0.4'
 quote = '"columnIndex" ] }, "minItems": 1, "uniqueItems": true }'
 schema = 'plate.schema'
 lines = { "0.4" = [128, 133], "0.5" = [127, 132], "0.6" = [127, 132] }
-
-[rules.YZ-PL-040.example]
-model = 'PlateDef'
-json = '''
-{"columns": [{"name": "1"}], "rows": [{"name": "A"}], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}, {"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-WL
@@ -3694,12 +1519,6 @@ notes = 'yaozarrs relaxes this rule: `.`, `_` and `-` produce a warning instead 
 quote = 'The `path` MUST contain only alphanumeric characters'
 lines = { "0.4" = [604, 605], "0.5" = [539, 540] }
 
-[rules.YZ-WL-001.example]
-model = 'WellDef'
-json = '''
-{"images": [{"path": "a.b"}]}
-'''
-
 [rules.YZ-WL-002]
 slug = 'field-path-unique'
 level = 'MUST'
@@ -3709,13 +1528,6 @@ introduced = '0.4'
 [[rules.YZ-WL-002.sources]]
 quote = 'MUST NOT be a duplicate of any other `path` in the `images` list.'
 lines = { "0.4" = [605, 606], "0.5" = [540, 541], "0.6" = [1680, 1680] }
-
-[rules.YZ-WL-002.example]
-model = 'WellDef'
-json = '''
-{"images": [{"path": "0"}, {"path": "0", "acquisition": 1}]}
-'''
-
 
 [rules.YZ-WL-003]
 slug = 'field-path-is-image-group'
@@ -3727,16 +1539,6 @@ introduced = '0.4'
 quote = 'Each image object MUST contain a `path` key whose value MUST be a string specifying the path to the field of view.'
 lines = { "0.4" = [603, 604], "0.5" = [538, 539], "0.6" = [1678, 1679] }
 
-[rules.YZ-WL-003.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "well": {"images": [{"path": "0"}]}}}
-  }
-}
-'''
 [rules.YZ-WL-004]
 slug = 'well-images-present'
 level = 'MUST'
@@ -3750,12 +1552,6 @@ lines = { "0.4" = [602, 602], "0.5" = [537, 537] }
 [[rules.YZ-WL-004.sources]]
 quote = 'The `well` object MUST contain an `images` key'
 lines = { "0.6" = [1676, 1676] }
-
-[rules.YZ-WL-004.example]
-model = 'WellDef'
-json = '''
-{}
-'''
 
 [rules.YZ-WL-005]
 slug = 'well-images-array'
@@ -3772,12 +1568,6 @@ lines = { "0.4" = [602, 603], "0.5" = [537, 538] }
 quote = '`images` key whose value MUST be an array of JSON objects specifying all fields of views for a given well'
 lines = { "0.6" = [1676, 1677] }
 
-[rules.YZ-WL-005.example]
-model = 'WellDef'
-json = '''
-{"images": {"path": "0"}}
-'''
-
 [rules.YZ-WL-006]
 slug = 'field-path-present'
 level = 'MUST'
@@ -3787,12 +1577,6 @@ introduced = '0.4'
 [[rules.YZ-WL-006.sources]]
 quote = 'Each image object MUST contain a `path` key'
 lines = { "0.4" = [603, 604], "0.5" = [538, 539], "0.6" = [1678, 1678] }
-
-[rules.YZ-WL-006.example]
-model = 'FieldOfView'
-json = '''
-{"acquisition": 0}
-'''
 
 [rules.YZ-WL-007]
 slug = 'field-acquisition-integer'
@@ -3804,12 +1588,6 @@ introduced = '0.4'
 quote = 'it MUST contain an `acquisition` key whose value MUST be an integer identifying the acquisition'
 lines = { "0.4" = [607, 607], "0.5" = [542, 542], "0.6" = [1686, 1686] }
 
-[rules.YZ-WL-007.example]
-model = 'FieldOfView'
-json = '''
-{"path": "0", "acquisition": "first"}
-'''
-
 [rules.YZ-WL-008]
 slug = 'field-acquisition-present'
 level = 'MUST'
@@ -3819,65 +1597,6 @@ introduced = '0.4'
 [[rules.YZ-WL-008.sources]]
 quote = 'If multiple acquisitions were performed in the plate, it MUST contain an `acquisition` key'
 lines = { "0.4" = [606, 607], "0.5" = [541, 542], "0.6" = [1685, 1686] }
-
-[rules.YZ-WL-008.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "plate": {
-          "columns": [
-            {
-              "name": "1"
-            }
-          ],
-          "rows": [
-            {
-              "name": "A"
-            }
-          ],
-          "acquisitions": [
-            {
-              "id": 0
-            },
-            {
-              "id": 1
-            }
-          ],
-          "wells": [
-            {
-              "path": "A/1",
-              "rowIndex": 0,
-              "columnIndex": 0
-            }
-          ]
-        }
-      }
-    }
-  },
-  "A/1/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "well": {
-          "images": [
-            {
-              "path": "0"
-            }
-          ]
-        }
-      }
-    }
-  }
-}
-'''
-
 
 [rules.YZ-WL-009]
 slug = 'field-acquisition-matches-plate'
@@ -3889,66 +1608,6 @@ notes = "yaozarrs doesn't check the value if the plate lists no acquisitions (li
 [[rules.YZ-WL-009.sources]]
 quote = 'which MUST match one of the acquisition JSON objects defined in the'
 lines = { "0.4" = [608, 608], "0.5" = [543, 543], "0.6" = [1687, 1687] }
-
-[rules.YZ-WL-009.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "plate": {
-          "columns": [
-            {
-              "name": "1"
-            }
-          ],
-          "rows": [
-            {
-              "name": "A"
-            }
-          ],
-          "acquisitions": [
-            {
-              "id": 0
-            },
-            {
-              "id": 1
-            }
-          ],
-          "wells": [
-            {
-              "path": "A/1",
-              "rowIndex": 0,
-              "columnIndex": 0
-            }
-          ]
-        }
-      }
-    }
-  },
-  "A/1/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "well": {
-          "images": [
-            {
-              "path": "0",
-              "acquisition": 7
-            }
-          ]
-        }
-      }
-    }
-  }
-}
-'''
-
 
 [rules.YZ-WL-010]
 slug = 'field-path-characters'
@@ -3962,13 +1621,6 @@ notes = 'Replaces the alphanumeric rule (YZ-WL-001) of earlier versions. An empt
 quote = 'The `path` MUST only use characters in the sets `a-z`, `A-Z`, `0-9`, `-`, `_`, `.`.'
 lines = { "0.6" = [1684, 1684] }
 
-[rules.YZ-WL-010.examples."0.6"]
-model = 'FieldOfView'
-json = '''
-{"path": "a b"}
-'''
-
-
 [rules.YZ-WL-011]
 slug = 'field-path-node-name'
 level = 'MUST'
@@ -3978,12 +1630,6 @@ introduced = '0.6'
 [[rules.YZ-WL-011.sources]]
 quote = 'The `path` MUST NOT consist only of periods (like `.` or `..`) or start with the reserved prefix `__`;'
 lines = { "0.6" = [1682, 1682] }
-
-[rules.YZ-WL-011.examples."0.6"]
-model = 'FieldOfView'
-json = '''
-{"path": "__x"}
-'''
 
 [rules.YZ-WL-012]
 slug = 'well-images-nonempty'
@@ -3995,12 +1641,6 @@ introduced = '0.4'
 quote = '"required": [ "path" ] }, "minItems": 1, "uniqueItems": true }'
 schema = 'well.schema'
 lines = { "0.4" = [27, 33], "0.5" = [31, 37], "0.6" = [38, 44] }
-
-[rules.YZ-WL-012.example]
-model = 'WellDef'
-json = '''
-{"images": []}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-BF
@@ -4021,54 +1661,6 @@ lines = { "0.4" = [322, 322], "0.5" = [263, 263] }
 quote = 'separate `multiscales` images MUST be stored in consecutively numbered groups starting from 0'
 lines = { "0.6" = [377, 377] }
 
-[rules.YZ-BF-001.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "bioformats2raw.layout": 3}}
-  },
-  "0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "0/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "1/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
-
 [rules.YZ-BF-002]
 slug = 'bf2raw-series-paths'
 level = 'MUST'
@@ -4082,52 +1674,6 @@ lines = { "0.4" = [319, 319], "0.5" = [260, 260] }
 [[rules.YZ-BF-002.sources]]
 quote = '`series` MUST be an array of string objects, each of which is a path to an image group.'
 lines = { "0.6" = [374, 374] }
-
-[rules.YZ-BF-002.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "bioformats2raw.layout": 3}}
-  },
-  "0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "0/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "OME/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "series": ["0", "1"]}}
-  }
-}
-'''
 
 [rules.YZ-BF-003]
 slug = 'bf2raw-layout-3'
@@ -4143,18 +1689,6 @@ lines = { "0.4" = [307, 307], "0.5" = [248, 248] }
 quote = 'MUST have the value `3` for the `bioformats2raw.layout` key'
 lines = { "0.6" = [362, 362] }
 
-[rules.YZ-BF-003.example]
-model = 'Bf2Raw'
-json = '''
-{"version": "0.5", "bioformats2raw.layout": 2}
-'''
-
-[rules.YZ-BF-003.examples."0.6"]
-model = 'Bf2Raw'
-json = '''
-{"version": "0.6", "bioformats2raw.layout": 2}
-'''
-
 [rules.YZ-BF-004]
 slug = 'bf2raw-series-strings'
 level = 'MUST'
@@ -4169,18 +1703,6 @@ lines = { "0.4" = [319, 319], "0.5" = [260, 260] }
 [[rules.YZ-BF-004.sources]]
 quote = '`series` MUST be an array of string objects'
 lines = { "0.6" = [374, 374] }
-
-[rules.YZ-BF-004.example]
-model = 'Series'
-json = '''
-{"version": "0.5", "series": [0]}
-'''
-
-[rules.YZ-BF-004.examples."0.6"]
-model = 'Series'
-json = '''
-{"version": "0.6", "series": [0]}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-LB
@@ -4206,49 +1728,6 @@ implied = true
 quote = 'The OME-Zarr Metadata in the `zarr.json` file associated with the `labels` group MUST contain a JSON object with the key `labels`'
 lines = { "0.6" = [1492, 1492] }
 
-[rules.YZ-LB-001.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "labels/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
-
 [rules.YZ-LB-002]
 slug = 'labels-paths-exist'
 level = 'MUST'
@@ -4264,47 +1743,6 @@ lines = { "0.5" = [404, 405], "0.6" = [1492, 1493] }
 quote = "contains the key `labels` containing the paths to label objects which can be found underneath the group"
 lines = { "0.4" = [444, 445] }
 implied = true
-
-[rules.YZ-LB-002.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "labels/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
-  }
-}
-'''
 
 [rules.YZ-LB-003]
 slug = 'label-pixels-integer'
@@ -4326,43 +1764,6 @@ implied = true
 quote = 'The pixels of the label images MUST be integer data types,'
 lines = { "0.6" = [1486, 1486] }
 
-[rules.YZ-LB-003.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ],
-        "image-label": {}
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "float32",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
-
 # ------------------------------------------------------------------------------
 # YZ-IL
 # ------------------------------------------------------------------------------
@@ -4381,52 +1782,6 @@ lines = { "0.4" = [462, 462] }
 quote = 'The `zarr.json` file for the label image MUST implement the multiscales specification.'
 lines = { "0.5" = [421, 421], "0.6" = [1496, 1496] }
 
-[rules.YZ-IL-001.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "labels/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
-  },
-  "labels/annotations/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5"}}
-  }
-}
-'''
-
 [rules.YZ-IL-002]
 slug = 'label-datasets-count-matches-image'
 level = 'MUST'
@@ -4441,89 +1796,6 @@ lines = { "0.4" = [462, 463] }
 [[rules.YZ-IL-002.sources]]
 quote = 'associated with the `datasets` key MUST have the same number of entries (scale levels) as the original unlabeled image.'
 lines = { "0.5" = [422, 422], "0.6" = [1497, 1497] }
-
-[rules.YZ-IL-002.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              },
-              {
-                "path": "s1",
-                "coordinateTransformations": [{"type": "scale", "scale": [2, 2]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "s1/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "labels/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
-  },
-  "labels/annotations/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ],
-        "image-label": {}
-      }
-    }
-  },
-  "labels/annotations/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
 
 [rules.YZ-IL-003]
 slug = 'label-image-has-image-label'
@@ -4545,77 +1817,6 @@ implied = true
 quote = 'In addition to the `multiscales` key, the OME-Zarr Metadata in this image-level `zarr.json` file SHOULD contain another key, `image-label`'
 lines = { "0.6" = [1499, 1499] }
 
-[rules.YZ-IL-003.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "labels/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
-  },
-  "labels/annotations/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "labels/annotations/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
-
 [rules.YZ-IL-004]
 slug = 'label-source-image-is-image-group'
 level = 'MUST'
@@ -4631,43 +1832,6 @@ lines = { "0.5" = [445, 445], "0.6" = [1525, 1525] }
 quote = "If included it MAY include a key `image` whose value is the relative path to a Zarr image group"
 lines = { "0.4" = [482, 483] }
 implied = true
-
-[rules.YZ-IL-004.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ],
-        "image-label": {"source": {"image": "../missing"}}
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
 
 [rules.YZ-IL-005]
 slug = 'image-label-colors-array'
@@ -4685,12 +1849,6 @@ quote = 'The `colors` key defines a list of JSON objects describing the unique l
 implied = true
 lines = { "0.4" = [465, 466] }
 
-[rules.YZ-IL-005.example]
-model = 'ImageLabel'
-json = '''
-{"colors": {"label-value": 1}}
-'''
-
 [rules.YZ-IL-006]
 slug = 'label-color-value-present'
 level = 'MUST'
@@ -4705,12 +1863,6 @@ lines = { "0.4" = [466, 467] }
 quote = 'Each of these objects MUST contain the `label-value` key'
 lines = { "0.5" = [431, 431], "0.6" = [1508, 1508] }
 
-[rules.YZ-IL-006.example]
-model = 'LabelColor'
-json = '''
-{"rgba": [255, 0, 0, 255]}
-'''
-
 [rules.YZ-IL-007]
 slug = 'label-color-value-integer'
 level = 'MUST'
@@ -4720,12 +1872,6 @@ introduced = '0.5'
 [[rules.YZ-IL-007.sources]]
 quote = 'whose value MUST be the integer corresponding to a particular label'
 lines = { "0.5" = [431, 432], "0.6" = [1508, 1508] }
-
-[rules.YZ-IL-007.example]
-model = 'LabelColor'
-json = '''
-{"label-value": 1.5}
-'''
 
 [rules.YZ-IL-008]
 slug = 'label-color-rgba'
@@ -4743,12 +1889,6 @@ quote = 'the "rgba" key MAY be present, the value for which is an RGBA unsigned-
 implied = true
 lines = { "0.4" = [467, 468] }
 
-[rules.YZ-IL-008.example]
-model = 'LabelColor'
-json = '''
-{"label-value": 1, "rgba": [255, 0, 300, 255]}
-'''
-
 [rules.YZ-IL-009]
 slug = 'image-label-properties-array'
 level = 'MUST'
@@ -4765,12 +1905,6 @@ quote = 'The `properties` key defines a list of JSON objects which also describe
 implied = true
 lines = { "0.4" = [475, 476] }
 
-[rules.YZ-IL-009.example]
-model = 'ImageLabel'
-json = '''
-{"properties": {"label-value": 1}}
-'''
-
 [rules.YZ-IL-010]
 slug = 'label-property-value-present'
 level = 'MUST'
@@ -4785,12 +1919,6 @@ lines = { "0.4" = [476, 477] }
 quote = 'Each object in the `properties` array MUST contain the `label-value` key'
 lines = { "0.5" = [440, 440], "0.6" = [1518, 1518] }
 
-[rules.YZ-IL-010.example]
-model = 'LabelProperty'
-json = '''
-{"class": "cell"}
-'''
-
 [rules.YZ-IL-011]
 slug = 'label-property-value-integer'
 level = 'MUST'
@@ -4800,12 +1928,6 @@ introduced = '0.5'
 [[rules.YZ-IL-011.sources]]
 quote = 'whose value again MUST be an integer specifying the pixel value for that label'
 lines = { "0.5" = [440, 440], "0.6" = [1519, 1519] }
-
-[rules.YZ-IL-011.example]
-model = 'LabelProperty'
-json = '''
-{"label-value": "one"}
-'''
 
 [rules.YZ-IL-012]
 slug = 'image-label-source-object'
@@ -4823,12 +1945,6 @@ quote = 'The `source` key is an optional dictionary which contains information o
 implied = true
 lines = { "0.4" = [481, 482] }
 
-[rules.YZ-IL-012.example]
-model = 'ImageLabel'
-json = '''
-{"source": "../../"}
-'''
-
 [rules.YZ-IL-013]
 slug = 'image-label-source-image-string'
 level = 'MUST'
@@ -4845,12 +1961,6 @@ quote = 'If included it MAY include a key `image` whose value is the relative pa
 implied = true
 lines = { "0.4" = [482, 483] }
 
-[rules.YZ-IL-013.example]
-model = 'LabelSource'
-json = '''
-{"image": 1}
-'''
-
 [rules.YZ-IL-014]
 slug = 'image-label-colors-nonempty'
 level = 'MUST'
@@ -4861,12 +1971,6 @@ introduced = '0.5'
 quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, "properties": {'
 schema = 'label.schema'
 lines = { "0.5" = [54, 61], "0.6" = [54, 61] }
-
-[rules.YZ-IL-014.example]
-model = 'ImageLabel'
-json = '''
-{"colors": []}
-'''
 
 [rules.YZ-IL-015]
 slug = 'image-label-colors-unique'
@@ -4879,12 +1983,6 @@ quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, 
 schema = 'label.schema'
 lines = { "0.5" = [54, 61], "0.6" = [54, 61] }
 
-[rules.YZ-IL-015.example]
-model = 'ImageLabel'
-json = '''
-{"colors": [{"label-value": 1}, {"label-value": 1}]}
-'''
-
 [rules.YZ-IL-016]
 slug = 'image-label-properties-nonempty'
 level = 'MUST'
@@ -4896,12 +1994,6 @@ quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, 
 schema = 'label.schema'
 lines = { "0.5" = [72, 79], "0.6" = [72, 79] }
 
-[rules.YZ-IL-016.example]
-model = 'ImageLabel'
-json = '''
-{"properties": []}
-'''
-
 [rules.YZ-IL-017]
 slug = 'image-label-properties-unique'
 level = 'MUST'
@@ -4912,12 +2004,6 @@ introduced = '0.5'
 quote = '"required": [ "label-value" ] }, "minItems": 1, "uniqueItems": true }, "source": {'
 schema = 'label.schema'
 lines = { "0.5" = [72, 79], "0.6" = [72, 79] }
-
-[rules.YZ-IL-017.example]
-model = 'ImageLabel'
-json = '''
-{"properties": [{"label-value": 1}, {"label-value": 1}]}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-SC
@@ -4933,13 +2019,6 @@ introduced = '0.6'
 quote = 'The `scene` object MUST contain the field `coordinateTransformations`,'
 lines = { "0.6" = [1712, 1712] }
 
-[rules.YZ-SC-001.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{}
-'''
-
-
 [rules.YZ-SC-002]
 slug = 'scene-transforms-valid'
 level = 'MUST'
@@ -4949,13 +2028,6 @@ introduced = '0.6'
 [[rules.YZ-SC-002.sources]]
 quote = 'whose value MUST be an array of valid [transformations](#trafo-types-md).'
 lines = { "0.6" = [1713, 1713] }
-
-[rules.YZ-SC-002.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{"coordinateTransformations": 1}
-'''
-
 
 [rules.YZ-SC-003]
 slug = 'scene-coordinate-systems-valid'
@@ -4967,13 +2039,6 @@ introduced = '0.6'
 quote = 'whose values MUST be an array of valid [coordinate systems](#coordinate-systems-md).'
 lines = { "0.6" = [1715, 1715] }
 
-[rules.YZ-SC-003.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{"coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}], "coordinateSystems": 1}
-'''
-
-
 [rules.YZ-SC-004]
 slug = 'scene-transform-input-output'
 level = 'MUST'
@@ -4983,13 +2048,6 @@ introduced = '0.6'
 [[rules.YZ-SC-004.sources]]
 quote = 'If used inside `scene` metadata, the `input` and `output` fields of `coordinateTransformations` MUST contain a json object,'
 lines = { "0.6" = [1717, 1717] }
-
-[rules.YZ-SC-004.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{"coordinateTransformations": [{"type": "identity"}]}
-'''
-
 
 [rules.YZ-SC-005]
 slug = 'scene-transform-reference-name'
@@ -5001,13 +2059,6 @@ introduced = '0.6'
 quote = 'which MUST contain the field `name` and MAY contain the field `path`.'
 lines = { "0.6" = [1718, 1718] }
 
-[rules.YZ-SC-005.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{"coordinateTransformations": [{"type": "identity", "input": {"path": "a"}, "output": {"name": "b", "path": "b"}}]}
-'''
-
-
 [rules.YZ-SC-006]
 slug = 'scene-transform-reference-path'
 level = 'MUST'
@@ -5017,13 +2068,6 @@ introduced = '0.6'
 [[rules.YZ-SC-006.sources]]
 quote = 'If `name` refers to a coordinate system in the multiscale image subgroup specified by `path`, both `path` and `name` MUST be provided.'
 lines = { "0.6" = [1729, 1730] }
-
-[rules.YZ-SC-006.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{"coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}]}
-'''
-
 
 [rules.YZ-SC-007]
 slug = 'scene-transform-reference-resolves'
@@ -5037,50 +2081,6 @@ quote = '**name** Refers to the name of a `coordinateSystem` either in the multi
 implied = true
 lines = { "0.6" = [1720, 1722] }
 
-[rules.YZ-SC-007.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "scene": {
-          "coordinateSystems": [
-            {
-              "name": "a",
-              "axes": [
-                {
-                  "name": "y",
-                  "type": "space"
-                },
-                {
-                  "name": "x",
-                  "type": "space"
-                }
-              ]
-            }
-          ],
-          "coordinateTransformations": [
-            {
-              "type": "identity",
-              "input": {
-                "name": "a"
-              },
-              "output": {
-                "name": "physical",
-                "path": "missing"
-              }
-            }
-          ]
-        }
-      }
-    }
-  }
-}
-'''
-
 [rules.YZ-SC-008]
 slug = 'scene-transform-reference-keys'
 level = 'MUST'
@@ -5092,12 +2092,6 @@ notes = 'The prose is silent; `scene.schema` sets `additionalProperties: false` 
 quote = '''"input": { "type": "object", "properties": { "name": {"type": "string"}, "path": {"type": "string"} }, "required": ["name"], "additionalProperties": false,'''
 schema = 'scene.schema'
 lines = { "0.6" = [34, 41] }
-
-[rules.YZ-SC-008.examples."0.6"]
-model = 'SceneDef'
-json = '''
-{"coordinateSystems": [{"name": "a", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "a", "extra": 1}, "output": {"name": "a"}}]}
-'''
 
 # ------------------------------------------------------------------------------
 # YZ-GN
@@ -5119,12 +2113,6 @@ quote = 'The version of the OME-Zarr Metadata is denoted as a string in the `ver
 implied = true
 lines = { "0.5" = [163, 163] }
 
-[rules.YZ-GN-001.example]
-model = 'Image'
-json = '''
-{"multiscales": []}
-'''
-
 # ------------------------------------------------------------------------------
 # YZ
 # ------------------------------------------------------------------------------
@@ -5135,29 +2123,11 @@ summary = 'A path used as a Zarr node name violates the Zarr v3 node-name rules.
 severity = 'error'
 notes = 'See the [Zarr v3 node names](https://zarr-specs.readthedocs.io/en/latest/v3/core/index.html#node-names) rules.'
 
-[rules.YZ-001.example]
-model = 'Dataset'
-json = '''
-{
-  "path": "__x",
-  "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-}
-'''
-
 [rules.YZ-002]
 slug = 'zarr-node-name-risky'
 summary = 'A path used as a Zarr node name contains characters outside `[A-Za-z0-9._-]`, which can cause problems on some filesystems or in URLs.'
 severity = 'warning'
 notes = 'Set `YAOZARRS_ALLOW_RISKY_NODE_NAMES=1` to silence this warning.'
-
-[rules.YZ-002.example]
-model = 'Dataset'
-json = '''
-{
-  "path": "a b",
-  "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-}
-'''
 
 [rules.YZ-003]
 slug = 'label-multiscales-count-matches-image'
@@ -5165,215 +2135,20 @@ summary = 'A label image must have the same number of `multiscales` as its image
 severity = 'error'
 notes = "The spec doesn't state this directly, but it is needed to pair each label multiscale with an image multiscale for YZ-IL-002."
 
-[rules.YZ-003.example]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  },
-  "labels/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
-  },
-  "labels/annotations/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.5",
-        "multiscales": [
-          {
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          },
-          {
-            "name": "second",
-            "axes": [
-              {"name": "y", "type": "space"},
-              {"name": "x", "type": "space"}
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
-              }
-            ]
-          }
-        ],
-        "image-label": {}
-      }
-    }
-  },
-  "labels/annotations/s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [4, 4],
-    "data_type": "uint8",
-    "dimension_names": ["y", "x"]
-  }
-}
-'''
-
 [rules.YZ-005]
 slug = 'version-prerelease'
 summary = 'The document declares a pre-release of a spec version.'
 severity = 'warning'
 notes = "The 0.6 schema accepts the release candidate `0.6rc0`. `0.6.dev4` isn't in the schema, but much of the 0.6 data written so far uses it."
 
-[rules.YZ-005.examples."0.6"]
-model = 'Bf2Raw'
-json = '''
-{"version": "0.6rc0", "bioformats2raw.layout": 3}
-'''
-
 [rules.YZ-006]
 slug = 'version-unsupported'
 summary = 'The document or store declares an OME-Zarr version that yaozarrs does not know.'
 severity = 'error'
-
-[rules.YZ-006.examples."0.5"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "9.9",
-        "multiscales": []
-      }
-    }
-  }
-}
-'''
 
 [rules.YZ-007]
 slug = 'transform-path-relative'
 summary = "The `path` of a transformation's parameters must be a relative path with no empty, `.` or `..` segments."
 severity = 'error'
 notes = 'The 0.6 spec only says "a location in this container". Like ngff-zarr, yaozarrs rejects paths whose meaning nothing defines.'
-
-[rules.YZ-007.examples."0.6"]
-store = '''
-{
-  "zarr.json": {
-    "zarr_format": 3,
-    "node_type": "group",
-    "attributes": {
-      "ome": {
-        "version": "0.6",
-        "multiscales": [
-          {
-            "coordinateSystems": [
-              {
-                "name": "physical",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              },
-              {
-                "name": "other",
-                "axes": [
-                  {
-                    "name": "y",
-                    "type": "space"
-                  },
-                  {
-                    "name": "x",
-                    "type": "space"
-                  }
-                ]
-              }
-            ],
-            "datasets": [
-              {
-                "path": "s0",
-                "coordinateTransformations": [
-                  {
-                    "type": "scale",
-                    "scale": [
-                      1,
-                      1
-                    ],
-                    "input": {
-                      "path": "s0"
-                    },
-                    "output": {
-                      "name": "physical"
-                    }
-                  }
-                ]
-              }
-            ],
-            "coordinateTransformations": [
-              {
-                "type": "affine",
-                "path": "../m",
-                "input": {
-                  "name": "physical"
-                },
-                "output": {
-                  "name": "other"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-  "s0/zarr.json": {
-    "zarr_format": 3,
-    "node_type": "array",
-    "shape": [
-      1,
-      1
-    ],
-    "data_type": "uint8"
-  }
-}
-'''
 

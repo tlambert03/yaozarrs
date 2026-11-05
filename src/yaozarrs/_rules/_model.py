@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from typing import Literal
 
 # the strength of a statement: "MUST NOT" is a MUST, and "SHOULD NOT" a SHOULD
@@ -71,30 +70,6 @@ class SpecSource:
 
 
 @dataclass(frozen=True)
-class Example:
-    """A minimal input that violates a rule.
-
-    Either a JSON document validated as `model`, or a `store`: a JSON object mapping
-    metadata file paths (`zarr.json`, `s0/zarr.json`, ...) to their contents, validated
-    with `validate_zarr_store`.  A rule's `example` is in the v0.5 format, and is
-    converted for other versions (see `example_for` in `scripts/ngff_rules.py`); its
-    `examples` are in the format of the version they are for.
-    """
-
-    model: str | None = None  # name of a model class in a version module
-    json: str | None = None
-    store: str | None = None
-
-    @property
-    def data(self) -> object:
-        return json.loads(self.json or "null")
-
-    @property
-    def files(self) -> dict[str, dict]:
-        return json.loads(self.store or "{}")
-
-
-@dataclass(frozen=True)
 class Rule:
     """A single normative statement (or yaozarrs-specific check)."""
 
@@ -111,9 +86,6 @@ class Rule:
     supersedes: tuple[str, ...] = ()
     aliases: tuple[str, ...] = ()
     notes: str = ""
-    example: Example | None = None  # None if yaozarrs doesn't check this rule
-    # replaces `example` for specific versions
-    examples: dict[str, Example] = field(default_factory=dict, hash=False)
 
     @property
     def is_spec_rule(self) -> bool:

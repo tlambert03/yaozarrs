@@ -1,0 +1,3179 @@
+# Minimal failing examples for the rules in `src/yaozarrs/_rules/rules.toml`, keyed by
+# rule code. Only the tests and the docs script read them (`scripts/ngff_rules.py`):
+# they check that each rule's code fires exactly where the spec states the rule.
+#
+# `[<CODE>.example]` is in the v0.5 format, and is converted for the other versions.
+# `[<CODE>.examples."<version>"]` replaces it for one version, in that version's format.
+# See `.claude/skills/ngff-rules/SKILL.md`.
+
+[YZ-AX-001.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "x", "type": "space"},
+    {"name": "x", "type": "space", "unit": "meter"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-AX-002.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "c", "type": "channel"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-AX-003.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "t", "type": "time"},
+    {"name": "t2", "type": "time"},
+    {"name": "y", "type": "space"},
+    {"name": "x", "type": "space"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-AX-004.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "c", "type": "channel"},
+    {"name": "c2", "type": "channel"},
+    {"name": "y", "type": "space"},
+    {"name": "x", "type": "space"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-AX-005.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [
+    {"name": "y", "type": "space"},
+    {"name": "t", "type": "time"},
+    {"name": "x", "type": "space"}
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-AX-006.example]
+model = 'SpaceAxis'
+json = '''
+{"name": "x", "type": "space", "unit": "lightyear"}
+'''
+
+[YZ-AX-007.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-AX-008.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["a", "b"]
+  }
+}
+'''
+
+[YZ-AX-009.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
+}
+'''
+
+[YZ-AX-010.examples."0.6"]
+model = 'SpaceAxis'
+json = '''
+{"name": ""}
+'''
+
+[YZ-AX-011.examples."0.6"]
+model = 'SpaceAxis'
+json = '''
+{"name": "x", "longName": 1}
+'''
+
+[YZ-AX-012.examples."0.6"]
+model = 'SpaceAxis'
+json = '''
+{"name": "x", "discrete": "nope"}
+'''
+
+[YZ-AX-013.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
+'''
+
+[YZ-CS-001.examples."0.6"]
+model = 'CoordinateSystem'
+json = '''
+{"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
+
+[YZ-CS-002.examples."0.6"]
+model = 'CoordinateSystem'
+json = '''
+{"name": "", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
+
+[YZ-CS-003.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "physical", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
+'''
+
+[YZ-CS-004.examples."0.6"]
+model = 'CoordinateSystem'
+json = '''
+{"name": "physical"}
+'''
+
+[YZ-MS-002.example]
+model = 'Multiscale'
+json = '''
+{
+  "datasets": [{"path": "0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}]
+}
+'''
+
+[YZ-MS-003.example]
+model = 'Multiscale'
+json = '''
+{"axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}
+'''
+
+[YZ-MS-004.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}]}
+'''
+
+[YZ-DS-001.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [2, 2]}]
+    },
+    {
+      "path": "1",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-DS-002.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+    },
+    {
+      "path": "1",
+      "coordinateTransformations": [{"type": "scale", "scale": [2, 2, 2]}]
+    }
+  ]
+}
+'''
+
+[YZ-DS-003.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1, 1, 1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-DS-003.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{
+  "coordinateSystems": [
+    {
+      "name": "physical",
+      "axes": [
+        {"name": "a"},
+        {"name": "b"},
+        {"name": "c"},
+        {"name": "z", "type": "space"},
+        {"name": "y", "type": "space"},
+        {"name": "x", "type": "space"}
+      ]
+    }
+  ],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [
+        {
+          "type": "scale",
+          "scale": [1, 1, 1, 1, 1, 1],
+          "input": {"path": "0"},
+          "output": {"name": "physical"}
+        }
+      ]
+    }
+  ]
+}
+'''
+
+[YZ-DS-004.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+'''
+
+[YZ-DS-005.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [2, 4, 4],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-DS-006.example]
+model = 'Dataset'
+json = '''
+{"coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]}
+'''
+
+[YZ-DS-007.example]
+model = 'Dataset'
+json = '''
+{"path": "0"}
+'''
+
+[YZ-DS-008.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              },
+              {
+                "path": "s1",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      2,
+                      2
+                    ],
+                    "input": {
+                      "path": "s1"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "s1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint16"
+  }
+}
+'''
+
+[YZ-CT-001.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "0",
+  "coordinateTransformations": [
+    {"type": "scale", "scale": [1, 1]},
+    {"type": "scale", "scale": [1, 1]}
+  ]
+}
+'''
+
+[YZ-CT-002.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "0",
+  "coordinateTransformations": [
+    {"type": "scale", "scale": [1, 1]},
+    {"type": "translation", "translation": [0, 0]},
+    {"type": "translation", "translation": [1, 1]}
+  ]
+}
+'''
+
+[YZ-CT-003.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "0",
+  "coordinateTransformations": [
+    {"type": "translation", "translation": [0, 0]},
+    {"type": "scale", "scale": [1, 1]}
+  ]
+}
+'''
+
+[YZ-CT-004.example]
+model = 'Multiscale'
+json = '''
+{
+  "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+  "datasets": [
+    {
+      "path": "0",
+      "coordinateTransformations": [{"type": "scale", "scale": [1, 1, 1]}]
+    }
+  ]
+}
+'''
+
+[YZ-CT-005.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "translation", "translation": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
+'''
+
+[YZ-CT-006.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "output": {"name": "physical"}}]}
+'''
+
+[YZ-CT-007.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}}]}
+'''
+
+[YZ-CT-008.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0", "name": "a"}, "output": {"name": "physical"}}]}
+'''
+
+[YZ-CT-009.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical", "path": "x"}}]}
+'''
+
+[YZ-CT-010.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}, {"path": "s1", "coordinateTransformations": [{"type": "scale", "scale": [2, 2], "input": {"path": "s1"}, "output": {"name": "other"}}]}]}
+'''
+
+[YZ-CT-011.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity"}]}
+'''
+
+[YZ-CT-012.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "a", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "b", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}]}
+'''
+
+[YZ-CT-013.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "physical"}, "output": {"name": "missing"}}]}
+'''
+
+[YZ-CT-014.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "mapAxis", "mapAxis": [1, 0], "input": {"name": "physical"}, "output": {"name": "physical", "path": "labels/a"}}]}
+'''
+
+[YZ-CT-015.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+[YZ-CT-016.examples."0.6"]
+model = 'MapAxisTransformation'
+json = '''
+{"type": "mapAxis"}
+'''
+
+[YZ-CT-017.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "mapAxis", "mapAxis": [0], "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+[YZ-CT-018.examples."0.6"]
+model = 'MapAxisTransformation'
+json = '''
+{"mapAxis": [0, 2]}
+'''
+
+[YZ-CT-019.examples."0.6"]
+model = 'MapAxisTransformation'
+json = '''
+{"mapAxis": [0, 0]}
+'''
+
+[YZ-CT-020.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{"createdOutputs": [0, 0]}
+'''
+
+[YZ-CT-021.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{"droppedInputs": [0, 0]}
+'''
+
+[YZ-CT-022.examples."0.6"]
+model = 'ScaleTransformation'
+json = '''
+{"scale": [0, 1]}
+'''
+
+[YZ-CT-023.examples."0.6"]
+model = 'AffineTransformation'
+json = '''
+{}
+'''
+
+[YZ-CT-024.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "affine",
+                "path": "m",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "m/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      6
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+[YZ-CT-025.examples."0.6"]
+model = 'AffineTransformation'
+json = '''
+{"affine": [[1, 0, 0], [0, 1]]}
+'''
+
+[YZ-CT-026.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "rotation", "path": "m", "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+[YZ-CT-027.examples."0.6"]
+model = 'RotationTransformation'
+json = '''
+{"rotation": [[2, 0], [0, 2]]}
+'''
+
+[YZ-CT-028.examples."0.6"]
+model = 'RotationTransformation'
+json = '''
+{}
+'''
+
+[YZ-CT-029.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "rotation",
+                "path": "m",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "m/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      4
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+[YZ-CT-030.examples."0.6"]
+model = 'RotationTransformation'
+json = '''
+{"rotation": [[1, 0, 0], [0, 1, 0]]}
+'''
+
+[YZ-CT-031.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1,
+      2
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+[YZ-CT-032.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-CT-033.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "d",
+                    "type": "displacement",
+                    "discrete": true
+                  },
+                  {
+                    "name": "z",
+                    "type": "space"
+                  },
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1,
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      2,
+      1,
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-CT-034.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "coordinates",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "c",
+                    "type": "coordinate",
+                    "discrete": true
+                  },
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      3,
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-CT-035.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "displacements",
+                "path": "field",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  },
+  "field/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "f",
+                "axes": [
+                  {
+                    "name": "d",
+                    "type": "displacement",
+                    "discrete": true
+                  },
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "f"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "field/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      3,
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-CT-036.examples."0.6"]
+model = 'ByDimensionItem'
+json = '''
+{}
+'''
+
+[YZ-CT-037.examples."0.6"]
+model = 'ByDimensionTransformation'
+json = '''
+{"transformations": [{"inputAxes": [0], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2]}}, {"inputAxes": [1], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2]}}]}
+'''
+
+[YZ-CT-038.examples."0.6"]
+model = 'ByDimensionItem'
+json = '''
+{"inputAxes": [0], "outputAxes": [0], "transformation": {"type": "scale", "scale": [2, 2]}}
+'''
+
+[YZ-CT-039.examples."0.6"]
+model = 'BijectionTransformation'
+json = '''
+{"forward": {"type": "scale", "scale": [2]}, "inverse": {"type": "scale", "scale": [0.5]}}
+'''
+
+[YZ-CT-040.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "z", "type": "space"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "bijection", "forward": {"type": "coordinates", "path": "f"}, "inverse": {"type": "coordinates", "path": "i"}, "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+[YZ-CT-041.examples."0.6"]
+model = 'Multiscale'
+json = '''
+{"coordinateSystems": [{"name": "physical", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}, {"name": "other", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "datasets": [{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}], "coordinateTransformations": [{"type": "bijection", "forward": {"type": "scale", "scale": [2]}, "inverse": {"type": "coordinates", "path": "i"}, "input": {"name": "physical"}, "output": {"name": "other"}}]}
+'''
+
+[YZ-CT-042.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''
+
+[YZ-CT-043.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "scene": {
+          "coordinateSystems": [
+            {
+              "name": "a",
+              "axes": [
+                {
+                  "name": "y",
+                  "type": "space"
+                },
+                {
+                  "name": "x",
+                  "type": "space"
+                }
+              ]
+            },
+            {
+              "name": "b",
+              "axes": [
+                {
+                  "name": "y",
+                  "type": "space"
+                },
+                {
+                  "name": "x",
+                  "type": "space"
+                }
+              ]
+            }
+          ],
+          "coordinateTransformations": [
+            {
+              "type": "affine",
+              "path": "m",
+              "input": {
+                "name": "a"
+              },
+              "output": {
+                "name": "b"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "m/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      2,
+      3
+    ],
+    "data_type": "float64"
+  }
+}
+'''
+
+[YZ-CT-044.examples."0.6"]
+model = 'Dataset'
+json = '''
+{"path": "s0", "coordinateTransformations": [{"type": "scale", "scale": [-1, 1], "input": {"path": "s0"}, "output": {"name": "physical"}}]}
+'''
+
+[YZ-CT-045.examples."0.6"]
+model = 'ProjectAxisTransformation'
+json = '''
+{}
+'''
+
+[YZ-OM-001.example]
+model = 'OmeroChannel'
+json = '''
+{
+  "color": "GGGGGG",
+  "window": {"start": 0, "end": 1, "min": 0, "max": 1}
+}
+'''
+
+[YZ-OM-002.example]
+model = 'Omero'
+json = '''
+{"name": "image"}
+'''
+
+[YZ-OM-003.example]
+model = 'OmeroChannel'
+json = '''
+{"window": {"start": 0, "end": 1, "min": 0, "max": 1}}
+'''
+
+[YZ-OM-004.example]
+model = 'OmeroChannel'
+json = '''
+{"color": "FF0000"}
+'''
+
+[YZ-OM-005.example]
+model = 'OmeroWindow'
+json = '''
+{"start": 0, "end": 1}
+'''
+
+[YZ-OM-006.example]
+model = 'OmeroWindow'
+json = '''
+{"min": 0, "max": 1}
+'''
+
+[YZ-PL-001.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "acquisitions": [{"id": 0}, {"id": 0, "name": "dupe"}]
+}
+'''
+
+[YZ-PL-002.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}, {"name": "a"}, {"name": "A"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-003.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}, {"name": "a"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-004.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 3, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-005.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 3}]
+}
+'''
+
+[YZ-PL-006.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}, {"name": "B"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 1, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-007.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "rows": [{"name": "A"}],
+          "columns": [{"name": "1"}],
+          "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+        }
+      }
+    }
+  }
+}
+'''
+
+[YZ-PL-008.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "acquisitions": {"id": 0}
+}
+'''
+
+[YZ-PL-009.example]
+model = 'Acquisition'
+json = '''
+{"name": "first"}
+'''
+
+[YZ-PL-010.example]
+model = 'Acquisition'
+json = '''
+{"id": -1}
+'''
+
+[YZ-PL-011.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "name": 1}
+'''
+
+[YZ-PL-012.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "maximumfieldcount": 0}
+'''
+
+[YZ-PL-013.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "description": 1}
+'''
+
+[YZ-PL-014.example]
+model = 'Acquisition'
+json = '''
+{"id": 0, "starttime": 1.5}
+'''
+
+[YZ-PL-015.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-016.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": {"name": "1"},
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-017.example]
+model = 'Column'
+json = '''
+{}
+'''
+
+[YZ-PL-018.example]
+model = 'Column'
+json = '''
+{"name": "1-a"}
+'''
+
+[YZ-PL-019.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}, {"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-020.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "field_count": 0
+}
+'''
+
+[YZ-PL-021.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+  "name": 1
+}
+'''
+
+[YZ-PL-022.example]
+model = 'PlateDef'
+json = '''
+{
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-023.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": {"name": "A"},
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-024.example]
+model = 'Row'
+json = '''
+{}
+'''
+
+[YZ-PL-025.example]
+model = 'Row'
+json = '''
+{"name": 1}
+'''
+
+[YZ-PL-026.example]
+model = 'Row'
+json = '''
+{"name": "A_1"}
+'''
+
+[YZ-PL-027.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}, {"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]
+}
+'''
+
+[YZ-PL-028.example]
+model = 'PlateDef'
+json = '''
+{"rows": [{"name": "A"}], "columns": [{"name": "1"}]}
+'''
+
+[YZ-PL-029.example]
+model = 'PlateDef'
+json = '''
+{
+  "rows": [{"name": "A"}],
+  "columns": [{"name": "1"}],
+  "wells": {"path": "A/1", "rowIndex": 0, "columnIndex": 0}
+}
+'''
+
+[YZ-PL-030.example]
+model = 'PlateWell'
+json = '''
+{"rowIndex": 0, "columnIndex": 0}
+'''
+
+[YZ-PL-031.example]
+model = 'PlateWell'
+json = '''
+{"path": 1, "rowIndex": 0, "columnIndex": 0}
+'''
+
+[YZ-PL-032.example]
+model = 'PlateWell'
+json = '''
+{"path": "A1", "rowIndex": 0, "columnIndex": 0}
+'''
+
+[YZ-PL-033.example]
+model = 'PlateWell'
+json = '''
+{"path": "A/1", "columnIndex": 0}
+'''
+
+[YZ-PL-034.example]
+model = 'PlateWell'
+json = '''
+{"path": "A/1", "rowIndex": "A", "columnIndex": 0}
+'''
+
+[YZ-PL-035.example]
+model = 'PlateWell'
+json = '''
+{"path": "A/1", "rowIndex": 0, "columnIndex": "A"}
+'''
+
+[YZ-PL-036.example]
+model = 'Column'
+json = '''
+{"name": 1}
+'''
+
+[YZ-PL-037.example]
+model = 'PlateDef'
+json = '''
+{"columns": [], "rows": [{"name": "A"}], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
+'''
+
+[YZ-PL-038.example]
+model = 'PlateDef'
+json = '''
+{"columns": [{"name": "1"}], "rows": [], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
+'''
+
+[YZ-PL-039.example]
+model = 'PlateDef'
+json = '''
+{"columns": [{"name": "1"}], "rows": [{"name": "A"}], "wells": []}
+'''
+
+[YZ-PL-040.example]
+model = 'PlateDef'
+json = '''
+{"columns": [{"name": "1"}], "rows": [{"name": "A"}], "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}, {"path": "A/1", "rowIndex": 0, "columnIndex": 0}]}
+'''
+
+[YZ-WL-001.example]
+model = 'WellDef'
+json = '''
+{"images": [{"path": "a.b"}]}
+'''
+
+[YZ-WL-002.example]
+model = 'WellDef'
+json = '''
+{"images": [{"path": "0"}, {"path": "0", "acquisition": 1}]}
+'''
+
+[YZ-WL-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "well": {"images": [{"path": "0"}]}}}
+  }
+}
+'''
+
+[YZ-WL-004.example]
+model = 'WellDef'
+json = '''
+{}
+'''
+
+[YZ-WL-005.example]
+model = 'WellDef'
+json = '''
+{"images": {"path": "0"}}
+'''
+
+[YZ-WL-006.example]
+model = 'FieldOfView'
+json = '''
+{"acquisition": 0}
+'''
+
+[YZ-WL-007.example]
+model = 'FieldOfView'
+json = '''
+{"path": "0", "acquisition": "first"}
+'''
+
+[YZ-WL-008.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "columns": [
+            {
+              "name": "1"
+            }
+          ],
+          "rows": [
+            {
+              "name": "A"
+            }
+          ],
+          "acquisitions": [
+            {
+              "id": 0
+            },
+            {
+              "id": 1
+            }
+          ],
+          "wells": [
+            {
+              "path": "A/1",
+              "rowIndex": 0,
+              "columnIndex": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "A/1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "well": {
+          "images": [
+            {
+              "path": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+'''
+
+[YZ-WL-009.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "plate": {
+          "columns": [
+            {
+              "name": "1"
+            }
+          ],
+          "rows": [
+            {
+              "name": "A"
+            }
+          ],
+          "acquisitions": [
+            {
+              "id": 0
+            },
+            {
+              "id": 1
+            }
+          ],
+          "wells": [
+            {
+              "path": "A/1",
+              "rowIndex": 0,
+              "columnIndex": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "A/1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "well": {
+          "images": [
+            {
+              "path": "0",
+              "acquisition": 7
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+'''
+
+[YZ-WL-010.examples."0.6"]
+model = 'FieldOfView'
+json = '''
+{"path": "a b"}
+'''
+
+[YZ-WL-011.examples."0.6"]
+model = 'FieldOfView'
+json = '''
+{"path": "__x"}
+'''
+
+[YZ-WL-012.example]
+model = 'WellDef'
+json = '''
+{"images": []}
+'''
+
+[YZ-BF-001.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "bioformats2raw.layout": 3}}
+  },
+  "0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "0/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-BF-002.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "bioformats2raw.layout": 3}}
+  },
+  "0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "0/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "OME/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "series": ["0", "1"]}}
+  }
+}
+'''
+
+[YZ-BF-003.example]
+model = 'Bf2Raw'
+json = '''
+{"version": "0.5", "bioformats2raw.layout": 2}
+'''
+
+[YZ-BF-003.examples."0.6"]
+model = 'Bf2Raw'
+json = '''
+{"version": "0.6", "bioformats2raw.layout": 2}
+'''
+
+[YZ-BF-004.example]
+model = 'Series'
+json = '''
+{"version": "0.5", "series": [0]}
+'''
+
+[YZ-BF-004.examples."0.6"]
+model = 'Series'
+json = '''
+{"version": "0.6", "series": [0]}
+'''
+
+[YZ-LB-001.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-LB-002.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  }
+}
+'''
+
+[YZ-LB-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {}
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "float32",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-IL-001.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5"}}
+  }
+}
+'''
+
+[YZ-IL-002.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              },
+              {
+                "path": "s1",
+                "coordinateTransformations": [{"type": "scale", "scale": [2, 2]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "s1/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {}
+      }
+    }
+  },
+  "labels/annotations/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-IL-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "labels/annotations/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-IL-004.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {"source": {"image": "../missing"}}
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-IL-005.example]
+model = 'ImageLabel'
+json = '''
+{"colors": {"label-value": 1}}
+'''
+
+[YZ-IL-006.example]
+model = 'LabelColor'
+json = '''
+{"rgba": [255, 0, 0, 255]}
+'''
+
+[YZ-IL-007.example]
+model = 'LabelColor'
+json = '''
+{"label-value": 1.5}
+'''
+
+[YZ-IL-008.example]
+model = 'LabelColor'
+json = '''
+{"label-value": 1, "rgba": [255, 0, 300, 255]}
+'''
+
+[YZ-IL-009.example]
+model = 'ImageLabel'
+json = '''
+{"properties": {"label-value": 1}}
+'''
+
+[YZ-IL-010.example]
+model = 'LabelProperty'
+json = '''
+{"class": "cell"}
+'''
+
+[YZ-IL-011.example]
+model = 'LabelProperty'
+json = '''
+{"label-value": "one"}
+'''
+
+[YZ-IL-012.example]
+model = 'ImageLabel'
+json = '''
+{"source": "../../"}
+'''
+
+[YZ-IL-013.example]
+model = 'LabelSource'
+json = '''
+{"image": 1}
+'''
+
+[YZ-IL-014.example]
+model = 'ImageLabel'
+json = '''
+{"colors": []}
+'''
+
+[YZ-IL-015.example]
+model = 'ImageLabel'
+json = '''
+{"colors": [{"label-value": 1}, {"label-value": 1}]}
+'''
+
+[YZ-IL-016.example]
+model = 'ImageLabel'
+json = '''
+{"properties": []}
+'''
+
+[YZ-IL-017.example]
+model = 'ImageLabel'
+json = '''
+{"properties": [{"label-value": 1}, {"label-value": 1}]}
+'''
+
+[YZ-SC-001.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{}
+'''
+
+[YZ-SC-002.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": 1}
+'''
+
+[YZ-SC-003.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}], "coordinateSystems": 1}
+'''
+
+[YZ-SC-004.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity"}]}
+'''
+
+[YZ-SC-005.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity", "input": {"path": "a"}, "output": {"name": "b", "path": "b"}}]}
+'''
+
+[YZ-SC-006.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateTransformations": [{"type": "identity", "input": {"name": "a"}, "output": {"name": "b"}}]}
+'''
+
+[YZ-SC-007.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "scene": {
+          "coordinateSystems": [
+            {
+              "name": "a",
+              "axes": [
+                {
+                  "name": "y",
+                  "type": "space"
+                },
+                {
+                  "name": "x",
+                  "type": "space"
+                }
+              ]
+            }
+          ],
+          "coordinateTransformations": [
+            {
+              "type": "identity",
+              "input": {
+                "name": "a"
+              },
+              "output": {
+                "name": "physical",
+                "path": "missing"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+'''
+
+[YZ-SC-008.examples."0.6"]
+model = 'SceneDef'
+json = '''
+{"coordinateSystems": [{"name": "a", "axes": [{"name": "y", "type": "space"}, {"name": "x", "type": "space"}]}], "coordinateTransformations": [{"type": "identity", "input": {"name": "a", "extra": 1}, "output": {"name": "a"}}]}
+'''
+
+[YZ-GN-001.example]
+model = 'Image'
+json = '''
+{"multiscales": []}
+'''
+
+[YZ-001.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "__x",
+  "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+}
+'''
+
+[YZ-002.example]
+model = 'Dataset'
+json = '''
+{
+  "path": "a b",
+  "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+}
+'''
+
+[YZ-003.example]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  },
+  "labels/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {"ome": {"version": "0.5", "labels": ["annotations"]}}
+  },
+  "labels/annotations/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.5",
+        "multiscales": [
+          {
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          },
+          {
+            "name": "second",
+            "axes": [
+              {"name": "y", "type": "space"},
+              {"name": "x", "type": "space"}
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [{"type": "scale", "scale": [1, 1]}]
+              }
+            ]
+          }
+        ],
+        "image-label": {}
+      }
+    }
+  },
+  "labels/annotations/s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [4, 4],
+    "data_type": "uint8",
+    "dimension_names": ["y", "x"]
+  }
+}
+'''
+
+[YZ-005.examples."0.6"]
+model = 'Bf2Raw'
+json = '''
+{"version": "0.6rc0", "bioformats2raw.layout": 3}
+'''
+
+[YZ-006.examples."0.5"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "9.9",
+        "multiscales": []
+      }
+    }
+  }
+}
+'''
+
+[YZ-007.examples."0.6"]
+store = '''
+{
+  "zarr.json": {
+    "zarr_format": 3,
+    "node_type": "group",
+    "attributes": {
+      "ome": {
+        "version": "0.6",
+        "multiscales": [
+          {
+            "coordinateSystems": [
+              {
+                "name": "physical",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              },
+              {
+                "name": "other",
+                "axes": [
+                  {
+                    "name": "y",
+                    "type": "space"
+                  },
+                  {
+                    "name": "x",
+                    "type": "space"
+                  }
+                ]
+              }
+            ],
+            "datasets": [
+              {
+                "path": "s0",
+                "coordinateTransformations": [
+                  {
+                    "type": "scale",
+                    "scale": [
+                      1,
+                      1
+                    ],
+                    "input": {
+                      "path": "s0"
+                    },
+                    "output": {
+                      "name": "physical"
+                    }
+                  }
+                ]
+              }
+            ],
+            "coordinateTransformations": [
+              {
+                "type": "affine",
+                "path": "../m",
+                "input": {
+                  "name": "physical"
+                },
+                "output": {
+                  "name": "other"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "s0/zarr.json": {
+    "zarr_format": 3,
+    "node_type": "array",
+    "shape": [
+      1,
+      1
+    ],
+    "data_type": "uint8"
+  }
+}
+'''

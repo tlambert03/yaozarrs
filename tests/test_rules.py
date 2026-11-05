@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 import warnings
 from pathlib import Path
 from typing import get_args
@@ -32,6 +33,7 @@ _spec = importlib.util.spec_from_file_location(
 )
 assert _spec and _spec.loader
 ngff_rules = importlib.util.module_from_spec(_spec)
+sys.modules["ngff_rules"] = ngff_rules  # (for its dataclasses)
 _spec.loader.exec_module(ngff_rules)
 
 CODE_RE = re.compile(r"^YZ-([A-Z]{2}-)?\d{3}$")
@@ -123,7 +125,12 @@ def test_codes_in_source_exist() -> None:
     for path in (ROOT / "src" / "yaozarrs").rglob("*.py"):
         used.update(pattern.findall(path.read_text(encoding="utf-8")))
     assert used - set(RULES) == set()
-    assert {c for c in used if not (RULES[c].example or RULES[c].examples)} == set()
+    assert used - set(ngff_rules.EXAMPLES) == set()
+
+
+def test_examples_have_rules() -> None:
+    """Every example in `tests/rule_examples.toml` belongs to a registered rule."""
+    assert set(ngff_rules.EXAMPLES) - set(RULES) == set()
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +153,7 @@ def _expected(rule: Rule, version: str) -> bool:
     [
         pytest.param(r, v, id=f"{r.code}-{v}")
         for r in RULES.values()
-        if r.example or r.examples
+        if r.code in ngff_rules.EXAMPLES
         for v in ngff_rules.MODULES
     ],
 )
@@ -189,9 +196,10 @@ def test_rule_warning_filterable() -> None:
 
 def test_rule_error_message() -> None:
     rule = get_rule("YZ-AX-001")
-    assert rule.example
+    example = ngff_rules.EXAMPLES[rule.code].default
+    assert example
     with pytest.raises(ValidationError) as e:
-        v05.Multiscale.model_validate(rule.example.data)
+        v05.Multiscale.model_validate(example.data)
     err = next(x for x in e.value.errors() if x["type"] == rule.code)
     assert rule.url in err["msg"]
 
@@ -266,7 +274,7 @@ def test_rewrap_error_keeps_code() -> None:
 def test_storage_dimension_mismatch_keeps_code() -> None:
     # a dimensionality error found in storage validation keeps its specific code
     pytest.importorskip("fsspec")
-    image = get_rule("YZ-DS-005").example
+    image = ngff_rules.EXAMPLES["YZ-DS-005"].default
     assert image
     files = ngff_rules.to_v06_store(image.files)
     files["s0/zarr.json"]["shape"] = [4, 4]

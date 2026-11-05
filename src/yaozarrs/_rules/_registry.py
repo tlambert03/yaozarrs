@@ -6,7 +6,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from yaozarrs._rules._model import Example, Rule, SpecDoc, SpecSource
+from yaozarrs._rules._model import Rule, SpecDoc, SpecSource
 
 REGISTRY_FILE = Path(__file__).parent / "rules.toml"
 
@@ -30,12 +30,10 @@ def _load_rule(code: str, entry: dict[str, Any], docs: dict[str, SpecDoc]) -> Ru
             key=lambda s: order.index(s.doc.version),
         )
     )
-    example = Example(**entry.pop("example")) if "example" in entry else None
-    examples = {v: Example(**e) for v, e in entry.pop("examples", {}).items()}
     for key in ("supersedes", "aliases"):
         if key in entry:
             entry[key] = tuple(entry[key])
-    return Rule(code=code, sources=sources, example=example, examples=examples, **entry)
+    return Rule(code=code, sources=sources, **entry)
 
 
 def _load() -> tuple[dict[str, SpecDoc], dict[str, Rule]]:
