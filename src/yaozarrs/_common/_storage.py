@@ -207,6 +207,9 @@ class StorageValidator:
                     details["ctx"] = err["ctx"]
                 result.errors.append(details)
             return result
+        # (so that `zarr_group.ome_metadata()` doesn't parse, and warn, again)
+        if not hasattr(zarr_group, "_ome_metadata"):
+            zarr_group._ome_metadata = ome_metadata
         # (fetch everything the metadata names up front: a few batches in all)
         named, maybe = nodes_below(ome_metadata)
         validator._prefetch(zarr_group, [*named, *maybe])

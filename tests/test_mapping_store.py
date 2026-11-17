@@ -275,3 +275,20 @@ def test_threaded_validation_reports_own_warnings(
         assert any("'um', SHOULD be one of" in d["msg"] for d in warning.warnings())
     # ...and the formatter is restored, even with concurrent calls
     assert warnings.formatwarning.__module__ == "warnings"
+
+
+def test_validated_group_caches_root_model(
+    write_demo_ome: Callable, metadata_dict: Callable
+) -> None:
+    # (the root model isn't parsed, and its warnings aren't repeated, a second time)
+    store = metadata_dict(write_demo_ome("image", version="0.5"))
+    meta = json.loads(store["zarr.json"])
+    meta["attributes"]["ome"]["multiscales"][0]["axes"][-1]["unit"] = "um"
+    store["zarr.json"] = json.dumps(meta).encode()
+
+    with pytest.warns(StorageValidationWarning, match="'um', SHOULD be one of"):
+        group = validate_zarr_store(store)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        model = group.ome_metadata()
+    assert isinstance(model, yaozarrs.v05.Image)
