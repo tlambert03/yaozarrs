@@ -7,7 +7,6 @@ from typing import (
     NoReturn,
     Self,
     TypeAlias,
-    get_args,
 )
 
 from annotated_types import MinLen
@@ -18,7 +17,7 @@ from pydantic import (
     model_validator,
 )
 
-from yaozarrs._base import _BaseModel
+from yaozarrs._base import _BaseModel, _TypeTagged
 from yaozarrs._common._image import require_inline_or_path
 from yaozarrs._errors import warn
 from yaozarrs._types import duplicates
@@ -61,7 +60,7 @@ class CoordinateSystemRef(_BaseModel):
     )
 
 
-class _TransformBase(_BaseModel):
+class _TransformBase(_TypeTagged):
     # (narrowed to a Literal by each subclass, used for discrimination)
     type: str = Field(description="The type of the transformation.")
     name: str | None = Field(
@@ -75,17 +74,6 @@ class _TransformBase(_BaseModel):
     output: CoordinateSystemRef | None = Field(
         default=None, description="The output coordinate system."
     )
-
-    @model_validator(mode="before")
-    @classmethod
-    def _inject_type_if_missing(cls, data: Any) -> Any:
-        # allows e.g. `ScaleTransformation(scale=[1, 1])`, while still marking
-        # `type` as explicitly set (so that it survives `exclude_unset` dumps).
-        # (A dict *without* `type` passed to the CoordinateTransformation union is
-        # still rejected, since the union discriminates on `type`.)
-        if isinstance(data, dict) and "type" not in data:
-            return {**data, "type": get_args(cls.model_fields["type"].annotation)[0]}
-        return data
 
 
 class IdentityTransformation(_TransformBase):

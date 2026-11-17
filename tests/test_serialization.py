@@ -114,3 +114,14 @@ def test_type_always_dumped(cls: type, kwargs: dict[str, Any], flag: str) -> Non
     data = cls(**kwargs).model_dump(**{flag: True})
     assert data["type"] == cls.model_fields["type"].annotation.__args__[0]
     assert cls.model_validate(data) == cls(**kwargs)
+
+
+# (not the sequence: model_construct doesn't validate its nested dicts)
+@pytest.mark.parametrize(
+    ("cls", "kwargs"), _TYPED[:-1], ids=lambda x: getattr(x, "__qualname__", "")
+)
+def test_type_set_by_model_construct(cls: type, kwargs: dict[str, Any]) -> None:
+    obj = cls.model_construct(**kwargs)
+    assert obj.type == cls.model_fields["type"].annotation.__args__[0]
+    assert "type" in obj.model_dump(exclude_unset=True)
+    assert "type" in cls.model_construct(set(), **kwargs).model_dump(exclude_unset=True)

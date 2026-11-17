@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, get_args
 
 from pydantic import (
     VERSION,
@@ -84,6 +84,42 @@ class _BaseModel(BaseModel):
             kwargs.setdefault("by_alias", True)
             kwargs.setdefault("exclude_none", True)
             return super().model_dump(**kwargs)
+
+
+class _TypeTagged(_BaseModel):
+    """A model whose `type` is a single `Literal` (a union discriminator).
+
+    `type` is required at runtime, so that dumps made with `exclude_defaults` or
+    `exclude_unset` keep it, but it is filled in when missing (by validation and by
+    `model_construct`).  Subclasses declare a default for type checkers only:
+
+        if TYPE_CHECKING:
+            type: Literal["scale"] = "scale"
+        else:
+            type: Literal["scale"]
+    """
+
+    @classmethod
+    def _type_value(cls) -> str:
+        return get_args(cls.model_fields["type"].annotation)[0]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _inject_type_if_missing(cls, data: Any) -> Any:
+        # (a dict *without* `type` passed to a union discriminating on `type` is
+        # still rejected by the union)
+        if isinstance(data, dict) and "type" not in data:
+            return {**data, "type": cls._type_value()}
+        return data
+
+    if not TYPE_CHECKING:
+
+        @classmethod
+        def model_construct(cls, _fields_set: set[str] | None = None, **values: Any):
+            values.setdefault("type", cls._type_value())
+            if _fields_set is not None:
+                _fields_set = {*_fields_set, "type"}
+            return super().model_construct(_fields_set, **values)
 
 
 class _OMEDocument(_BaseModel):

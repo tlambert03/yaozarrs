@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, get_args
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias
 
 from annotated_types import MinLen
 from pydantic import (
@@ -8,10 +8,9 @@ from pydantic import (
     Field,
     Tag,
     field_validator,
-    model_validator,
 )
 
-from yaozarrs._base import _BaseModel
+from yaozarrs._base import _BaseModel, _TypeTagged
 from yaozarrs._common._units import SpaceUnits, TimeUnits
 from yaozarrs._errors import warn
 from yaozarrs._types import UNIQUE_ITEMS, duplicates
@@ -46,15 +45,8 @@ class _AxisBase(_BaseModel):
     )
 
 
-class _TypedAxis(_AxisBase):
-    @model_validator(mode="before")
-    @classmethod
-    def _inject_type_if_missing(cls, data: Any) -> Any:
-        # allows e.g. `SpaceAxis(name="x")`, while still marking `type` as
-        # explicitly set (so that it survives `model_dump(exclude_unset=True)`)
-        if isinstance(data, dict) and "type" not in data:
-            return {**data, "type": get_args(cls.model_fields["type"].annotation)[0]}
-        return data
+class _TypedAxis(_AxisBase, _TypeTagged):
+    pass
 
 
 class SpaceAxis(_TypedAxis):

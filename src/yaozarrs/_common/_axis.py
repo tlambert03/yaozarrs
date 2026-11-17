@@ -9,10 +9,9 @@ from pydantic import (
     Field,
     Tag,
     field_validator,
-    model_validator,
 )
 
-from yaozarrs._base import _BaseModel
+from yaozarrs._base import _BaseModel, _TypeTagged
 from yaozarrs._types import UNIQUE_ITEMS
 
 from ._units import SpaceUnits, TimeUnits
@@ -49,7 +48,7 @@ class CustomAxis(_AxisBase):
         return v
 
 
-class SpaceAxis(_AxisBase):
+class SpaceAxis(_AxisBase, _TypeTagged):
     """Axis with `type="space"` (units restricted to SpaceUnits)."""
 
     if TYPE_CHECKING:
@@ -58,15 +57,8 @@ class SpaceAxis(_AxisBase):
         type: Literal["space"]
     unit: SpaceUnits | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def _inject_type_if_missing(cls, v: Any) -> Any:
-        if isinstance(v, dict) and "type" not in v:
-            v["type"] = "space"
-        return v
 
-
-class TimeAxis(_AxisBase):
+class TimeAxis(_AxisBase, _TypeTagged):
     """Axis with `type="time"` (units restricted to TimeUnits)."""
 
     if TYPE_CHECKING:
@@ -75,15 +67,8 @@ class TimeAxis(_AxisBase):
         type: Literal["time"]
     unit: TimeUnits | None = None  # SHOULD
 
-    @model_validator(mode="before")
-    @classmethod
-    def _inject_type_if_missing(cls, v: Any) -> Any:
-        if isinstance(v, dict) and "type" not in v:
-            v["type"] = "time"
-        return v
 
-
-class ChannelAxis(_AxisBase):
+class ChannelAxis(_AxisBase, _TypeTagged):
     """Axis with `type="channel"`."""
 
     if TYPE_CHECKING:
@@ -91,13 +76,6 @@ class ChannelAxis(_AxisBase):
     else:
         type: Literal["channel"]
     unit: str | None = None  # SHOULD
-
-    @model_validator(mode="before")
-    @classmethod
-    def _inject_type_if_missing(cls, v: Any) -> Any:
-        if isinstance(v, dict) and "type" not in v:
-            v["type"] = "channel"
-        return v
 
 
 def _axis_discriminator(v: Any) -> str:

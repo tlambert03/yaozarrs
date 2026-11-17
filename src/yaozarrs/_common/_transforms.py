@@ -8,7 +8,6 @@ from typing import (
     Literal,
     Self,
     TypeAlias,
-    get_args,
 )
 
 from annotated_types import MinLen
@@ -22,7 +21,7 @@ from pydantic import (
     model_validator,
 )
 
-from yaozarrs._base import _BaseModel
+from yaozarrs._base import _TypeTagged
 from yaozarrs._common._image import require_inline_or_path
 
 __all__ = [
@@ -42,18 +41,7 @@ _PATH_SCHEMA = WithJsonSchema({"type": "string"})
 _Vector: TypeAlias = Annotated[Annotated[list[float], MinLen(2)] | None, _VECTOR_SCHEMA]
 
 
-class _TypedTransform(_BaseModel):
-    @model_validator(mode="before")
-    @classmethod
-    def _inject_type_if_missing(cls, data: Any) -> Any:
-        # allows e.g. `ScaleTransformation(scale=[1, 1])`, while keeping `type` in
-        # every dump (it's required at runtime, and explicitly set).
-        if isinstance(data, dict) and "type" not in data:
-            return {**data, "type": get_args(cls.model_fields["type"].annotation)[0]}
-        return data
-
-
-class ScaleTransformation(_TypedTransform):
+class ScaleTransformation(_TypeTagged):
     """Maps array indices to physical coordinates via scaling.
 
     Defines the pixel/voxel size in physical units for each dimension.
@@ -99,7 +87,7 @@ class ScaleTransformation(_TypedTransform):
         return None if self.scale is None else len(self.scale)
 
 
-class TranslationTransformation(_TypedTransform):
+class TranslationTransformation(_TypeTagged):
     """Translates the coordinate system origin in physical space.
 
     Specifies the physical coordinates of the origin (index [0, 0, ...]).
