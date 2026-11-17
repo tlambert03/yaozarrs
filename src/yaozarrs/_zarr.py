@@ -202,22 +202,32 @@ class ZarrMetadata(BaseModel):
 
     def _guess_ome_version(self) -> str | None:
         attrs = self.attributes
-        if "ome" in attrs:
-            if "version" in attrs["ome"]:
-                return attrs["ome"]["version"]
+        # (malformed attributes, e.g. a string where an object belongs, are left for
+        # validation to report, rather than raising here)
+        if (version := _get(attrs.get("ome"), "version")) is not None:
+            return version
         # TODO: this is probably flaky
         # metadata outside of "ome" means v0.4 (zarr v2), where version is only a SHOULD
         default = "0.4" if self.zarr_format == 2 else None
         if "multiscales" in attrs:
-            ms = attrs["multiscales"]
-            return ms[0].get("version", default) if ms else default
+            return _get(_first(attrs["multiscales"]), "version", default)
         for possible_key in ["plate", "well", "labels", "series"]:
             if possible_key in attrs:
-                if "version" in attrs[possible_key]:
-                    return attrs[possible_key]["version"]
+                if (version := _get(attrs[possible_key], "version")) is not None:
+                    return version
                 return attrs.get("version", default)
 
         return None
+
+
+def _get(obj: Any, key: str, default: Any = None) -> Any:
+    """Return `obj.get(key, default)` if `obj` is a mapping, else `default`."""
+    return obj.get(key, default) if isinstance(obj, Mapping) else default
+
+
+def _first(obj: Any) -> Any:
+    """Return the first item of `obj` if it's a non-empty list, else None."""
+    return obj[0] if isinstance(obj, list) and obj else None
 
 
 def _load_zarr_json(prefix: str, mapper: Mapping[str, bytes]) -> ZarrMetadata | None:
@@ -731,12 +741,12 @@ class ZarrGroup(ZarrNode):
             # Try to load parent attrs and extract version
             attrs = _load_attrs(prefix, self._store, self._metadata.zarr_format)
             if attrs is not None:
-                if "ome" in attrs and "version" in attrs["ome"]:
-                    return attrs["ome"]["version"]
+                if (version := _get(attrs.get("ome"), "version")) is not None:
+                    return version
                 if ms := attrs.get("multiscales"):
-                    return ms[0].get("version")
+                    return _get(_first(ms), "version")
                 if plate := attrs.get("plate"):
-                    return plate.get("version")
+                    return _get(plate, "version")
         return None
 
     def validate(self, *, strict: bool | None = None) -> Self:

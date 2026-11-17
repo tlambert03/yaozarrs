@@ -292,3 +292,24 @@ def test_validated_group_caches_root_model(
         warnings.simplefilter("error")
         model = group.ome_metadata()
     assert isinstance(model, yaozarrs.v05.Image)
+
+
+_GROUP_V2 = json.dumps({"zarr_format": 2}).encode()
+
+
+@pytest.mark.parametrize(
+    "store",
+    [
+        {".zgroup": _GROUP_V2, ".zattrs": b'{"multiscales": "oops"}'},
+        {".zgroup": _GROUP_V2, ".zattrs": b'{"multiscales": ["oops"]}'},
+        {".zgroup": _GROUP_V2, ".zattrs": b'{"plate": "version"}'},
+        {
+            "zarr.json": b'{"zarr_format": 3, "node_type": "group", '
+            b'"attributes": {"ome": ["version"]}}'
+        },
+    ],
+)
+def test_malformed_attrs_are_validation_errors(store: dict[str, bytes]) -> None:
+    # (not an AttributeError/TypeError from guessing the version)
+    with pytest.raises(StorageValidationError):
+        validate_zarr_store(store)
