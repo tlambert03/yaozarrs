@@ -15,8 +15,10 @@ fsspec is only required to open a store from a URI.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import sys
 from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from pathlib import Path
@@ -306,9 +308,20 @@ def _load_zarr_metadata(mapper: Mapping[str, bytes], path: str = "") -> ZarrMeta
     if (meta := _load_zarray(prefix, mapper)) is not None:
         return meta
 
-    raise FileNotFoundError(  # pragma: no cover
-        f"No zarr metadata found at '{prefix}' (tried zarr.json, .zgroup, .zarray)"
+    where = f"{_mapper_name(mapper)}/{path}".rstrip("/")
+    raise FileNotFoundError(
+        f"No zarr metadata found at {where!r} (tried zarr.json, .zgroup, .zarray)"
     )
+
+
+def _mapper_name(mapper: Mapping[str, bytes]) -> str:
+    """Return the URI of a store mapping, or a name like `"<dict>"` if it has none."""
+    mapper = getattr(mapper, "_mapper", mapper)  # (unwrap a _CachedMapper)
+    if isinstance(root := getattr(mapper, "root", None), str) and hasattr(mapper, "fs"):
+        return mapper.fs.unstrip_protocol(root)
+    if isinstance(mapper, _ZarrPythonStore):
+        return f"<{type(mapper.store).__name__}>"
+    return f"<{type(mapper).__name__}>"
 
 
 # ---------------------------------------------------
@@ -597,11 +610,20 @@ class ZarrNode:
         except ImportError as e:
             raise ImportError("zarr package is required for to_zarr_python()") from e
 
-        _mapper, full_path, protocol = self._full_path()
+        mapper = self._store._mapper
+        if isinstance(mapper, _ZarrPythonStore):  # (opened from a zarr-python Store)
+            return zarr.open(store=mapper.store, path=self._path, mode="r")
+        if _is_zarr_python(mapper):  # (a zarr-python v2 store)
+            return zarr.open(mapper, path=self._path, mode="r")
+
+        fsmap, full_path, protocol = self._full_path()
         # zarr's URI parsing doesn't round-trip percent-encoded characters
         # (e.g. spaces), so for local stores hand it the raw path directly.
-        target = full_path if protocol in ("file", "local") else self.store_path
-        return zarr.open(target, mode="r")
+        if protocol in ("file", "local"):
+            return zarr.open(full_path, mode="r")
+        # (with the options the store was opened with: credentials, endpoint, ...)
+        options = getattr(fsmap.fs, "storage_options", None) or None
+        return zarr.open(self.store_path, mode="r", storage_options=options)
 
     @classmethod
     def node_type(cls) -> Literal["group", "array"]:
@@ -648,7 +670,7 @@ class ZarrNode:
         """Return the URI, or a name like `"<dict>/A/1"` for stores without one."""
         if self._has_uri():
             return self.store_path
-        return f"<{type(self._store._mapper).__name__}>/{self._path}".rstrip("/")
+        return f"{_mapper_name(self._store)}/{self._path}".rstrip("/")
 
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
@@ -1011,7 +1033,99 @@ def _open_group_at(mapper: Mapping[str, bytes], path: str = "") -> ZarrGroup:
 
 
 def _is_zarr_python(obj: object) -> bool:
-    return type(obj).__module__.partition(".")[0] == "zarr"
+    """Whether `obj` is a zarr-python object, or a zarr-python v3 Store."""
+    if type(obj).__module__.partition(".")[0] == "zarr":
+        return True
+    # (stores from other packages, e.g. icechunk, subclass zarr's abstract Store)
+    store_cls = getattr(sys.modules.get("zarr.abc.store"), "Store", None)
+    return isinstance(store_cls, type) and isinstance(obj, store_cls)
+
+
+class _ZarrPythonStore(Mapping[str, bytes]):
+    """Read-only view of a zarr-python v3 `Store`, as a mapping of keys to bytes.
+
+    Reads through the store itself, so works for any store (memory, zip, fsspec,
+    obstore, icechunk, ...), with its credentials and options.
+    """
+
+    def __init__(self, store: Any) -> None:
+        from zarr.core.buffer import default_buffer_prototype
+        from zarr.core.sync import sync
+
+        self.store = store
+        self._sync = sync
+        self._prototype = default_buffer_prototype()
+
+    def __getitem__(self, key: str) -> bytes:
+        buf = self._sync(self.store.get(key, prototype=self._prototype))
+        if buf is None:
+            raise KeyError(key)
+        return buf.to_bytes()
+
+    def getitems(
+        self, keys: list[str], on_error: str = "return"
+    ) -> dict[str, bytes | Exception]:
+        """Fetch `keys` concurrently, with missing keys as `KeyError`s."""
+
+        async def _get_all() -> list[Any]:
+            coros = (self.store.get(k, prototype=self._prototype) for k in keys)
+            return await asyncio.gather(*coros, return_exceptions=True)
+
+        results: dict[str, bytes | Exception] = {}
+        for key, buf in zip(keys, self._sync(_get_all()), strict=True):
+            if buf is None:
+                buf = KeyError(key)
+            if isinstance(buf, Exception):
+                if on_error == "raise":
+                    raise buf
+                if on_error == "return":
+                    results[key] = buf
+            else:
+                results[key] = buf.to_bytes()
+        return results
+
+    def __iter__(self) -> Iterator[str]:
+        async def _list() -> list[str]:
+            return [key async for key in self.store.list()]
+
+        return iter(self._sync(_list()))
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    def __repr__(self) -> str:
+        return f"<{type(self.store).__name__} {self.store}>"
+
+
+def _from_zarr_python(obj: Any) -> tuple[Mapping[str, bytes] | str, str]:
+    """Return (store mapping or local path, path in store) of a zarr-python object.
+
+    `obj` is a zarr-python Group (v2 or v3), or a Store.
+    """
+    store, path = obj, ""
+    if hasattr(obj, "store") and hasattr(obj, "path"):  # a Group
+        store, path = obj.store, obj.path or ""
+
+    if isinstance(store, Mapping):  # zarr-python v2 stores: mappings of bytes
+        if type(store).__name__ in ("DirectoryStore", "NestedDirectoryStore"):
+            return store.path, path
+        if isinstance(fsmap := getattr(store, "map", None), Mapping):  # FSStore
+            return fsmap, path
+        return store, path
+
+    # zarr-python v3 stores
+    if type(store).__name__ == "LocalStore" and _has_fsspec():
+        # (the fsspec route reads local files directly, and keeps a URI)
+        return os.fspath(store.root), path
+    return _ZarrPythonStore(store), path
+
+
+def _has_fsspec() -> bool:
+    try:
+        import fsspec  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 def open_group(
@@ -1021,22 +1135,24 @@ def open_group(
     """Open a zarr v2/v3 group from a URI or a mapping.
 
     !!!important
-        Requires `yaozarrs[io]` or `fsspec` to be installed, unless `uri` is a mapping.
+        Requires `yaozarrs[io]` or `fsspec` to be installed, if `uri` is a path or URI.
 
     Returns a small wrapper around the zarr group that allows reading metadata and
     traversing the hierarchy.
 
     Parameters
     ----------
-    uri : str | os.PathLike | Mapping[str, bytes]
+    uri : str | os.PathLike | Mapping[str, bytes] | zarr.Group | zarr.abc.store.Store
         The URI of the zarr store (e.g., "https://...", "s3://...", "/path/to/file"),
-        or a zarr-python Group.  May also be any mapping of store keys to the bytes of
-        the metadata documents (e.g. `{"zarr.json": b"...", "0/zarr.json": b"..."}`).
-        Only metadata keys are read, and a missing key must behave as it does for a
-        dict: `get` returns `None`.
+        or a zarr-python Group or Store (v2 or v3, on any store: local, memory, zip,
+        fsspec, icechunk, ...; read through the store itself).  May also be any
+        mapping of store keys to the bytes of the metadata documents (e.g.
+        `{"zarr.json": b"...", "0/zarr.json": b"..."}`). Only metadata keys are read,
+        and a missing key must behave as it does for a dict: `get` returns `None`.
     storage_options : dict | None
-        Additional storage options to pass to fsspec when opening the mapper.
-        Ignored if `uri` is a mapping.
+        Additional storage options to pass to fsspec when opening a URI.  S3 URIs are
+        opened anonymously unless `storage_options` has `anon=False`.  Ignored if
+        `uri` is a mapping or a zarr-python object.
 
     Returns
     -------
@@ -1053,41 +1169,35 @@ def open_group(
     if isinstance(uri, ZarrGroup):
         return uri
 
-    # (zarr-python v2 Groups are mappings too, but of nodes, not bytes: handled below)
-    if isinstance(uri, Mapping) and not _is_zarr_python(uri):
+    path = ""
+    if _is_zarr_python(uri):
+        mapping_or_path, path = _from_zarr_python(uri)
+        if isinstance(mapping_or_path, Mapping):
+            return _open_group_at(mapping_or_path, path)
+        uri = mapping_or_path
+    elif isinstance(uri, Mapping):
         return _open_group_at(uri)
+    elif isinstance(uri, (str, os.PathLike)):
+        uri = os.path.expanduser(os.fspath(uri))
+    else:
+        raise TypeError(
+            "uri must be a string, os.PathLike, a mapping, or a zarr-python Group, "
+            f"not {type(uri).__name__}"
+        )
 
     try:
         from fsspec import FSMap, get_mapper
     except ImportError as e:
         raise ImportError(
-            "fsspec package is required for open_group() with a URI.  "
+            "fsspec package is required for open_group() with a path or URI.  "
             "Please install with `pip install yaozarrs[io]` or "
-            "`pip install fsspec`."
+            "`pip install fsspec`.  (Alternatively, pass a mapping of store keys to "
+            "metadata documents.)"
         ) from e
 
-    path = ""
-    if isinstance(uri, (str, os.PathLike)):
-        uri = os.path.expanduser(os.fspath(uri))
-    elif hasattr(uri, "store"):
-        # Handle both zarr v2 and v3 Group objects
-        # v3: str(group.store) returns a URI like "file:///path"
-        # v2: group.store.path returns the directory path
-        # Either way, that's the store root: the group's location in it is `.path`
-        path = getattr(uri, "path", "") or ""
-        if hasattr(uri.store, "path"):
-            # Zarr v2: DirectoryStore has .path attribute
-            uri = uri.store.path
-        else:
-            # Zarr v3: LocalStore's __str__ returns URI
-            uri = str(uri.store)
-    else:  # pragma: no cover
-        raise TypeError(
-            "uri must be a string, os.PathLike, a mapping, or have a 'store' attribute"
-        )
-
-    storage_options = storage_options or {}
+    storage_options = dict(storage_options or {})  # (don't modify the caller's)
     if str(uri).startswith("s3://"):
+        # (public buckets are the common case; pass `anon=False` for credentials)
         storage_options.setdefault("anon", True)
     elif str(uri).startswith(("http://", "https://")):
         # Without a timeout, a hung connection can stall validation
@@ -1095,8 +1205,9 @@ def open_group(
         # and batch fetches may queue hundreds of requests behind it).
         import aiohttp
 
-        client_kwargs = storage_options.setdefault("client_kwargs", {})
+        client_kwargs = dict(storage_options.get("client_kwargs", {}))
         client_kwargs.setdefault("timeout", aiohttp.ClientTimeout(total=30))
+        storage_options["client_kwargs"] = client_kwargs
     mapper = get_mapper(uri, **storage_options)
 
     if not isinstance(mapper, FSMap):  # pragma: no cover

@@ -368,6 +368,69 @@ def test_open_group_from_zarr_python_subgroup(tmp_path: Path) -> None:
     assert group.attrs.get("name") == "inner"
 
 
+def _copy_into_zarr_store(src: Path, store: object) -> None:
+    from zarr.core.buffer import default_buffer_prototype
+    from zarr.core.sync import sync
+
+    buffer = default_buffer_prototype().buffer
+    for file in sorted(src.rglob("*")):
+        if file.is_file():
+            key = file.relative_to(src).as_posix()
+            sync(store.set(key, buffer.from_bytes(file.read_bytes())))
+
+
+@pytest.mark.parametrize("kind", ["memory", "zip", "fsspec-memory"])
+def test_open_group_from_zarr_python_store(
+    write_demo_ome: Callable, tmp_path: Path, kind: str
+) -> None:
+    # zarr-python stores are read through the store itself, whatever its kind
+    zarr = pytest.importorskip("zarr", minversion="3")
+    from zarr.storage import FsspecStore, MemoryStore, ZipStore
+
+    from yaozarrs import validate_zarr_store
+
+    src = write_demo_ome("image-with-labels", version="0.5")
+    if kind == "memory":
+        store = MemoryStore()
+    elif kind == "zip":
+        store = ZipStore(tmp_path / "image.ozx", mode="w")
+    else:
+        store = FsspecStore.from_url(f"memory://{tmp_path.name}/image.zarr")
+    _copy_into_zarr_store(src, store)
+    if kind == "zip":
+        store.close()
+        store = ZipStore(tmp_path / "image.ozx", mode="r")
+
+    for obj in (store, zarr.open_group(store=store, mode="r")):
+        group = validate_zarr_store(obj)
+        assert repr(group) == f"<ZarrGroup <{type(store).__name__}>>"
+        assert group["labels"].ome_metadata() is not None
+        array = group["s0"].to_zarr_python()
+        assert isinstance(array, zarr.Array)
+        assert array.shape == zarr.open_array(store=store, path="s0").shape
+
+    # (a subgroup keeps its path in the store)
+    labels = open_group(zarr.open_group(store=store, mode="r")["labels"])
+    assert labels.path == "labels"
+
+
+def test_open_group_missing_metadata_names_store() -> None:
+    with pytest.raises(FileNotFoundError, match="memory:///nothing/here"):
+        open_group("memory://nothing/here")
+
+
+def test_open_group_rejects_unknown_input() -> None:
+    with pytest.raises(TypeError, match="not int"):
+        open_group(1)
+
+
+def test_open_group_does_not_modify_storage_options() -> None:
+    options: dict = {"client_kwargs": {}}
+    with pytest.raises(Exception):  # noqa: B017 (nothing listens on this port)
+        open_group("http://127.0.0.1:9/nothing.zarr", storage_options=options)
+    assert options == {"client_kwargs": {}}
+
+
 @pytest.mark.parametrize("version", ["0.4", "0.5"])
 def test_zarrarray_to_tensorstore(write_demo_ome: Callable, version: str) -> None:
     ts = pytest.importorskip("tensorstore")

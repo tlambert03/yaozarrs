@@ -328,6 +328,7 @@ def validate_zarr_store(
     obj: ZarrGroup | str | Path | Mapping[str, bytes] | Any,
     *,
     strict: bool | None = None,
+    storage_options: dict | None = None,
 ) -> ZarrGroup:
     """Validate both structure and metadata of an OME-Zarr hierarchy.
 
@@ -345,13 +346,16 @@ def validate_zarr_store(
     ----------
     obj : ZarrGroup | str | Path | Mapping[str, bytes] | Any
         The zarr store to validate. Can be a URI string, a Path, a ZarrGroup instance,
-        a zarr.Group object (for backwards compatibility), or a mapping of store keys
+        a zarr-python Group or Store (on any kind of store), or a mapping of store keys
         to the bytes of the metadata documents, if you want to do the IO yourself (see
         [`yaozarrs.open_group`][]).  To validate a single document without a store,
         use [`yaozarrs.validate_ome_object`][] or [`yaozarrs.validate_ome_json`][].
     strict : bool | None
         If `True`, reject metadata that would otherwise be coerced to the right type
         (e.g. `"1"` for an integer). By default, such metadata is accepted.
+    storage_options : dict | None
+        Options for fsspec, if `obj` is a URI (see [`yaozarrs.open_group`][]).  For
+        example, `{"anon": False}` to use your credentials for a private S3 bucket.
 
     Returns
     -------
@@ -363,7 +367,7 @@ def validate_zarr_store(
     StorageValidationError
         If the storage structure is invalid.
     """
-    zarr_group = open_group(obj)
+    zarr_group = open_group(obj, storage_options=storage_options)
     ome_version = zarr_group.ome_version()
     if not ome_version and "ome" in zarr_group.attrs:
         # (OME metadata, so an invalid OME-Zarr group rather than not one at all)
