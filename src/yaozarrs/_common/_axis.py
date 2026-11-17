@@ -8,6 +8,7 @@ from pydantic import (
     Discriminator,
     Field,
     Tag,
+    field_validator,
     model_validator,
 )
 
@@ -34,6 +35,18 @@ class CustomAxis(_AxisBase):
 
     type: str | None = None  # SHOULD
     unit: str | None = None  # SHOULD
+
+    @field_validator("type")
+    @classmethod
+    def _not_a_typed_axis(cls, v: str | None) -> str | None:
+        # (an axis of these types can't be used as a CustomAxis: inside an axes list,
+        # the `Axis` union expects the matching typed class)
+        if v in ("space", "time", "channel"):
+            raise ValueError(
+                f"Use {v.title()}Axis for axes of type {v!r} (CustomAxis is for other "
+                "types)."
+            )
+        return v
 
 
 class SpaceAxis(_AxisBase):

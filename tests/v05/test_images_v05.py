@@ -634,3 +634,10 @@ def test_transform_lengths_must_match(scale_len: int, translation_len: int) -> N
             axes=axes, datasets=datasets, coordinateTransformations=transforms
         )
     assert e.value.errors()[0]["loc"] == ("coordinateTransformations",)
+
+
+@pytest.mark.parametrize("type_", ["space", "time", "channel"])
+def test_custom_axis_rejects_known_types(type_: str) -> None:
+    # (as in v0.6: else it builds, but fails inside a Multiscale's axes)
+    with pytest.raises(ValidationError, match=f"Use {type_.title()}Axis"):
+        v05.CustomAxis(name="a", type=type_)
