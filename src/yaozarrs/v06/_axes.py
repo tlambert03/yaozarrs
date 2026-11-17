@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, get_args
 
 from annotated_types import MinLen
 from pydantic import (
@@ -53,28 +53,37 @@ class _TypedAxis(_AxisBase):
         # allows e.g. `SpaceAxis(name="x")`, while still marking `type` as
         # explicitly set (so that it survives `model_dump(exclude_unset=True)`)
         if isinstance(data, dict) and "type" not in data:
-            return {**data, "type": cls.model_fields["type"].default}
+            return {**data, "type": get_args(cls.model_fields["type"].annotation)[0]}
         return data
 
 
 class SpaceAxis(_TypedAxis):
     """Axis with `type="space"` (units restricted to SpaceUnits)."""
 
-    type: Literal["space"] = "space"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["space"] = "space"
+    else:
+        type: Literal["space"]
     unit: SpaceUnits | None = None
 
 
 class TimeAxis(_TypedAxis):
     """Axis with `type="time"` (units restricted to TimeUnits)."""
 
-    type: Literal["time"] = "time"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["time"] = "time"
+    else:
+        type: Literal["time"]
     unit: TimeUnits | None = None
 
 
 class ChannelAxis(_TypedAxis):
     """Axis with `type="channel"`."""
 
-    type: Literal["channel"] = "channel"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["channel"] = "channel"
+    else:
+        type: Literal["channel"]
 
 
 class CustomAxis(_AxisBase):

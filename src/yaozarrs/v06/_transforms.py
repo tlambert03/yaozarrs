@@ -1,5 +1,14 @@
 import math
-from typing import Annotated, Any, Literal, NoReturn, Self, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Literal,
+    NoReturn,
+    Self,
+    TypeAlias,
+    get_args,
+)
 
 from annotated_types import MinLen
 from pydantic import (
@@ -75,20 +84,26 @@ class _TransformBase(_BaseModel):
         # (A dict *without* `type` passed to the CoordinateTransformation union is
         # still rejected, since the union discriminates on `type`.)
         if isinstance(data, dict) and "type" not in data:
-            return {**data, "type": cls.model_fields["type"].default}
+            return {**data, "type": get_args(cls.model_fields["type"].annotation)[0]}
         return data
 
 
 class IdentityTransformation(_TransformBase):
     """Maps input coordinates to output coordinates without modification."""
 
-    type: Literal["identity"] = "identity"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["identity"] = "identity"
+    else:
+        type: Literal["identity"]
 
 
 class MapAxisTransformation(_TransformBase):
     """Axis permutation: `mapAxis[i]` is the input axis that becomes output axis `i`."""
 
-    type: Literal["mapAxis"] = "mapAxis"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["mapAxis"] = "mapAxis"
+    else:
+        type: Literal["mapAxis"]
     mapAxis: Annotated[list[NonNegativeInt], MinLen(1)] = Field(
         description="New axis order, as zero-based indices of the input axes."
     )
@@ -112,7 +127,10 @@ class MapAxisTransformation(_TransformBase):
 class ProjectAxisTransformation(_TransformBase):
     """Adds and/or drops dimensions at specified indices of the coordinate vector."""
 
-    type: Literal["projectAxis"] = "projectAxis"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["projectAxis"] = "projectAxis"
+    else:
+        type: Literal["projectAxis"]
     droppedInputs: Annotated[list[NonNegativeInt], MinLen(1)] | None = Field(
         default=None,
         description="Indices of the input coordinate vector that are dropped.",
@@ -140,7 +158,10 @@ class ProjectAxisTransformation(_TransformBase):
 class TranslationTransformation(_TransformBase):
     """Translates coordinates by a fixed offset along each axis."""
 
-    type: Literal["translation"] = "translation"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["translation"] = "translation"
+    else:
+        type: Literal["translation"]
     # (stored inline only: Zarr parameter storage was removed for scale/translation)
     translation: Annotated[list[float], MinLen(1)] = Field(
         description="Offset for each axis."
@@ -150,7 +171,10 @@ class TranslationTransformation(_TransformBase):
 class ScaleTransformation(_TransformBase):
     """Scales coordinates by a factor along each axis."""
 
-    type: Literal["scale"] = "scale"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["scale"] = "scale"
+    else:
+        type: Literal["scale"]
     # (stored inline only: Zarr parameter storage was removed for scale/translation)
     scale: Annotated[list[float], MinLen(1)] = Field(
         description="Scale factor for each axis."
@@ -174,7 +198,10 @@ class ScaleTransformation(_TransformBase):
 class AffineTransformation(_TransformBase):
     """Affine transformation, as an (M)x(N+1) matrix inline or in a Zarr array."""
 
-    type: Literal["affine"] = "affine"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["affine"] = "affine"
+    else:
+        type: Literal["affine"]
     # (N >= 1, since every coordinate system has at least one axis)
     affine: list[Annotated[list[float], MinLen(2)]] | None = Field(
         default=None,
@@ -200,7 +227,10 @@ class AffineTransformation(_TransformBase):
 class RotationTransformation(_TransformBase):
     """Rotation, as an NxN matrix inline or in a Zarr array."""
 
-    type: Literal["rotation"] = "rotation"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["rotation"] = "rotation"
+    else:
+        type: Literal["rotation"]
     rotation: Annotated[list[Annotated[list[float], MinLen(1)]], MinLen(1)] | None = (
         Field(default=None, description="NxN rotation matrix, as a list of N rows.")
     )
@@ -229,7 +259,10 @@ class RotationTransformation(_TransformBase):
 class SequenceTransformation(_TransformBase):
     """Applies an ordered list of transformations, first to last."""
 
-    type: Literal["sequence"] = "sequence"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["sequence"] = "sequence"
+    else:
+        type: Literal["sequence"]
     transformations: Annotated[list["CoordinateTransformation"], MinLen(1)] = Field(
         description="Transformations to apply, in order (non-empty)."
     )
@@ -261,7 +294,10 @@ class ByDimensionItem(_BaseModel):
 class ByDimensionTransformation(_TransformBase):
     """Builds a transformation from lower-dimensional ones on subsets of axes."""
 
-    type: Literal["byDimension"] = "byDimension"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["byDimension"] = "byDimension"
+    else:
+        type: Literal["byDimension"]
     transformations: Annotated[list[ByDimensionItem], MinLen(1)] = Field(
         description="Transformations and the axes they apply to (non-empty)."
     )
@@ -289,7 +325,10 @@ class ByDimensionTransformation(_TransformBase):
 class BijectionTransformation(_TransformBase):
     """An invertible transformation with explicit `forward` and `inverse`."""
 
-    type: Literal["bijection"] = "bijection"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["bijection"] = "bijection"
+    else:
+        type: Literal["bijection"]
     forward: "CoordinateTransformation" = Field(
         description="The forward transformation."
     )
@@ -332,13 +371,19 @@ class _FieldTransformBase(_TransformBase):
 class DisplacementsTransformation(_FieldTransformBase):
     """Displacement field: output = input + displacement vector at that point."""
 
-    type: Literal["displacements"] = "displacements"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["displacements"] = "displacements"
+    else:
+        type: Literal["displacements"]
 
 
 class CoordinatesTransformation(_FieldTransformBase):
     """Coordinate field: output = coordinate vector stored at the input point."""
 
-    type: Literal["coordinates"] = "coordinates"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["coordinates"] = "coordinates"
+    else:
+        type: Literal["coordinates"]
 
 
 CoordinateTransformation: TypeAlias = Annotated[

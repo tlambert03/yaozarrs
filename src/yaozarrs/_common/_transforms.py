@@ -1,6 +1,15 @@
 """`scale` and `translation`, shared by the versions before `coordinateSystems`."""
 
-from typing import Annotated, Any, ClassVar, Literal, Self, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    Self,
+    TypeAlias,
+    get_args,
+)
 
 from annotated_types import MinLen
 from pydantic import (
@@ -33,7 +42,18 @@ _PATH_SCHEMA = WithJsonSchema({"type": "string"})
 _Vector: TypeAlias = Annotated[Annotated[list[float], MinLen(2)] | None, _VECTOR_SCHEMA]
 
 
-class ScaleTransformation(_BaseModel):
+class _TypedTransform(_BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _inject_type_if_missing(cls, data: Any) -> Any:
+        # allows e.g. `ScaleTransformation(scale=[1, 1])`, while keeping `type` in
+        # every dump (it's required at runtime, and explicitly set).
+        if isinstance(data, dict) and "type" not in data:
+            return {**data, "type": get_args(cls.model_fields["type"].annotation)[0]}
+        return data
+
+
+class ScaleTransformation(_TypedTransform):
     """Maps array indices to physical coordinates via scaling.
 
     Defines the pixel/voxel size in physical units for each dimension.
@@ -49,7 +69,10 @@ class ScaleTransformation(_BaseModel):
         json_schema_extra={"oneOf": [{"required": ["scale"]}, {"required": ["path"]}]}
     )
 
-    type: Literal["scale"] = "scale"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["scale"] = "scale"
+    else:
+        type: Literal["scale"]
     # "scale vector, stored either as a list of floats (`scale`) or as binary
     # data at a location in this container (`path`)"
     scale: _Vector = Field(
@@ -76,7 +99,7 @@ class ScaleTransformation(_BaseModel):
         return None if self.scale is None else len(self.scale)
 
 
-class TranslationTransformation(_BaseModel):
+class TranslationTransformation(_TypedTransform):
     """Translates the coordinate system origin in physical space.
 
     Specifies the physical coordinates of the origin (index [0, 0, ...]).
@@ -91,7 +114,10 @@ class TranslationTransformation(_BaseModel):
         }
     )
 
-    type: Literal["translation"] = "translation"
+    if TYPE_CHECKING:  # (required at runtime: injected if missing)
+        type: Literal["translation"] = "translation"
+    else:
+        type: Literal["translation"]
     # "translation vector, stored either as a list of floats (`translation`) or as
     # binary data at a location in this container (`path`)"
     translation: _Vector = Field(

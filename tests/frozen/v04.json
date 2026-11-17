@@ -1038,7 +1038,6 @@
       "properties": {
         "type": {
           "const": "scale",
-          "default": "scale",
           "type": "string"
         },
         "scale": {
@@ -1054,6 +1053,9 @@
           "type": "string"
         }
       },
+      "required": [
+        "type"
+      ],
       "type": "object"
     },
     "Series": {
@@ -1215,7 +1217,6 @@
       "properties": {
         "type": {
           "const": "translation",
-          "default": "translation",
           "type": "string"
         },
         "translation": {
@@ -1231,6 +1232,9 @@
           "type": "string"
         }
       },
+      "required": [
+        "type"
+      ],
       "type": "object"
     },
     "Well": {

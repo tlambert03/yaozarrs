@@ -88,3 +88,29 @@ def test_unknown_keys_round_trip(path: Path) -> None:
     marked = _mark(doc)
     model = validate_ome_object(doc, GROUP_DOCS[path.relative_to(DATA).parts[0]])
     assert _marks(model.model_dump(mode="json")) == marked
+
+
+_TYPED = [
+    (v05.SpaceAxis, {"name": "x"}),
+    (v05.ScaleTransformation, {"scale": [1, 1]}),
+    (v05.TranslationTransformation, {"translation": [1, 1]}),
+    (v06.SpaceAxis, {"name": "x"}),
+    (v06.ChannelAxis, {"name": "c"}),
+    (v06.ScaleTransformation, {"scale": [1, 1]}),
+    (v06.IdentityTransformation, {}),
+    (
+        v06.SequenceTransformation,
+        {"transformations": [{"type": "scale", "scale": [2]}]},
+    ),
+]
+
+
+@pytest.mark.parametrize("flag", ["exclude_defaults", "exclude_unset"])
+@pytest.mark.parametrize(
+    ("cls", "kwargs"), _TYPED, ids=lambda x: getattr(x, "__qualname__", "")
+)
+def test_type_always_dumped(cls: type, kwargs: dict[str, Any], flag: str) -> None:
+    # `type` discriminates unions: dropping it would make the dump unreadable
+    data = cls(**kwargs).model_dump(**{flag: True})
+    assert data["type"] == cls.model_fields["type"].annotation.__args__[0]
+    assert cls.model_validate(data) == cls(**kwargs)
