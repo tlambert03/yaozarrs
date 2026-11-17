@@ -446,6 +446,7 @@
       },
       "type": "object"
     },
+    "JsonValue": {},
     "LabelColor": {
       "additionalProperties": true,
       "properties": {
@@ -734,36 +735,15 @@
           "type": "array"
         },
         "id": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "name": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "version": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "rdefs": {
@@ -826,25 +806,11 @@
           "default": null
         },
         "inverted": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "coefficient": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         }
       },
@@ -858,54 +824,19 @@
       "additionalProperties": true,
       "properties": {
         "model": {
-          "anyOf": [
-            {
-              "enum": [
-                "color",
-                "greyscale"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "defaultT": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "defaultZ": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         },
         "projection": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
+          "$ref": "#/$defs/JsonValue",
           "default": null
         }
       },

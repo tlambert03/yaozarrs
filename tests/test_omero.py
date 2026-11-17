@@ -35,3 +35,28 @@ def test_omero_color_repaired(color: str, expected: str) -> None:
 def test_invalid_omero_color(color: str) -> None:
     with pytest.raises(ValidationError, match=f"Invalid hex color code: {color!r}"):
         v05.OmeroChannel(color=color, window=WINDOW)
+
+
+def test_untyped_keys_accept_any_json() -> None:
+    # keys that neither the spec prose nor the JSON schema types are kept as they are
+    data = {
+        "id": "abc",
+        "name": 5,
+        "version": 0.4,
+        "rdefs": {"defaultZ": 1.5, "defaultT": "0", "model": 3, "projection": None},
+        "channels": [
+            {
+                "color": "FF0000",
+                "window": {"start": 0, "end": 1, "min": 0, "max": 1},
+                "coefficient": 1,
+                "inverted": "no",
+            }
+        ],
+    }
+    omero = v05.Omero.model_validate(data)
+    dumped = omero.model_dump(mode="json", exclude_none=False)
+    for key in ("id", "name", "version", "rdefs"):
+        assert dumped[key] == data[key]
+    assert dumped["channels"][0]["coefficient"] == 1
+    assert isinstance(dumped["channels"][0]["coefficient"], int)
+    assert dumped["channels"][0]["inverted"] == "no"

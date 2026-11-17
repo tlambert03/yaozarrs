@@ -1,7 +1,7 @@
 import re
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field, JsonValue
 
 from yaozarrs._base import _BaseModel
 from yaozarrs._errors import warn
@@ -69,11 +69,13 @@ class OmeroChannel(_BaseModel):
         default=None,
         description="Whether this channel is visible by default",
     )
-    inverted: bool | None = Field(
+    # (neither the spec prose nor the JSON schema types the keys below, which only
+    # appear in the spec's example: any JSON value is accepted)
+    inverted: JsonValue = Field(
         default=None,
         description="Whether to invert the intensity mapping",
     )
-    coefficient: float | None = Field(
+    coefficient: JsonValue = Field(
         default=None,
         description="Multiplicative coefficient for intensity scaling",
     )
@@ -88,22 +90,23 @@ class OmeroRenderingDefs(_BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
-    model: Literal["color", "greyscale"] | str | None = Field(
+    # (untyped by the spec prose and the JSON schema: any JSON value is accepted)
+    model: JsonValue = Field(
         default=None,
         description=(
             "Rendering mode: 'color' for multi-channel composite, "
             "'greyscale' for single channel"
         ),
     )
-    defaultT: int | None = Field(
+    defaultT: JsonValue = Field(
         default=None,
         description="Default time point index to display",
     )
-    defaultZ: int | None = Field(
+    defaultZ: JsonValue = Field(
         default=None,
         description="Default z-section index to display",
     )
-    projection: str | None = Field(
+    projection: JsonValue = Field(
         default=None,
         description=(
             "Projection method for z-stacks: 'normal', "
@@ -133,15 +136,16 @@ class Omero(_BaseModel):
     channels: list[OmeroChannel] = Field(
         description="Rendering settings for each channel in the image",
     )
-    id: int | None = Field(
+    # (untyped by the spec prose and the JSON schema: any JSON value is accepted)
+    id: JsonValue = Field(
         default=None,
         description="OMERO image ID (if from an OMERO server)",
     )
-    name: str | None = Field(
+    name: JsonValue = Field(
         default=None,
         description="Image name from OMERO",
     )
-    version: str | None = Field(
+    version: JsonValue = Field(
         default=None,
         description="OMERO metadata version",
     )
