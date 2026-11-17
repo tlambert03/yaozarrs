@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import textwrap
+import warnings
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, NotRequired
+from typing import TYPE_CHECKING, Any, NotRequired
 
 from pydantic import ValidationError
 from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class ValidationWarning(UserWarning):
@@ -16,6 +22,30 @@ class ValidationWarning(UserWarning):
 
     # exported from `yaozarrs`: show the public path in tracebacks and warnings
     __module__ = "yaozarrs"
+
+
+# The messages of the warnings raised in this context, while `collect_warnings()` is
+# active (a ContextVar, unlike `warnings.catch_warnings`, is safe to use in threads).
+_WARNING_SINK: ContextVar[list[str] | None] = ContextVar("_WARNING_SINK", default=None)
+
+
+def warn(message: str, stacklevel: int = 1) -> None:
+    """Warn with a `ValidationWarning`, or collect it inside `collect_warnings()`."""
+    if (sink := _WARNING_SINK.get()) is not None:
+        sink.append(message)
+    else:
+        warnings.warn(message, ValidationWarning, stacklevel=stacklevel + 1)
+
+
+@contextmanager
+def collect_warnings() -> Generator[list[str]]:
+    """Collect the messages of `warn()` calls in this context, instead of warning."""
+    sink: list[str] = []
+    token = _WARNING_SINK.set(sink)
+    try:
+        yield sink
+    finally:
+        _WARNING_SINK.reset(token)
 
 
 class ErrorDetails(TypedDict):

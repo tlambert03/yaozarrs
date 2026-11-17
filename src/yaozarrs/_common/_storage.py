@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import posixpath
 import re
-import warnings
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, TypeAlias
 from urllib.parse import urljoin
 
 from pydantic import BaseModel, ValidationError
 
-from yaozarrs._errors import StorageErrorType, ValidationResult
+from yaozarrs._errors import StorageErrorType, ValidationResult, warn
 from yaozarrs._zarr import (
     ZarrArray,
     ZarrGroup,
@@ -231,10 +230,9 @@ class StorageValidator:
             return self.visit_bioformats2raw(zarr_group, ome_metadata, loc_prefix)
         elif isinstance(ome_metadata, self.Series):
             if (parent := _parent_group(zarr_group)) is None:
-                warnings.warn(
+                warn(
                     "Cannot validate series paths: they are relative to the parent of "
                     "the OME group, which is outside of the store",
-                    UserWarning,
                     stacklevel=2,
                 )
                 return ValidationResult()
@@ -894,17 +892,14 @@ class StorageValidator:
         try:
             image_source = _resolve_source_path(zarr_group, src_img_rel_path)
         except Exception:
-            warnings.warn(
-                "Unable to resolve source image path", UserWarning, stacklevel=3
-            )
+            warn("Unable to resolve source image path", stacklevel=3)
             return result
 
         store_key = _source_store_key(zarr_group, src_img_rel_path)
         if store_key is None and not zarr_group._has_uri():
-            warnings.warn(
+            warn(
                 f"Cannot validate label image source {src_img_rel_path!r}: "
                 "it is outside of the store",
-                UserWarning,
                 stacklevel=3,
             )
             return result

@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import posixpath
 import sys
+import warnings
 from collections.abc import Iterator, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -243,3 +245,33 @@ def test_tree_follows_series_list(
 def test_tree_shows_group_with_invalid_metadata() -> None:
     store = _scene(2) | {"t1/zarr.json": _group({"version": "0.6", "multiscales": []})}
     assert "📁 t1" in open_group(store).tree()
+
+
+def test_threaded_validation_reports_own_warnings(
+    write_demo_ome: Callable, metadata_dict: Callable, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # model warnings are collected per call, not via (global) warnings filters
+    path = write_demo_ome("image", version="0.5")
+    store = metadata_dict(path)
+    meta = json.loads(store["zarr.json"])
+    meta["attributes"]["ome"]["multiscales"][0]["axes"][-1]["unit"] = "um"
+    store["zarr.json"] = json.dumps(meta).encode()
+
+    emitted: list[StorageValidationWarning] = []
+    real_warn_storage = yaozarrs._validate._warn_storage
+
+    def _record(warning: StorageValidationWarning, stacklevel: int) -> None:
+        emitted.append(warning)
+        real_warn_storage(warning, stacklevel)
+
+    monkeypatch.setattr(yaozarrs._validate, "_warn_storage", _record)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with ThreadPoolExecutor(8) as pool:
+            list(pool.map(lambda _: validate_zarr_store(store), range(64)))
+
+    assert len(emitted) == 64
+    for warning in emitted:
+        assert any("'um', SHOULD be one of" in d["msg"] for d in warning.warnings())
+    # ...and the formatter is restored, even with concurrent calls
+    assert warnings.formatwarning.__module__ == "warnings"
